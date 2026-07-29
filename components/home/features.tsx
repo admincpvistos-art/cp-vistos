@@ -102,7 +102,7 @@ export function Features() {
                 <TickCircle variant="Bold" className="text-destructive size-5 shrink-0 sm:size-6" />
 
                 <p className="text-base text-foreground/70 sm:text-xl">
-                  <strong className="font-semibold">Expertise:</strong> Com 26 anos de experiência no consulado,
+                  <strong className="font-semibold">Expertise:</strong> Com mais de 20 anos de experiência no consulado,
                   aumentamos suas chances de sucesso.
                 </p>
               </motion.li>
