@@ -91,18 +91,23 @@ export function About() {
 
               <div className="w-full flex flex-col gap-2 lg:max-w-prose">
                 <motion.p variants={itemAnimation} className="about-text-animation text-base text-foreground/70">
-                  Meu nome é Camila Paschoal, sou a fundadora da CP Vistos e tenho mais de 18 anos de experiência.
-                  Trabalhei no consulado americano no setor de vistos e essa vivência me proporcionou uma visão
-                  privilegiada dos processos internos, além de uma compreensão profunda das exigências e melhores
-                  práticas para a obtenção de vistos.
+                  Meu nome é Camila Paschoal, fundadora da CP Vistos, e possuo mais de 20 anos de experiência na área de
+                  visto de não imigrante. Atuei diretamente no Consulado Americano como supervisora do setor de vistos,
+                  o que me proporcionou uma visão aprofundada dos processos internos, além de um entendimento preciso
+                  das exigências e melhores práticas para a aprovação de vistos.
                 </motion.p>
 
                 <motion.p variants={itemAnimation} className="about-text-animation text-base text-foreground/70">
-                  Em 2022, fundei a CP Vistos para simplificar a jornada dos solicitantes e poder compartilhar com todos
-                  a minha expertise neste processo tão burocrático. Nosso compromisso é tornar o processo mais claro e
-                  humanizado, garantindo que você se sinta confiante e amparado(a) em cada etapa. A união do
-                  conhecimento técnico com uma abordagem empática faz da CP Vistos uma referência em suporte qualificado
-                  e eficiente.
+                  Em 2022, fundei a CP Vistos com o propósito de simplificar a jornada de quem precisa lidar com um
+                  processo muitas vezes burocrático e complexo. Nosso objetivo é oferecer um atendimento claro,
+                  eficiente e humanizado, garantindo que cada cliente se sinta seguro(a) e bem orientado(a) em todas as
+                  etapas.
+                </motion.p>
+
+                <motion.p variants={itemAnimation} className="about-text-animation text-base text-foreground/70">
+                  Aliamos conhecimento técnico, experiência prática e uma abordagem próxima e empática para entregar um
+                  suporte completo e personalizado. Na CP Vistos, trabalhamos com excelência para transformar um
+                  processo desafiador em uma experiência tranquila e bem-sucedida.
                 </motion.p>
               </div>
             </motion.div>
