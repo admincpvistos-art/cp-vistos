@@ -35,38 +35,43 @@ export const {
         const email = String(credentials.email).trim().toLowerCase();
         const password = String(credentials.password);
 
-        const user = await prisma.user.findFirst({
-          where: {
-            email,
-          },
-        });
+        try {
+          const user = await prisma.user.findFirst({
+            where: {
+              email,
+            },
+          });
 
-        // No Auth.js v5, throw genérico vira erro "Configuration" no client.
-        // Retornar null sinaliza credenciais inválidas (CredentialsSignin).
-        if (!user) {
+          // No Auth.js v5, throw genérico vira erro "Configuration" no client.
+          // Retornar null sinaliza credenciais inválidas (CredentialsSignin).
+          if (!user) {
+            return null;
+          }
+
+          if (user.role === "ADMIN" || user.role === "COLLABORATOR") {
+            const isAdminPasswordCorrect = await bcrypt.compare(password, user.password);
+
+            if (!isAdminPasswordCorrect) {
+              return null;
+            }
+          } else {
+            const isPasswordCorrect = password === user.password;
+
+            if (!isPasswordCorrect) {
+              return null;
+            }
+          }
+
+          // Não devolver o hash da senha para o NextAuth/JWT.
+          return {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+          };
+        } catch (error) {
+          console.error("[AUTH_AUTHORIZE_ERROR]", error);
           return null;
         }
-
-        if (user.role === "ADMIN" || user.role === "COLLABORATOR") {
-          const isAdminPasswordCorrect = await bcrypt.compare(password, user.password);
-
-          if (!isAdminPasswordCorrect) {
-            return null;
-          }
-        } else {
-          const isPasswordCorrect = password === user.password;
-
-          if (!isPasswordCorrect) {
-            return null;
-          }
-        }
-
-        // Não devolver o hash da senha para o NextAuth/JWT.
-        return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-        };
       },
     }),
   ],
