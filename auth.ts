@@ -14,6 +14,9 @@ export const {
 } = NextAuth({
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
+  // Necessário em produção (Vercel) para evitar erro "Configuration"
+  // quando AUTH_URL não está definido.
+  trustHost: true,
   providers: [
     Credentials({
       name: "credentials",
@@ -29,32 +32,41 @@ export const {
           return null;
         }
 
+        const email = String(credentials.email).trim().toLowerCase();
+        const password = String(credentials.password);
+
         const user = await prisma.user.findFirst({
           where: {
-            email: credentials.email as string,
+            email,
           },
         });
 
+        // No Auth.js v5, throw genérico vira erro "Configuration" no client.
+        // Retornar null sinaliza credenciais inválidas (CredentialsSignin).
         if (!user) {
-          throw new Error("Dados inválidos, verifique e tente novamente");
+          return null;
         }
 
         if (user.role === "ADMIN" || user.role === "COLLABORATOR") {
-          const isAdminPasswordCorrect: boolean = await bcrypt.compare(credentials.password as string, user.password);
+          const isAdminPasswordCorrect = await bcrypt.compare(password, user.password);
 
           if (!isAdminPasswordCorrect) {
-            throw new Error("Dados inválidos, verifique e tente novamente");
+            return null;
           }
         } else {
-          const isPasswordCorrect = (credentials.password as string) === user.password;
+          const isPasswordCorrect = password === user.password;
 
           if (!isPasswordCorrect) {
-            throw new Error("Dados inválidos, verifique e tente novamente");
+            return null;
           }
         }
 
-        // return user object with the their profile data
-        return user;
+        // Não devolver o hash da senha para o NextAuth/JWT.
+        return {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+        };
       },
     }),
   ],

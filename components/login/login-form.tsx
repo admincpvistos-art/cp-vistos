@@ -99,12 +99,10 @@ export function LoginForm() {
 
         setUserSubmitted(true);
         router.push("/verificando-usuario");
+      } else if (response.error === "CredentialsSignin") {
+        toast.error("Credenciais inválidas");
       } else {
-        if (response.error === "Configuration") {
-          toast.error("Credenciais inválidas");
-        } else {
-          toast.error("Ocorreu um erro na autenticação");
-        }
+        toast.error("Ocorreu um erro na autenticação");
       }
     } catch (error) {
       console.error({ error });
