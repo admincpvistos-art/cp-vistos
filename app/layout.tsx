@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { Poppins as FontSans } from "next/font/google";
+import localFont from "next/font/local";
 import { NextSSRPlugin } from "@uploadthing/react/next-ssr-plugin";
 import { extractRouterConfig } from "uploadthing/server";
-import { HeroUIProvider } from "@heroui/react";
+import { HeroUIProvider } from "@heroui/system";
 
 import { Toaster } from "@/components/ui/sonner";
 import { NextAuthSessionProvider } from "@/providers/sessionProvider";
@@ -13,10 +13,15 @@ import { cn } from "@/lib/utils";
 
 import "./globals.css";
 
-const poppins = FontSans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+const poppins = localFont({
+  src: [
+    { path: "../fonts/poppins-400.woff2", weight: "400", style: "normal" },
+    { path: "../fonts/poppins-500.woff2", weight: "500", style: "normal" },
+    { path: "../fonts/poppins-600.woff2", weight: "600", style: "normal" },
+    { path: "../fonts/poppins-700.woff2", weight: "700", style: "normal" },
+  ],
   variable: "--font-sans",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
