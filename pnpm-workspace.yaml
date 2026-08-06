@@ -1,0 +1,11 @@
+allowBuilds:
+  '@heroui/shared-utils': set this to true or false
+  '@prisma/client': true
+  '@prisma/engines': true
+  msgpackr-extract: set this to true or false
+  msw: true
+  prisma: true
+  unrs-resolver: set this to true or false
+
+overrides:
+  'embla-carousel-react>embla-carousel': '8.3.0'
