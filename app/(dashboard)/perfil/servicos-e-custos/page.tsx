@@ -431,7 +431,7 @@ export default function ServicosECustosPage() {
                     Passaporte
                   </th>
                   <th className="h-12 px-2 text-center font-medium text-muted-foreground whitespace-nowrap">
-                    Data de validade
+                    Data da viagem
                   </th>
                   <th className="h-12 px-2 text-center font-medium text-muted-foreground whitespace-nowrap">
                     Data limite
@@ -517,16 +517,27 @@ export default function ServicosECustosPage() {
                         />
                       </td>
                       <td className="p-3 text-center">
-                        <span
-                          className={cn(
-                            "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold",
-                            row.situacao === "paid"
-                              ? "bg-emerald-100 text-emerald-700"
-                              : "bg-amber-100 text-amber-700",
-                          )}
-                        >
-                          {row.situacao === "paid" ? "Pago" : "Pendente"}
-                        </span>
+                        {row.situacao ? (
+                          <span
+                            className={cn(
+                              "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold",
+                              row.situacao === "urgente" &&
+                                "bg-red-100 text-red-700",
+                              row.situacao === "media" &&
+                                "bg-amber-100 text-amber-800",
+                              row.situacao === "baixa" &&
+                                "bg-emerald-100 text-emerald-700",
+                            )}
+                          >
+                            {row.situacao === "urgente"
+                              ? "URGENTE"
+                              : row.situacao === "media"
+                                ? "MÉDIA"
+                                : "BAIXA"}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                       </td>
                     </tr>
                   ))

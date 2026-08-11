@@ -6,7 +6,7 @@
 
 ### 1. Importação Excel → Serviços e Custos + Financeiro
 - **Status:** pendente
-- **Descrição:** Upload de planilha Excel alimentando as colunas de **Serviços e Custos** (renovação, primeiro visto, reunião paga, monitoramento, passaporte, datas, situação) e, por sincronização, o check-list/totais do **Financeiro**. Gastos pontuais históricos também podem entrar como `FinanceExpense`.
+- **Descrição:** Upload de planilha Excel alimentando as colunas de **Serviços e Custos** (renovação, primeiro visto, reunião paga, monitoramento, passaporte, data da viagem, data limite; situação = prioridade pela data da viagem) e, por sincronização, o check-list/totais do **Financeiro**. Gastos pontuais históricos também podem entrar como `FinanceExpense`.
 - **Dependência:** upload do arquivo Excel pelo usuário.
 - **Ação prevista:** mapear colunas, criar/atualizar `ServiceCost` + sync `FinanceEntry`, e opcionalmente `FinanceExpense`; validar totais.
 

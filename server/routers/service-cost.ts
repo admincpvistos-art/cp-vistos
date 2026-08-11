@@ -4,6 +4,8 @@ import { BudgetPaid, Role } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { financeAdminProcedure, router } from "../trpc";
 
+export type TripPriority = "urgente" | "media" | "baixa";
+
 function sumServiceValues(row: {
   renovacao: number | null;
   primeiroVisto: number | null;
@@ -20,6 +22,28 @@ function sumServiceValues(row: {
   );
 }
 
+function startOfDay(date: Date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+/** Prioridade pela data da viagem: ≤60 URGENTE, 61–90 MÉDIA, >90 BAIXA. */
+export function tripPriorityFromDate(
+  viagemDate: Date | null | undefined,
+): TripPriority | null {
+  if (!viagemDate) return null;
+
+  const today = startOfDay(new Date());
+  const trip = startOfDay(viagemDate);
+  const msPerDay = 1000 * 60 * 60 * 24;
+  const daysUntil = Math.ceil((trip.getTime() - today.getTime()) / msPerDay);
+
+  if (daysUntil <= 60) return "urgente";
+  if (daysUntil <= 90) return "media";
+  return "baixa";
+}
+
 export async function syncFinanceFromServiceCost(userId: string) {
   const serviceCost = await prisma.serviceCost.findUnique({
     where: { userId },
@@ -29,12 +53,7 @@ export async function syncFinanceFromServiceCost(userId: string) {
 
   const total = sumServiceValues(serviceCost);
   const hasAmount = total > 0;
-  const situacao = hasAmount ? BudgetPaid.paid : BudgetPaid.pending;
-
-  await prisma.serviceCost.update({
-    where: { id: serviceCost.id },
-    data: { situacao },
-  });
+  const financeStatus = hasAmount ? BudgetPaid.paid : BudgetPaid.pending;
 
   const existingFinance = await prisma.financeEntry.findUnique({
     where: { userId },
@@ -45,7 +64,7 @@ export async function syncFinanceFromServiceCost(userId: string) {
       where: { id: existingFinance.id },
       data: {
         amount: hasAmount ? total : null,
-        status: situacao,
+        status: financeStatus,
         paidAt: hasAmount
           ? existingFinance.paidAt ?? new Date()
           : null,
@@ -56,13 +75,17 @@ export async function syncFinanceFromServiceCost(userId: string) {
       data: {
         userId,
         amount: hasAmount ? total : null,
-        status: situacao,
+        status: financeStatus,
         paidAt: hasAmount ? new Date() : null,
       },
     });
   }
 
-  return { total, situacao };
+  return {
+    total,
+    financeStatus,
+    situacao: tripPriorityFromDate(serviceCost.validadeDate),
+  };
 }
 
 async function ensureServiceAndFinanceRows() {
@@ -159,7 +182,7 @@ export const serviceCostRouter = router({
             passaporte: row.passaporte,
             validadeDate: row.validadeDate,
             limiteDate: row.limiteDate,
-            situacao: row.situacao,
+            situacao: tripPriorityFromDate(row.validadeDate),
             total,
           };
         }),
@@ -192,7 +215,8 @@ export const serviceCostRouter = router({
       return {
         row: updated,
         total: sync?.total ?? 0,
-        situacao: sync?.situacao ?? BudgetPaid.pending,
+        situacao:
+          sync?.situacao ?? tripPriorityFromDate(updated.validadeDate),
       };
     }),
 
