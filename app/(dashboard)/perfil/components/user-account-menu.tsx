@@ -211,7 +211,8 @@ export function UserAccountMenu() {
 
       <DropdownMenuContent
         align="end"
-        className="w-72 p-2 !bg-white !text-[#314060] border border-secondary rounded-xl shadow-lg"
+        collisionPadding={16}
+        className="w-72 p-2 max-h-[min(80vh,calc(100dvh-5.5rem))] overflow-y-auto overscroll-contain !bg-white !text-[#314060] border border-secondary rounded-xl shadow-lg"
         style={{ backgroundColor: "#ffffff", color: "#314060" }}
       >
         <DropdownMenuLabel className="font-normal">
@@ -250,7 +251,13 @@ export function UserAccountMenu() {
                 isAdmin ? "Ferramentas de Administração" : "Ferramentas"
               }
               open={adminOpen}
-              onToggle={() => setAdminOpen((prev) => !prev)}
+              onToggle={() =>
+                setAdminOpen((prev) => {
+                  const next = !prev;
+                  if (next) setDevOpen(false);
+                  return next;
+                })
+              }
             >
               {collaboratorTools.map(({ href, label, icon: Icon }) => (
                 <div key={href} className="contents">
@@ -306,7 +313,15 @@ export function UserAccountMenu() {
             <CollapsibleSection
               title="Ferramentas de Desenvolvimento"
               open={devOpen}
-              onToggle={() => setDevOpen((prev) => !prev)}
+              onToggle={() =>
+                setDevOpen((prev) => {
+                  const next = !prev;
+                  // Ao abrir desenvolvimento, recolhe admin para caber na tela
+                  if (next) setAdminOpen(false);
+                  else setAdminOpen(true);
+                  return next;
+                })
+              }
             >
               {developmentInternalTools.map(({ href, label, icon: Icon }) => (
                 <DropdownMenuItem key={href} asChild>
