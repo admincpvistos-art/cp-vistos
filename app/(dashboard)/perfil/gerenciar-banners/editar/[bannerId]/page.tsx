@@ -163,7 +163,7 @@ export default function EditBanner({
   }
 
   return (
-    <div className="w-full lg:w-[calc(100%-250px)] px-6 sm:px-16 lg:ml-[250px] lg:px-40">
+    <div className="w-full lg:w-[calc(100%-var(--dashboard-sidebar-width,250px))] px-6 sm:px-16 lg:ml-[var(--dashboard-sidebar-width,250px)] lg:px-40 transition-[margin,width] duration-300">
       <h1 className="text-2xl lg:text-3xl xl:text-4xl font-semibold my-6 lg:my-12">
         Edite o banner
       </h1>

@@ -35,12 +35,14 @@ export function DashboardHeader({
   return (
     <header
       className={cn(
-        "w-full bg-transparent h-20 px-6 flex items-center justify-between fixed top-0 left-0 right-0 z-30 sm:px-16 sm:top-4 lg:container",
+        "w-full bg-transparent h-20 px-6 flex items-center justify-between fixed top-0 left-0 right-0 z-30 sm:px-16 sm:top-4 lg:container transition-[left,width] duration-300",
         {
-          "lg:left-[250px] lg:w-[calc(100%-250px)]": isCollab,
+          "lg:left-[var(--dashboard-sidebar-width,250px)] lg:w-[calc(100%-var(--dashboard-sidebar-width,250px))]":
+            isCollab,
         },
       )}
     >
+
       <div
         className={cn(
           "w-full h-20 absolute top-0 left-0 transform -translate-y-full bg-white/35 backdrop-blur-lg rounded-b-xl transition-transform duration-500 sm:rounded-b-3xl sm:h-[calc(80px+32px)] sm:-translate-y-[calc(100%+16px)]",
