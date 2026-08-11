@@ -199,7 +199,11 @@ export function DataTable<TData, TValue>({ columns, data, category }: DataTableP
                 {headerGroup.headers.map((header) => (
                   <TableHead
                     key={header.id}
-                    className="sticky top-0 z-20 bg-white text-center whitespace-nowrap"
+                    className={cn(
+                      "sticky top-0 z-20 bg-white text-center whitespace-nowrap",
+                      header.column.id === "name" &&
+                        "left-0 z-30 min-w-52 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.12)]",
+                    )}
                   >
                     {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
@@ -218,13 +222,20 @@ export function DataTable<TData, TValue>({ columns, data, category }: DataTableP
                       profileId: row.getValue("id"),
                     })
                   }
-                  className={cn("cursor-pointer", {
+                  className={cn("group cursor-pointer", {
                     "cursor-not-allowed pointer-events-none opacity-70": isPending,
                   })}
                   data-state={row.getIsSelected() && "selected"}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="text-center text-foreground font-medium">
+                    <TableCell
+                      key={cell.id}
+                      className={cn(
+                        "text-center text-foreground font-medium",
+                        cell.column.id === "name" &&
+                          "sticky left-0 z-10 min-w-52 bg-white group-hover:bg-muted/50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.12)]",
+                      )}
+                    >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
