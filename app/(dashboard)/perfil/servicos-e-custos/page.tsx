@@ -118,7 +118,8 @@ function DateCell({
   initialValue: Date | string | null;
   onSaved: () => void;
 }) {
-  const [value, setValue] = useState(toDateInputValue(initialValue));
+  const initial = toDateInputValue(initialValue);
+  const [value, setValue] = useState(initial);
 
   useEffect(() => {
     setValue(toDateInputValue(initialValue));
@@ -134,16 +135,31 @@ function DateCell({
     },
   });
 
-  function save(next: string) {
+  function save() {
+    const next = value.trim();
+    const previous = toDateInputValue(initialValue);
+
+    if (next === previous) return;
+
+    // Só grava data completa (YYYY-MM-DD) ou limpeza do campo
+    if (next && !/^\d{4}-\d{2}-\d{2}$/.test(next)) {
+      setValue(previous);
+      toast.error("Informe a data completa");
+      return;
+    }
+
     if (!next) {
       mutate({ id: rowId, [field]: null });
       return;
     }
+
     const parsed = new Date(`${next}T12:00:00`);
     if (Number.isNaN(parsed.getTime())) {
+      setValue(previous);
       toast.error("Data inválida");
       return;
     }
+
     mutate({ id: rowId, [field]: parsed });
   }
 
@@ -153,9 +169,10 @@ function DateCell({
         type="date"
         value={value}
         disabled={isPending}
-        onChange={(e) => {
-          setValue(e.target.value);
-          save(e.target.value);
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={save}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.currentTarget.blur();
         }}
         className="h-9 w-[150px]"
       />
