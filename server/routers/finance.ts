@@ -237,13 +237,34 @@ export const financeRouter = router({
       };
     }),
 
-  getExpenses: financeAdminProcedure.query(async () => {
-    const expenses = await prisma.financeExpense.findMany({
-      orderBy: { paidAt: "desc" },
-    });
+  getExpenses: financeAdminProcedure
+    .input(
+      z
+        .object({
+          yearMonth: z
+            .string()
+            .regex(/^\d{4}-\d{2}$/)
+            .optional()
+            .nullable(),
+        })
+        .optional(),
+    )
+    .query(async ({ input }) => {
+      const yearMonth = input?.yearMonth;
+      const dateFilter = yearMonth
+        ? (() => {
+            const { start, end } = monthRange(yearMonth);
+            return { gte: start, lte: end };
+          })()
+        : undefined;
 
-    return { expenses };
-  }),
+      const expenses = await prisma.financeExpense.findMany({
+        where: dateFilter ? { paidAt: dateFilter } : undefined,
+        orderBy: { paidAt: "desc" },
+      });
+
+      return { expenses };
+    }),
 
   updateAmount: financeAdminProcedure
     .input(

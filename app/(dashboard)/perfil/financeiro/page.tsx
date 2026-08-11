@@ -81,6 +81,7 @@ export default function FinanceiroPage() {
   const router = useRouter();
   const [selectedMonth, setSelectedMonth] = useState(currentYearMonth());
   const [checklistMonth, setChecklistMonth] = useState<string>("");
+  const [expensesMonth, setExpensesMonth] = useState<string>("");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [sort, setSort] = useState<"asc" | "desc">("desc");
@@ -125,9 +126,10 @@ export default function FinanceiroPage() {
     { enabled: canAccess },
   );
 
-  const expensesQuery = trpc.financeRouter.getExpenses.useQuery(undefined, {
-    enabled: canAccess,
-  });
+  const expensesQuery = trpc.financeRouter.getExpenses.useQuery(
+    { yearMonth: expensesMonth || null },
+    { enabled: canAccess },
+  );
 
   if (loadingMe || !canAccess) {
     return (
@@ -197,18 +199,40 @@ export default function FinanceiroPage() {
       </div>
 
       <div className="rounded-2xl border border-muted bg-white p-4 sm:p-6 shadow-sm mb-8">
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold">Pagamentos</h2>
-          <p className="text-sm text-foreground/60 mt-1">
-            Registros somente leitura. Lance novos gastos em{" "}
-            <Link
-              href="/perfil/servicos-e-custos"
-              className="text-primary underline underline-offset-2"
-            >
-              Serviços e Custos
-            </Link>
-            .
-          </p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-6">
+          <div>
+            <h2 className="text-xl font-semibold">Pagamentos</h2>
+            <p className="text-sm text-foreground/60 mt-1">
+              Registros somente leitura. Lance novos gastos em{" "}
+              <Link
+                href="/perfil/servicos-e-custos"
+                className="text-primary underline underline-offset-2"
+              >
+                Serviços e Custos
+              </Link>
+              .
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+            <Input
+              type="month"
+              value={expensesMonth}
+              onChange={(e) => setExpensesMonth(e.target.value)}
+              className="h-11 w-full sm:w-[170px]"
+              title="Filtrar por mês do pagamento"
+            />
+            {expensesMonth && (
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11"
+                onClick={() => setExpensesMonth("")}
+              >
+                Limpar mês
+              </Button>
+            )}
+          </div>
         </div>
 
         <div className="border rounded-xl overflow-hidden">
@@ -259,6 +283,7 @@ export default function FinanceiroPage() {
                       className="h-24 text-center text-muted-foreground"
                     >
                       Nenhum pagamento lançado
+                      {expensesMonth ? " neste mês" : ""}
                     </td>
                   </tr>
                 )}

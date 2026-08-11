@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Loader2, Plus, Search, Trash2 } from "lucide-react";
+import { Loader2, Plus, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -207,10 +207,6 @@ export default function ServicosECustosPage() {
     { enabled: canAccess },
   );
 
-  const expensesQuery = trpc.financeRouter.getExpenses.useQuery(undefined, {
-    enabled: canAccess,
-  });
-
   const { mutate: createExpense, isPending: creatingExpense } =
     trpc.serviceCostRouter.createExpense.useMutation({
       onSuccess: () => {
@@ -219,22 +215,10 @@ export default function ServicosECustosPage() {
         setExpenseAmount("");
         utils.financeRouter.getExpenses.invalidate();
         utils.financeRouter.getSummary.invalidate();
-        toast.success("Pagamento inserido no financeiro");
+        toast.success("Pagamento enviado ao financeiro");
       },
       onError: () => {
-        toast.error("Não foi possível inserir o pagamento");
-      },
-    });
-
-  const { mutate: deleteExpense, isPending: deletingExpense } =
-    trpc.serviceCostRouter.deleteExpense.useMutation({
-      onSuccess: () => {
-        utils.financeRouter.getExpenses.invalidate();
-        utils.financeRouter.getSummary.invalidate();
-        toast.success("Pagamento removido");
-      },
-      onError: () => {
-        toast.error("Não foi possível remover o pagamento");
+        toast.error("Não foi possível enviar o pagamento");
       },
     });
 
@@ -278,10 +262,10 @@ export default function ServicosECustosPage() {
 
       <div className="rounded-2xl border border-muted bg-white p-4 sm:p-6 shadow-sm mb-8">
         <div className="mb-6">
-          <h2 className="text-xl font-semibold">Gastos pontuais</h2>
+          <h2 className="text-xl font-semibold">Cadastro de pagamentos</h2>
           <p className="text-sm text-foreground/60 mt-1">
-            Preencha e clique em inserir para alimentar os pagamentos da
-            dashboard Financeiro.
+            Preencha e envie para alimentar o check-list de pagamentos no
+            Financeiro. Os dados ficam salvos lá.
           </p>
         </div>
 
@@ -315,71 +299,10 @@ export default function ServicosECustosPage() {
             ) : (
               <>
                 <Plus className="mr-2 h-4 w-4" />
-                Inserir no financeiro
+                Enviar para o financeiro
               </>
             )}
           </Button>
-        </div>
-
-        <div className="border rounded-xl overflow-hidden mt-6">
-          <div className="overflow-auto max-h-[min(40vh,360px)]">
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 z-20 bg-white shadow-[0_1px_0_0_hsl(var(--border))]">
-                <tr className="border-b">
-                  <th className="h-11 px-4 text-left font-medium text-muted-foreground">
-                    Nome
-                  </th>
-                  <th className="h-11 px-4 text-left font-medium text-muted-foreground">
-                    Do que se trata
-                  </th>
-                  <th className="h-11 px-4 text-center font-medium text-muted-foreground">
-                    Valor
-                  </th>
-                  <th className="h-11 px-4 text-center font-medium text-muted-foreground w-14" />
-                </tr>
-              </thead>
-              <tbody>
-                {expensesQuery.isLoading ? (
-                  <tr>
-                    <td colSpan={4} className="h-20 text-center">
-                      <Loader2 className="h-5 w-5 animate-spin mx-auto text-primary" />
-                    </td>
-                  </tr>
-                ) : expensesQuery.data?.expenses.length ? (
-                  expensesQuery.data.expenses.map((expense) => (
-                    <tr key={expense.id} className="border-b hover:bg-muted/40">
-                      <td className="p-3 font-medium">{expense.name}</td>
-                      <td className="p-3">{expense.description}</td>
-                      <td className="p-3 text-center whitespace-nowrap font-semibold">
-                        {formatBRL(expense.amount)}
-                      </td>
-                      <td className="p-3 text-center">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          disabled={deletingExpense}
-                          onClick={() => deleteExpense({ id: expense.id })}
-                          aria-label="Remover pagamento"
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td
-                      colSpan={4}
-                      className="h-20 text-center text-muted-foreground"
-                    >
-                      Nenhum gasto pontual lançado
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
         </div>
       </div>
 
