@@ -5,7 +5,14 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ArrowDownAZ, ArrowUpAZ, Loader2, Search } from "lucide-react";
+import {
+  ArrowDownAZ,
+  ArrowUpAZ,
+  Loader2,
+  Plus,
+  Search,
+  Trash2,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,15 +40,22 @@ function SummaryCard({
   title,
   value,
   loading,
+  emphasize,
   children,
 }: {
   title: string;
   value: number;
   loading?: boolean;
+  emphasize?: boolean;
   children?: ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-muted bg-white p-5 shadow-sm flex flex-col gap-3 min-h-[140px]">
+    <div
+      className={cn(
+        "rounded-2xl border border-muted bg-white p-5 shadow-sm flex flex-col gap-3 min-h-[140px]",
+        emphasize && "border-primary/30 bg-primary/5",
+      )}
+    >
       <div className="flex items-start justify-between gap-3">
         <h2 className="text-sm font-semibold text-foreground/70 uppercase tracking-wide">
           {title}
@@ -51,7 +65,12 @@ function SummaryCard({
       {loading ? (
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
       ) : (
-        <p className="text-2xl sm:text-3xl font-semibold text-foreground">
+        <p
+          className={cn(
+            "text-2xl sm:text-3xl font-semibold",
+            value < 0 ? "text-red-600" : "text-foreground",
+          )}
+        >
           {formatBRL(value)}
         </p>
       )}
@@ -124,7 +143,9 @@ function AmountInput({
         }}
         className="h-10 w-32 text-center"
       />
-      {isPending && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+      {isPending && (
+        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+      )}
     </div>
   );
 }
@@ -136,6 +157,9 @@ export default function FinanceiroPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [sort, setSort] = useState<"asc" | "desc">("desc");
+  const [expenseName, setExpenseName] = useState("");
+  const [expenseDescription, setExpenseDescription] = useState("");
+  const [expenseAmount, setExpenseAmount] = useState("");
 
   const { data: me, isLoading: loadingMe } = trpc.userRouter.getMe.useQuery(
     undefined,
@@ -163,6 +187,8 @@ export default function FinanceiroPage() {
     }
   }, [loadingMe, me, canAccess, router]);
 
+  const utils = trpc.useUtils();
+
   const summaryQuery = trpc.financeRouter.getSummary.useQuery(
     { yearMonth: selectedMonth },
     { enabled: canAccess },
@@ -177,7 +203,54 @@ export default function FinanceiroPage() {
     { enabled: canAccess },
   );
 
-  const utils = trpc.useUtils();
+  const expensesQuery = trpc.financeRouter.getExpenses.useQuery(undefined, {
+    enabled: canAccess,
+  });
+
+  const { mutate: createExpense, isPending: creatingExpense } =
+    trpc.financeRouter.createExpense.useMutation({
+      onSuccess: () => {
+        setExpenseName("");
+        setExpenseDescription("");
+        setExpenseAmount("");
+        utils.financeRouter.getExpenses.invalidate();
+        utils.financeRouter.getSummary.invalidate();
+        toast.success("Pagamento lançado");
+      },
+      onError: () => {
+        toast.error("Não foi possível lançar o pagamento");
+      },
+    });
+
+  const { mutate: deleteExpense, isPending: deletingExpense } =
+    trpc.financeRouter.deleteExpense.useMutation({
+      onSuccess: () => {
+        utils.financeRouter.getExpenses.invalidate();
+        utils.financeRouter.getSummary.invalidate();
+        toast.success("Pagamento removido");
+      },
+      onError: () => {
+        toast.error("Não foi possível remover o pagamento");
+      },
+    });
+
+  function handleCreateExpense() {
+    const amount = Number(expenseAmount.trim().replace(",", "."));
+    if (!expenseName.trim() || !expenseDescription.trim()) {
+      toast.error("Preencha nome e descrição");
+      return;
+    }
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast.error("Informe um valor válido");
+      return;
+    }
+
+    createExpense({
+      name: expenseName.trim(),
+      description: expenseDescription.trim(),
+      amount,
+    });
+  }
 
   if (loadingMe || !canAccess) {
     return (
@@ -208,34 +281,157 @@ export default function FinanceiroPage() {
         </SummaryCard>
 
         <SummaryCard
-          title="Últimos 30 dias"
-          value={summaryQuery.data?.last30Days ?? 0}
-          loading={summaryQuery.isLoading}
-        />
-        <SummaryCard
           title="Últimos 6 meses"
           value={summaryQuery.data?.last6Months ?? 0}
           loading={summaryQuery.isLoading}
         />
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10">
         <SummaryCard
           title="Último ano"
           value={summaryQuery.data?.lastYear ?? 0}
           loading={summaryQuery.isLoading}
         />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
         <SummaryCard
           title="Total desde o início"
           value={summaryQuery.data?.allTime ?? 0}
           loading={summaryQuery.isLoading}
         />
+        <SummaryCard
+          title="Total líquido mês"
+          value={summaryQuery.data?.netMonth ?? 0}
+          loading={summaryQuery.isLoading}
+          emphasize
+        >
+          <Input
+            type="month"
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="h-9 w-[150px]"
+          />
+        </SummaryCard>
+        <SummaryCard
+          title="Total líquido desde o início"
+          value={summaryQuery.data?.netAllTime ?? 0}
+          loading={summaryQuery.isLoading}
+          emphasize
+        />
+      </div>
+
+      <div className="rounded-2xl border border-muted bg-white p-4 sm:p-6 shadow-sm mb-8">
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold">Pagamentos</h2>
+          <p className="text-sm text-foreground/60 mt-1">
+            Lance manualmente gastos (funcionários, envio de documentos, etc.).
+            Eles entram no cálculo do total líquido.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-[1.2fr_1.6fr_0.8fr_auto] gap-3 mb-6">
+          <Input
+            placeholder="Nome"
+            value={expenseName}
+            onChange={(e) => setExpenseName(e.target.value)}
+          />
+          <Input
+            placeholder="Descrição do serviço"
+            value={expenseDescription}
+            onChange={(e) => setExpenseDescription(e.target.value)}
+          />
+          <Input
+            type="number"
+            min={0}
+            step="0.01"
+            placeholder="Valor pago"
+            value={expenseAmount}
+            onChange={(e) => setExpenseAmount(e.target.value)}
+          />
+          <Button
+            type="button"
+            onClick={handleCreateExpense}
+            disabled={creatingExpense}
+            className="w-full md:w-auto"
+          >
+            {creatingExpense ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <>
+                <Plus className="mr-2 h-4 w-4" />
+                Adicionar
+              </>
+            )}
+          </Button>
+        </div>
+
+        <div className="border rounded-xl overflow-hidden">
+          <div className="overflow-auto max-h-[min(50vh,480px)]">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 z-20 bg-white shadow-[0_1px_0_0_hsl(var(--border))]">
+                <tr className="border-b">
+                  <th className="h-12 px-4 text-left font-medium text-muted-foreground">
+                    Nome
+                  </th>
+                  <th className="h-12 px-4 text-left font-medium text-muted-foreground">
+                    Descrição do serviço
+                  </th>
+                  <th className="h-12 px-4 text-center font-medium text-muted-foreground whitespace-nowrap">
+                    Valor pago
+                  </th>
+                  <th className="h-12 px-4 text-center font-medium text-muted-foreground w-16" />
+                </tr>
+              </thead>
+              <tbody>
+                {expensesQuery.isLoading ? (
+                  <tr>
+                    <td colSpan={4} className="h-24 text-center">
+                      <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
+                    </td>
+                  </tr>
+                ) : expensesQuery.data?.expenses.length ? (
+                  expensesQuery.data.expenses.map((expense) => (
+                    <tr key={expense.id} className="border-b hover:bg-muted/40">
+                      <td className="p-4 font-medium">{expense.name}</td>
+                      <td className="p-4">{expense.description}</td>
+                      <td className="p-4 text-center whitespace-nowrap font-semibold">
+                        {formatBRL(expense.amount)}
+                      </td>
+                      <td className="p-4 text-center">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          disabled={deletingExpense}
+                          onClick={() => deleteExpense({ id: expense.id })}
+                          aria-label="Remover pagamento"
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td
+                      colSpan={4}
+                      className="h-24 text-center text-muted-foreground"
+                    >
+                      Nenhum pagamento lançado
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       <div className="rounded-2xl border border-muted bg-white p-4 sm:p-6 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between mb-6">
           <div>
-            <h2 className="text-xl font-semibold">Checklist de pagamentos</h2>
+            <h2 className="text-xl font-semibold">
+              Check-list de recebimentos
+            </h2>
             <p className="text-sm text-foreground/60 mt-1">
               Novos clientes entram automaticamente. Ao preencher o valor, a
               situação muda para pago e os totais são atualizados.
@@ -244,7 +440,10 @@ export default function FinanceiroPage() {
 
           <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
             <div className="h-11 flex items-center gap-2 border border-muted/70 rounded-xl bg-background px-3 py-2 w-full sm:w-72">
-              <Search className="w-5 h-5 text-border flex-shrink-0" strokeWidth={1.5} />
+              <Search
+                className="w-5 h-5 text-border flex-shrink-0"
+                strokeWidth={1.5}
+              />
               <Input
                 placeholder="Buscar por nome..."
                 value={search}

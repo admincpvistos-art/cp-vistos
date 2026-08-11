@@ -4,40 +4,41 @@
 
 ## Em aberto
 
-### 1. Importação histórica via planilha Excel
+### 1. Importação histórica de recebimentos (Excel)
 - **Status:** pendente
-- **Descrição:** Alimentar o checklist e os totais com dados anteriores a 11/08/2026 a partir da planilha Excel fornecida pelo admin.
+- **Descrição:** Alimentar o check-list de recebimentos e os totais com dados anteriores a 11/08/2026 a partir da planilha Excel.
 - **Dependência:** upload do arquivo Excel pelo usuário.
 - **Ação prevista:** mapear colunas (nome, data, valor, situação), criar/atualizar `FinanceEntry` e validar totais.
 
-### 2. Base financeira complementar para filtros
+### 2. Importação histórica de pagamentos/gastos
 - **Status:** pendente
-- **Descrição:** Receber o restante dos dados financeiros da empresa (além do checklist de clientes) para enriquecer filtros e demonstrativos.
-- **Dependência:** envio dos dados pelo admin.
-- **Ação prevista:** avaliar se cabem em `FinanceEntry` ou se exige modelo adicional (despesas, categorias, etc.).
+- **Descrição:** Preencher automaticamente o check-list de **Pagamentos** com gastos anteriores (funcionários, envios, etc.) com base nos dados fornecidos pelo admin.
+- **Dependência:** envio da lista/planilha de gastos históricos.
+- **Ação prevista:** criar registros em `FinanceExpense` (nome, descrição, valor, data) e recalcular totais líquidos.
 
-### 3. Ajuste fino de datas de pagamento históricas
+### 3. Ajuste fino de datas históricas
 - **Status:** pendente
-- **Descrição:** No import Excel, garantir que `paidAt` use a data real do pagamento (não a data do upload), para os cards de 30 dias / 6 meses / ano / mês ficarem corretos.
-- **Dependência:** item 1.
+- **Descrição:** No import, garantir que `paidAt` use a data real do movimento (não a data do upload), para mês / 6 meses / ano / líquido ficarem corretos.
+- **Dependência:** itens 1 e 2.
 
-### 4. Conferência de clientes já existentes vs planilha
+### 4. Conferência de clientes já existentes vs planilha de recebimentos
 - **Status:** pendente
-- **Descrição:** Cruzar clientes já cadastrados no sistema com linhas da planilha (por nome/e-mail/CPF) para evitar duplicidade no checklist.
+- **Descrição:** Cruzar clientes cadastrados com linhas da planilha (nome/e-mail/CPF) para evitar duplicidade.
 - **Dependência:** item 1.
 
 ## Já resolvido neste ciclo
 
-- [x] Página `/perfil/financeiro` (somente `cpassessoriavistos@gmail.com` e `admin@cpvistos.com`)
-- [x] Menu **Financeiro** abaixo de **Clientes** nas ferramentas de administração
-- [x] Cards: mês (com filtro), 30 dias, 6 meses, 1 ano, total geral
-- [x] Checklist automático no cadastro de cliente (`createClient`)
-- [x] Backfill automático de clientes antigos sem linha financeira (na primeira carga da página)
-- [x] Campo de valor manual → status Pago/Pendente automático
-- [x] Busca por nome, filtro por mês de cadastro, ordenação crescente/decrescente
+- [x] Página `/perfil/financeiro` (somente admins allowlist)
+- [x] Menu **Financeiro** abaixo de **Clientes**
+- [x] Cards de recebimentos: mês (filtro), 6 meses, 1 ano, total geral
+- [x] Cards líquidos: total líquido mês (filtro) e total líquido desde o início
+- [x] Removido card “últimos 30 dias”
+- [x] Check-list de recebimentos (auto no cadastro + valor/status)
+- [x] Seção **Pagamentos** (lançamento manual: nome, descrição, valor)
+- [x] Modelo `FinanceExpense` no banco
 
 ## Como continuar
 
-1. Enviar a planilha Excel neste chat.
-2. Marcar o item correspondente como resolvido após o import.
-3. Repetir para qualquer dado financeiro extra.
+1. Enviar planilha de recebimentos históricos.
+2. Enviar lista/planilha de pagamentos/gastos históricos.
+3. Marcar os itens correspondentes como resolvidos após o import.

@@ -25,7 +25,7 @@ function monthRange(yearMonth: string) {
   return { start, end };
 }
 
-async function sumPaidBetween(start: Date, end: Date) {
+async function sumReceiptsBetween(start: Date, end: Date) {
   const entries = await prisma.financeEntry.findMany({
     where: {
       status: BudgetPaid.paid,
@@ -39,6 +39,23 @@ async function sumPaidBetween(start: Date, end: Date) {
   });
 
   return entries.reduce((acc, entry) => acc + (entry.amount ?? 0), 0);
+}
+
+async function sumExpensesBetween(start?: Date, end?: Date) {
+  const expenses = await prisma.financeExpense.findMany({
+    where:
+      start && end
+        ? {
+            paidAt: {
+              gte: start,
+              lte: end,
+            },
+          }
+        : undefined,
+    select: { amount: true },
+  });
+
+  return expenses.reduce((acc, expense) => acc + expense.amount, 0);
 }
 
 async function ensureFinanceEntriesForClients() {
@@ -104,9 +121,6 @@ export const financeRouter = router({
         `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
       const { start: monthStart, end: monthEnd } = monthRange(selectedMonth);
 
-      const last30Start = startOfDay(
-        new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000),
-      );
       const last6MonthsStart = startOfDay(
         new Date(now.getFullYear(), now.getMonth() - 6, now.getDate()),
       );
@@ -114,32 +128,42 @@ export const financeRouter = router({
         new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()),
       );
 
-      const [monthTotal, last30Days, last6Months, lastYear, allTime] =
-        await Promise.all([
-          sumPaidBetween(monthStart, monthEnd),
-          sumPaidBetween(last30Start, endOfDay(now)),
-          sumPaidBetween(last6MonthsStart, endOfDay(now)),
-          sumPaidBetween(lastYearStart, endOfDay(now)),
-          prisma.financeEntry
-            .findMany({
-              where: {
-                status: BudgetPaid.paid,
-                amount: { not: null },
-              },
-              select: { amount: true },
-            })
-            .then((entries) =>
-              entries.reduce((acc, entry) => acc + (entry.amount ?? 0), 0),
-            ),
-        ]);
+      const [
+        monthTotal,
+        last6Months,
+        lastYear,
+        allTime,
+        monthExpenses,
+        allTimeExpenses,
+      ] = await Promise.all([
+        sumReceiptsBetween(monthStart, monthEnd),
+        sumReceiptsBetween(last6MonthsStart, endOfDay(now)),
+        sumReceiptsBetween(lastYearStart, endOfDay(now)),
+        prisma.financeEntry
+          .findMany({
+            where: {
+              status: BudgetPaid.paid,
+              amount: { not: null },
+            },
+            select: { amount: true },
+          })
+          .then((entries) =>
+            entries.reduce((acc, entry) => acc + (entry.amount ?? 0), 0),
+          ),
+        sumExpensesBetween(monthStart, monthEnd),
+        sumExpensesBetween(),
+      ]);
 
       return {
         selectedMonth,
         monthTotal,
-        last30Days,
         last6Months,
         lastYear,
         allTime,
+        monthExpenses,
+        allTimeExpenses,
+        netMonth: monthTotal - monthExpenses,
+        netAllTime: allTime - allTimeExpenses,
       };
     }),
 
@@ -194,8 +218,7 @@ export const financeRouter = router({
         : entries;
 
       const sorted = [...filtered].sort((a, b) => {
-        const diff =
-          a.user.createdAt.getTime() - b.user.createdAt.getTime();
+        const diff = a.user.createdAt.getTime() - b.user.createdAt.getTime();
         return input.sort === "asc" ? diff : -diff;
       });
 
@@ -233,5 +256,45 @@ export const financeRouter = router({
       });
 
       return { entry };
+    }),
+
+  getExpenses: financeAdminProcedure.query(async () => {
+    const expenses = await prisma.financeExpense.findMany({
+      orderBy: { paidAt: "desc" },
+    });
+
+    return { expenses };
+  }),
+
+  createExpense: financeAdminProcedure
+    .input(
+      z.object({
+        name: z.string().min(1, "Nome obrigatório"),
+        description: z.string().min(1, "Descrição obrigatória"),
+        amount: z.number().positive("Valor deve ser maior que zero"),
+        paidAt: z.date().optional(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const expense = await prisma.financeExpense.create({
+        data: {
+          name: input.name.trim(),
+          description: input.description.trim(),
+          amount: input.amount,
+          paidAt: input.paidAt ?? new Date(),
+        },
+      });
+
+      return { expense };
+    }),
+
+  deleteExpense: financeAdminProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .mutation(async ({ input }) => {
+      await prisma.financeExpense.delete({
+        where: { id: input.id },
+      });
+
+      return {};
     }),
 });
