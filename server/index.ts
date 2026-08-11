@@ -5,6 +5,7 @@ import { clientRouter } from "./routers/client";
 import { formsRouter } from "./routers/forms";
 import { notificationRouter } from "./routers/notification";
 import { websiteRouter } from "./routers/website";
+import { financeRouter } from "./routers/finance";
 
 export const appRouter = router({
   userRouter,
@@ -13,6 +14,7 @@ export const appRouter = router({
   formsRouter,
   notificationRouter,
   websiteRouter,
+  financeRouter,
 });
 
 export type AppRouter = typeof appRouter;

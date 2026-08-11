@@ -398,6 +398,21 @@ export const userRouter = router({
         },
       });
 
+      const budgetValue = parseFloat(input.budget);
+      const hasPaidFinance =
+        budgetPaid === BudgetPaid.paid &&
+        Number.isFinite(budgetValue) &&
+        budgetValue > 0;
+
+      await prisma.financeEntry.create({
+        data: {
+          userId: account.id,
+          amount: hasPaidFinance ? budgetValue : null,
+          status: hasPaidFinance ? BudgetPaid.paid : BudgetPaid.pending,
+          paidAt: hasPaidFinance ? new Date() : null,
+        },
+      });
+
       const profilesPromises = input.profiles.map(async (profile) => {
         let visaClass;
         let visaType;

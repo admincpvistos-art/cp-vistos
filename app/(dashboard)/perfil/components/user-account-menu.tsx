@@ -13,6 +13,7 @@ import {
   UserPlus,
   Users,
   Contact,
+  Wallet,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { trpc } from "@/lib/trpc-client";
 import { cn } from "@/lib/utils";
+
+const FINANCE_ADMIN_EMAILS = [
+  "cpassessoriavistos@gmail.com",
+  "admin@cpvistos.com",
+] as const;
 
 const collaboratorTools = [
   { href: "/perfil/clientes", label: "Clientes", icon: Users },
@@ -73,6 +79,12 @@ export function UserAccountMenu() {
   const displayName = user?.name || session.data?.user?.name || "Usuário";
   const displayEmail = user?.email || session.data?.user?.email || "";
   const imageUrl = user?.image || session.data?.user?.image || null;
+  const canAccessFinance =
+    isAdmin &&
+    !!displayEmail &&
+    FINANCE_ADMIN_EMAILS.includes(
+      displayEmail.toLowerCase() as (typeof FINANCE_ADMIN_EMAILS)[number],
+    );
 
   if (session.status === "unauthenticated") {
     return (
@@ -174,12 +186,26 @@ export function UserAccountMenu() {
             {adminOpen && (
               <div className="mt-1 mb-1 ml-1 flex flex-col gap-0.5 border-l border-muted pl-2">
                 {collaboratorTools.map(({ href, label, icon: Icon }) => (
-                  <DropdownMenuItem key={href} asChild>
-                    <Link href={href} className="cursor-pointer">
-                      <Icon className="mr-2 h-4 w-4" />
-                      {label}
-                    </Link>
-                  </DropdownMenuItem>
+                  <div key={href} className="contents">
+                    <DropdownMenuItem asChild>
+                      <Link href={href} className="cursor-pointer">
+                        <Icon className="mr-2 h-4 w-4" />
+                        {label}
+                      </Link>
+                    </DropdownMenuItem>
+
+                    {href === "/perfil/clientes" && canAccessFinance && (
+                      <DropdownMenuItem asChild>
+                        <Link
+                          href="/perfil/financeiro"
+                          className="cursor-pointer"
+                        >
+                          <Wallet className="mr-2 h-4 w-4" />
+                          Financeiro
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+                  </div>
                 ))}
 
                 {isAdmin &&
