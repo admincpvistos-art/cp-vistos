@@ -158,8 +158,9 @@ model ServiceCost {
   reuniaoPaga   Float?
   monitoramento Float?
   passaporte    Float?
+  outros        Float?
+  outrosComment String?
   validadeDate  DateTime?
-  limiteDate    DateTime?
   situacao      BudgetPaid @default(pending)
 
   userId String @unique @db.ObjectId

@@ -11,13 +11,15 @@ function sumServiceValues(row: {
   reuniaoPaga: number | null;
   monitoramento: number | null;
   passaporte: number | null;
+  outros: number | null;
 }) {
   return (
     (row.renovacao ?? 0) +
     (row.primeiroVisto ?? 0) +
     (row.reuniaoPaga ?? 0) +
     (row.monitoramento ?? 0) +
-    (row.passaporte ?? 0)
+    (row.passaporte ?? 0) +
+    (row.outros ?? 0)
   );
 }
 
@@ -157,8 +159,9 @@ export const serviceCostRouter = router({
             reuniaoPaga: row.reuniaoPaga,
             monitoramento: row.monitoramento,
             passaporte: row.passaporte,
+            outros: row.outros,
+            outrosComment: row.outrosComment,
             validadeDate: row.validadeDate,
-            limiteDate: row.limiteDate,
             situacao: tripPriorityFromDate(row.validadeDate),
             total,
           };
@@ -175,16 +178,26 @@ export const serviceCostRouter = router({
         reuniaoPaga: optionalAmount,
         monitoramento: optionalAmount,
         passaporte: optionalAmount,
+        outros: optionalAmount,
+        outrosComment: z.string().max(500).nullable().optional(),
         validadeDate: z.date().nullable().optional(),
-        limiteDate: z.date().nullable().optional(),
       }),
     )
     .mutation(async ({ input }) => {
-      const { id, ...data } = input;
+      const { id, outrosComment, ...rest } = input;
 
       const updated = await prisma.serviceCost.update({
         where: { id },
-        data,
+        data: {
+          ...rest,
+          ...(outrosComment !== undefined
+            ? {
+                outrosComment: outrosComment?.trim()
+                  ? outrosComment.trim()
+                  : null,
+              }
+            : {}),
+        },
       });
 
       const sync = await syncFinanceFromServiceCost(updated.userId);

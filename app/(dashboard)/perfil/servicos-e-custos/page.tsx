@@ -4,10 +4,22 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Loader2, Plus, Search } from "lucide-react";
+import { Loader2, MessageSquare, Plus, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { trpc } from "@/lib/trpc-client";
 import { cn } from "@/lib/utils";
 
@@ -42,7 +54,8 @@ function AmountCell({
     | "primeiroVisto"
     | "reuniaoPaga"
     | "monitoramento"
-    | "passaporte";
+    | "passaporte"
+    | "outros";
   initialValue: number | null;
   onSaved: () => void;
 }) {
@@ -114,7 +127,7 @@ function DateCell({
   onSaved,
 }: {
   rowId: string;
-  field: "validadeDate" | "limiteDate";
+  field: "validadeDate";
   initialValue: Date | string | null;
   onSaved: () => void;
 }) {
@@ -176,6 +189,176 @@ function DateCell({
         }}
         className="h-9 w-[150px]"
       />
+      {isPending && (
+        <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+      )}
+    </div>
+  );
+}
+
+function OutrosCell({
+  rowId,
+  initialValue,
+  initialComment,
+  onSaved,
+}: {
+  rowId: string;
+  initialValue: number | null;
+  initialComment: string | null;
+  onSaved: () => void;
+}) {
+  const [value, setValue] = useState(
+    initialValue !== null && initialValue !== undefined
+      ? String(initialValue)
+      : "",
+  );
+  const [comment, setComment] = useState(initialComment ?? "");
+  const [commentOpen, setCommentOpen] = useState(false);
+
+  useEffect(() => {
+    setValue(
+      initialValue !== null && initialValue !== undefined
+        ? String(initialValue)
+        : "",
+    );
+  }, [initialValue, rowId]);
+
+  useEffect(() => {
+    setComment(initialComment ?? "");
+  }, [initialComment, rowId]);
+
+  const { mutate, isPending } = trpc.serviceCostRouter.updateRow.useMutation({
+    onSuccess: (_data, variables) => {
+      onSaved();
+      if (variables.outrosComment !== undefined) {
+        toast.success("Comentário salvo");
+        setCommentOpen(false);
+      } else {
+        toast.success("Valor atualizado");
+      }
+    },
+    onError: () => {
+      toast.error("Não foi possível salvar");
+    },
+  });
+
+  function saveAmount() {
+    const trimmed = value.trim().replace(",", ".");
+    if (!trimmed) {
+      mutate({ id: rowId, outros: null });
+      return;
+    }
+    const parsed = Number(trimmed);
+    if (!Number.isFinite(parsed) || parsed < 0) {
+      toast.error("Informe um valor válido");
+      return;
+    }
+    mutate({ id: rowId, outros: parsed });
+  }
+
+  function saveComment() {
+    const next = comment.trim();
+    const previous = (initialComment ?? "").trim();
+    if (next === previous) {
+      setCommentOpen(false);
+      return;
+    }
+    mutate({ id: rowId, outrosComment: next || null });
+  }
+
+  const hasComment = Boolean((initialComment ?? "").trim());
+  const amountInput = (
+    <Input
+      type="number"
+      min={0}
+      step="0.01"
+      placeholder="0"
+      value={value}
+      disabled={isPending}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={saveAmount}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") e.currentTarget.blur();
+      }}
+      className="h-9 w-[100px] text-center"
+    />
+  );
+
+  return (
+    <div className="flex items-center justify-center gap-1">
+      {hasComment ? (
+        <TooltipProvider delayDuration={200}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div>{amountInput}</div>
+            </TooltipTrigger>
+            <TooltipContent
+              side="top"
+              className="max-w-xs whitespace-pre-wrap text-left"
+            >
+              {initialComment}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      ) : (
+        amountInput
+      )}
+
+      <Popover open={commentOpen} onOpenChange={setCommentOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0"
+            aria-label="Comentário do serviço em Outros"
+            title="Comentário do serviço"
+          >
+            <MessageSquare
+              className={cn(
+                "h-4 w-4",
+                hasComment ? "text-primary" : "text-muted-foreground",
+              )}
+            />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-72 p-3" align="center">
+          <p className="text-sm font-medium mb-2">Comentário (Outros)</p>
+          <Textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder="Ex.: tradução, envio expresso..."
+            className="min-h-[88px] text-sm"
+            maxLength={500}
+          />
+          <div className="mt-3 flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setComment(initialComment ?? "");
+                setCommentOpen(false);
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={isPending}
+              onClick={saveComment}
+            >
+              {isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Salvar"
+              )}
+            </Button>
+          </div>
+        </PopoverContent>
+      </Popover>
+
       {isPending && (
         <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
       )}
@@ -371,10 +554,10 @@ export default function ServicosECustosPage() {
                     Passaporte
                   </th>
                   <th className="h-12 px-2 text-center font-medium text-muted-foreground whitespace-nowrap">
-                    Data da viagem
+                    Outros
                   </th>
                   <th className="h-12 px-2 text-center font-medium text-muted-foreground whitespace-nowrap">
-                    Data limite
+                    Data da viagem
                   </th>
                   <th className="h-12 px-3 text-center font-medium text-muted-foreground whitespace-nowrap">
                     Situação
@@ -441,18 +624,18 @@ export default function ServicosECustosPage() {
                         />
                       </td>
                       <td className="p-2 text-center">
-                        <DateCell
+                        <OutrosCell
                           rowId={row.id}
-                          field="validadeDate"
-                          initialValue={row.validadeDate}
+                          initialValue={row.outros}
+                          initialComment={row.outrosComment}
                           onSaved={invalidateSynced}
                         />
                       </td>
                       <td className="p-2 text-center">
                         <DateCell
                           rowId={row.id}
-                          field="limiteDate"
-                          initialValue={row.limiteDate}
+                          field="validadeDate"
+                          initialValue={row.validadeDate}
                           onSaved={invalidateSynced}
                         />
                       </td>
