@@ -9,7 +9,9 @@ import {
   ScheduleAccount,
   Shipping,
   Status,
+  StatusDS,
   VisaClass,
+  VisaStatus,
   VisaType,
 } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
@@ -24,6 +26,59 @@ import {
   router,
 } from "../trpc";
 import prisma from "@/lib/prisma";
+import { tripPriorityFromDate } from "@/lib/trip-priority";
+
+function mapProfileToClientTableRow(profile: {
+  id: string;
+  CASVDate: Date | null;
+  interviewDate: Date | null;
+  meetingDate: Date | null;
+  DSValid: Date | null;
+  name: string;
+  statusDS: StatusDS;
+  taxDate: Date | null;
+    visaType: VisaType;
+  visaStatus: VisaStatus;
+  shipping: Shipping;
+  cpf: string | null;
+  responsibleCpf: string | null;
+  protocol: string | null;
+  entryDate: Date | null;
+  scheduleDate: Date | null;
+  process: string | null;
+  passport: string | null;
+  ETAStatus: ETAStatus;
+  user: {
+    group: string | null;
+    scheduleAccount: ScheduleAccount | null;
+    serviceCost: { validadeDate: Date | null } | null;
+  };
+}) {
+  return {
+    id: profile.id,
+    group: profile.user.group!,
+    CASVDate: profile.CASVDate,
+    interviewDate: profile.interviewDate,
+    meetingDate: profile.meetingDate,
+    DSValid: profile.DSValid,
+    name: profile.name,
+    scheduleAccount: profile.user.scheduleAccount!,
+    statusDS: profile.statusDS,
+    tax: !!profile.taxDate,
+    visaType: profile.visaType,
+    visaStatus: profile.visaStatus,
+    shipping: profile.shipping,
+    cpf: profile.cpf,
+    responsibleCpf: profile.responsibleCpf,
+    protocol: profile.protocol,
+    entryDate: profile.entryDate,
+    scheduleDate: profile.scheduleDate,
+    process: profile.process,
+    passport: profile.passport,
+    ETAStatus: profile.ETAStatus,
+    tripPriority: tripPriorityFromDate(profile.user.serviceCost?.validadeDate),
+  };
+}
 
 export const userRouter = router({
   getRole: collaboratorProcedure.query(async (opts) => {
@@ -996,6 +1051,9 @@ export const userRouter = router({
           user: {
             include: {
               profiles: true,
+              serviceCost: {
+                select: { validadeDate: true },
+              },
             },
           },
           form: true,
@@ -1006,29 +1064,7 @@ export const userRouter = router({
         return { clients: [] };
       }
 
-      const clients = profiles.map((profile) => ({
-        id: profile.id,
-        group: profile.user.group!,
-        CASVDate: profile.CASVDate,
-        interviewDate: profile.interviewDate,
-        meetingDate: profile.meetingDate,
-        DSValid: profile.DSValid,
-        name: profile.name,
-        scheduleAccount: profile.user.scheduleAccount!,
-        statusDS: profile.statusDS,
-        tax: !!profile.taxDate,
-        visaType: profile.visaType,
-        visaStatus: profile.visaStatus,
-        shipping: profile.shipping,
-        cpf: profile.cpf,
-        responsibleCpf: profile.responsibleCpf,
-        protocol: profile.protocol,
-        entryDate: profile.entryDate,
-        scheduleDate: profile.scheduleDate,
-        process: profile.process,
-        passport: profile.passport,
-        ETAStatus: profile.ETAStatus,
-      }));
+      const clients = profiles.map(mapProfileToClientTableRow);
 
       return { clients };
     }),
@@ -1050,6 +1086,9 @@ export const userRouter = router({
           user: {
             include: {
               profiles: true,
+              serviceCost: {
+                select: { validadeDate: true },
+              },
             },
           },
           form: true,
@@ -1060,29 +1099,7 @@ export const userRouter = router({
         return { clients: [] };
       }
 
-      const clients = profiles.map((profile) => ({
-        id: profile.id,
-        group: profile.user.group!,
-        CASVDate: profile.CASVDate,
-        interviewDate: profile.interviewDate,
-        meetingDate: profile.meetingDate,
-        DSValid: profile.DSValid,
-        name: profile.name,
-        scheduleAccount: profile.user.scheduleAccount!,
-        statusDS: profile.statusDS,
-        tax: !!profile.taxDate,
-        visaType: profile.visaType,
-        visaStatus: profile.visaStatus,
-        shipping: profile.shipping,
-        cpf: profile.cpf,
-        responsibleCpf: profile.responsibleCpf,
-        protocol: profile.protocol,
-        entryDate: profile.entryDate,
-        scheduleDate: profile.scheduleDate,
-        process: profile.process,
-        passport: profile.passport,
-        ETAStatus: profile.ETAStatus,
-      }));
+      const clients = profiles.map(mapProfileToClientTableRow);
 
       return { clients };
     }),
@@ -1104,6 +1121,9 @@ export const userRouter = router({
           user: {
             include: {
               profiles: true,
+              serviceCost: {
+                select: { validadeDate: true },
+              },
             },
           },
           form: true,
@@ -1114,29 +1134,7 @@ export const userRouter = router({
         return { clients: [] };
       }
 
-      const clients = profiles.map((profile) => ({
-        id: profile.id,
-        group: profile.user.group!,
-        CASVDate: profile.CASVDate,
-        interviewDate: profile.interviewDate,
-        meetingDate: profile.meetingDate,
-        DSValid: profile.DSValid,
-        name: profile.name,
-        scheduleAccount: profile.user.scheduleAccount!,
-        statusDS: profile.statusDS,
-        tax: !!profile.taxDate,
-        visaType: profile.visaType,
-        visaStatus: profile.visaStatus,
-        shipping: profile.shipping,
-        cpf: profile.cpf,
-        responsibleCpf: profile.responsibleCpf,
-        protocol: profile.protocol,
-        entryDate: profile.entryDate,
-        scheduleDate: profile.scheduleDate,
-        process: profile.process,
-        passport: profile.passport,
-        ETAStatus: profile.ETAStatus,
-      }));
+      const clients = profiles.map(mapProfileToClientTableRow);
 
       return { clients };
     }),

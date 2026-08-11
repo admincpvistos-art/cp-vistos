@@ -2,9 +2,8 @@ import { z } from "zod";
 import { BudgetPaid, Role } from "@prisma/client";
 
 import prisma from "@/lib/prisma";
+import { tripPriorityFromDate } from "@/lib/trip-priority";
 import { financeAdminProcedure, router } from "../trpc";
-
-export type TripPriority = "urgente" | "media" | "baixa";
 
 function sumServiceValues(row: {
   renovacao: number | null;
@@ -20,28 +19,6 @@ function sumServiceValues(row: {
     (row.monitoramento ?? 0) +
     (row.passaporte ?? 0)
   );
-}
-
-function startOfDay(date: Date) {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-/** Prioridade pela data da viagem: ≤60 URGENTE, 61–90 MÉDIA, >90 BAIXA. */
-export function tripPriorityFromDate(
-  viagemDate: Date | null | undefined,
-): TripPriority | null {
-  if (!viagemDate) return null;
-
-  const today = startOfDay(new Date());
-  const trip = startOfDay(viagemDate);
-  const msPerDay = 1000 * 60 * 60 * 24;
-  const daysUntil = Math.ceil((trip.getTime() - today.getTime()) / msPerDay);
-
-  if (daysUntil <= 60) return "urgente";
-  if (daysUntil <= 90) return "media";
-  return "baixa";
 }
 
 export async function syncFinanceFromServiceCost(userId: string) {

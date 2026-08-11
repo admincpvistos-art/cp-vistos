@@ -37,6 +37,7 @@ export function DataTable<TData, TValue>({ columns, data, category }: DataTableP
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
     id: false,
     name: false,
+    tripPriority: false,
     cpf: false,
     group: false,
     CASVDate: false,
@@ -100,6 +101,7 @@ export function DataTable<TData, TValue>({ columns, data, category }: DataTableP
       setColumnVisibility({
         id: false,
         name: true,
+        tripPriority: true,
         cpf: true,
         group: true,
         CASVDate: true,
@@ -125,6 +127,7 @@ export function DataTable<TData, TValue>({ columns, data, category }: DataTableP
       setColumnVisibility({
         id: false,
         name: true,
+        tripPriority: true,
         group: true,
         CASVDate: false,
         interviewDate: false,
@@ -151,6 +154,7 @@ export function DataTable<TData, TValue>({ columns, data, category }: DataTableP
       setColumnVisibility({
         id: false,
         name: true,
+        tripPriority: true,
         group: true,
         CASVDate: false,
         interviewDate: false,
@@ -203,6 +207,8 @@ export function DataTable<TData, TValue>({ columns, data, category }: DataTableP
                       "sticky top-0 z-20 bg-white text-center whitespace-nowrap",
                       header.column.id === "name" &&
                         "left-0 z-30 min-w-52 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.12)]",
+                      header.column.id === "tripPriority" &&
+                        "left-52 z-30 min-w-[7.5rem] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.12)]",
                     )}
                   >
                     {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
@@ -234,6 +240,8 @@ export function DataTable<TData, TValue>({ columns, data, category }: DataTableP
                         "text-center text-foreground font-medium",
                         cell.column.id === "name" &&
                           "sticky left-0 z-10 min-w-52 bg-white group-hover:bg-muted/50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.12)]",
+                        cell.column.id === "tripPriority" &&
+                          "sticky left-52 z-10 min-w-[7.5rem] bg-white group-hover:bg-muted/50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.12)]",
                       )}
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}

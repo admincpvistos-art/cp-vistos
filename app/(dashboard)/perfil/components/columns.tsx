@@ -7,6 +7,12 @@ import { ETAStatus, ScheduleAccount, Shipping, StatusDS, VisaStatus, VisaType } 
 
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  tripPriorityLabel,
+  tripPriorityRank,
+  type TripPriority,
+} from "@/lib/trip-priority";
+import { cn } from "@/lib/utils";
 
 export type UserTable = {
   id: string;
@@ -28,7 +34,30 @@ export type UserTable = {
   process: string | null;
   passport: string | null;
   ETAStatus: ETAStatus;
+  tripPriority: TripPriority | null;
+  visaStatus?: VisaStatus;
+  group?: string;
 };
+
+function TripPriorityBadge({ priority }: { priority: TripPriority | null }) {
+  const label = tripPriorityLabel(priority);
+  if (!label || !priority) {
+    return <span className="text-muted-foreground">—</span>;
+  }
+
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold",
+        priority === "urgente" && "bg-red-100 text-red-700",
+        priority === "media" && "bg-amber-100 text-amber-800",
+        priority === "baixa" && "bg-emerald-100 text-emerald-700",
+      )}
+    >
+      {label}
+    </span>
+  );
+}
 
 export const columns: ColumnDef<UserTable>[] = [
   {
@@ -52,6 +81,29 @@ export const columns: ColumnDef<UserTable>[] = [
     cell: ({ row }) => {
       return <span className="block min-w-52">{row.getValue("name")}</span>;
     },
+  },
+  {
+    accessorKey: "tripPriority",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="flex items-center justify-center w-full"
+        >
+          Status
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      );
+    },
+    sortingFn: (rowA, rowB) =>
+      tripPriorityRank(rowA.original.tripPriority) -
+      tripPriorityRank(rowB.original.tripPriority),
+    cell: ({ row }) => (
+      <div className="min-w-[7.5rem] flex justify-center">
+        <TripPriorityBadge priority={row.original.tripPriority} />
+      </div>
+    ),
   },
   {
     accessorKey: "cpf",
@@ -216,7 +268,7 @@ export const columns: ColumnDef<UserTable>[] = [
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           className="flex items-center justify-center w-full"
         >
-          Status
+          Andamento
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       );
@@ -568,7 +620,7 @@ export const columns: ColumnDef<UserTable>[] = [
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           className="flex items-center justify-center w-full"
         >
-          Status
+          Andamento
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       );
