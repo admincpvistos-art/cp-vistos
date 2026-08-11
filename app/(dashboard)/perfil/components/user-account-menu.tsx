@@ -114,8 +114,10 @@ export function UserAccountMenu() {
         </Button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-72 p-2">
-        <DropdownMenuLabel className="font-normal">
+      <DropdownMenuContent
+        align="end"
+        className="w-72 p-2 bg-background text-foreground border border-muted rounded-xl shadow-md"
+      >        <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col gap-0.5">
             <span className="text-sm font-semibold text-foreground">
               {displayName}
@@ -153,7 +155,7 @@ export function UserAccountMenu() {
                 event.preventDefault();
                 setAdminOpen((prev) => !prev);
               }}
-              className="flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent"
+              className="flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-sm outline-none text-foreground hover:bg-secondary/50"
             >
               <span className="font-medium">
                 {isAdmin
