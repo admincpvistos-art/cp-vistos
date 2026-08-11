@@ -15,7 +15,7 @@ export function Footer() {
             />
           </Link>
 
-          <span className="text-white text-sm">CNPJ: 52.264.297/0001-04</span>
+          <span className="text-white text-sm">CNPJ: 68.362.865/0001-31</span>
 
           <ul className="flex items-center gap-6">
             <li>
