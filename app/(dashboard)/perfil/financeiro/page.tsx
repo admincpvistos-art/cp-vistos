@@ -193,7 +193,7 @@ export default function FinanceiroPage() {
         Financeiro
       </h1>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-10">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mb-4">
         <SummaryCard
           title="Recebido no mês"
           value={summaryQuery.data?.monthTotal ?? 0}
@@ -217,6 +217,9 @@ export default function FinanceiroPage() {
           value={summaryQuery.data?.last6Months ?? 0}
           loading={summaryQuery.isLoading}
         />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10">
         <SummaryCard
           title="Último ano"
           value={summaryQuery.data?.lastYear ?? 0}
