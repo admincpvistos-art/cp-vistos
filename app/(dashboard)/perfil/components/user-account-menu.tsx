@@ -1,14 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useSession, signOut } from "next-auth/react";
 import {
   Archive,
   ChevronDown,
+  Code2,
+  Database,
+  ExternalLink,
+  Globe,
   Image as ImageIcon,
   KeyRound,
   LogOut,
+  Mail,
+  Server,
   User,
   UserPlus,
   Users,
@@ -46,12 +52,42 @@ const adminOnlyTools = [
     label: "Colaboradores",
     icon: Users,
   },
+] as const;
+
+const developmentInternalTools = [
   {
     href: "/perfil/gerenciar-banners",
     label: "Gerenciar Banners",
     icon: ImageIcon,
   },
-  { href: "/perfil/alterar-senha", label: "Alterar Senha", icon: KeyRound },
+] as const;
+
+const developmentExternalTools = [
+  {
+    href: "https://vercel.com",
+    label: "Vercel",
+    icon: Globe,
+  },
+  {
+    href: "https://github.com/admincpvistos-art/cp-vistos",
+    label: "Github",
+    icon: Code2,
+  },
+  {
+    href: "https://cloud.mongodb.com",
+    label: "Mongo Atlas",
+    icon: Database,
+  },
+  {
+    href: "https://hpanel.hostinger.com",
+    label: "Hostinger",
+    icon: Server,
+  },
+  {
+    href: "https://mail.google.com",
+    label: "Gmail",
+    icon: Mail,
+  },
 ] as const;
 
 function getInitials(name?: string | null) {
@@ -64,9 +100,50 @@ function getInitials(name?: string | null) {
     .join("");
 }
 
+function CollapsibleSection({
+  title,
+  open,
+  onToggle,
+  children,
+}: {
+  title: string;
+  open: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <>
+      <button
+        type="button"
+        onPointerDown={(event) => event.preventDefault()}
+        onClick={(event) => {
+          event.preventDefault();
+          onToggle();
+        }}
+        className="flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-sm outline-none text-[#314060] hover:bg-[#d4e0f5]"
+      >
+        <span className="font-medium">{title}</span>
+        <ChevronDown
+          className={cn(
+            "h-4 w-4 transition-transform duration-200",
+            open && "rotate-180",
+          )}
+        />
+      </button>
+
+      {open && (
+        <div className="mt-1 mb-1 ml-1 flex flex-col gap-0.5 border-l border-muted pl-2">
+          {children}
+        </div>
+      )}
+    </>
+  );
+}
+
 export function UserAccountMenu() {
   const session = useSession();
   const [adminOpen, setAdminOpen] = useState(false);
+  const [devOpen, setDevOpen] = useState(false);
   const { data } = trpc.userRouter.getMe.useQuery(undefined, {
     enabled: session.status === "authenticated",
     retry: false,
@@ -101,7 +178,10 @@ export function UserAccountMenu() {
   return (
     <DropdownMenu
       onOpenChange={(open) => {
-        if (!open) setAdminOpen(false);
+        if (!open) {
+          setAdminOpen(false);
+          setDevOpen(false);
+        }
       }}
     >
       <DropdownMenuTrigger asChild>
@@ -130,7 +210,8 @@ export function UserAccountMenu() {
         align="end"
         className="w-72 p-2 !bg-white !text-[#314060] border border-secondary rounded-xl shadow-lg"
         style={{ backgroundColor: "#ffffff", color: "#314060" }}
-      >        <DropdownMenuLabel className="font-normal">
+      >
+        <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col gap-0.5">
             <span className="text-sm font-semibold text-foreground">
               {displayName}
@@ -161,64 +242,82 @@ export function UserAccountMenu() {
           <>
             <DropdownMenuSeparator />
 
-            <button
-              type="button"
-              onPointerDown={(event) => event.preventDefault()}
-              onClick={(event) => {
-                event.preventDefault();
-                setAdminOpen((prev) => !prev);
-              }}
-              className="flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-sm outline-none text-[#314060] hover:bg-[#d4e0f5]"
+            <CollapsibleSection
+              title={
+                isAdmin ? "Ferramentas de Administração" : "Ferramentas"
+              }
+              open={adminOpen}
+              onToggle={() => setAdminOpen((prev) => !prev)}
             >
-              <span className="font-medium">
-                {isAdmin
-                  ? "Ferramentas de Administração"
-                  : "Ferramentas"}
-              </span>
-              <ChevronDown
-                className={cn(
-                  "h-4 w-4 transition-transform duration-200",
-                  adminOpen && "rotate-180",
-                )}
-              />
-            </button>
+              {collaboratorTools.map(({ href, label, icon: Icon }) => (
+                <div key={href} className="contents">
+                  <DropdownMenuItem asChild>
+                    <Link href={href} className="cursor-pointer">
+                      <Icon className="mr-2 h-4 w-4" />
+                      {label}
+                    </Link>
+                  </DropdownMenuItem>
 
-            {adminOpen && (
-              <div className="mt-1 mb-1 ml-1 flex flex-col gap-0.5 border-l border-muted pl-2">
-                {collaboratorTools.map(({ href, label, icon: Icon }) => (
-                  <div key={href} className="contents">
+                  {href === "/perfil/clientes" && canAccessFinance && (
                     <DropdownMenuItem asChild>
-                      <Link href={href} className="cursor-pointer">
-                        <Icon className="mr-2 h-4 w-4" />
-                        {label}
+                      <Link
+                        href="/perfil/financeiro"
+                        className="cursor-pointer"
+                      >
+                        <Wallet className="mr-2 h-4 w-4" />
+                        Financeiro
                       </Link>
                     </DropdownMenuItem>
+                  )}
+                </div>
+              ))}
 
-                    {href === "/perfil/clientes" && canAccessFinance && (
-                      <DropdownMenuItem asChild>
-                        <Link
-                          href="/perfil/financeiro"
-                          className="cursor-pointer"
-                        >
-                          <Wallet className="mr-2 h-4 w-4" />
-                          Financeiro
-                        </Link>
-                      </DropdownMenuItem>
-                    )}
-                  </div>
+              {isAdmin &&
+                adminOnlyTools.map(({ href, label, icon: Icon }) => (
+                  <DropdownMenuItem key={href} asChild>
+                    <Link href={href} className="cursor-pointer">
+                      <Icon className="mr-2 h-4 w-4" />
+                      {label}
+                    </Link>
+                  </DropdownMenuItem>
                 ))}
+            </CollapsibleSection>
+          </>
+        )}
 
-                {isAdmin &&
-                  adminOnlyTools.map(({ href, label, icon: Icon }) => (
-                    <DropdownMenuItem key={href} asChild>
-                      <Link href={href} className="cursor-pointer">
-                        <Icon className="mr-2 h-4 w-4" />
-                        {label}
-                      </Link>
-                    </DropdownMenuItem>
-                  ))}
-              </div>
-            )}
+        {isAdmin && (
+          <>
+            <DropdownMenuSeparator />
+
+            <CollapsibleSection
+              title="Ferramentas de Desenvolvimento"
+              open={devOpen}
+              onToggle={() => setDevOpen((prev) => !prev)}
+            >
+              {developmentInternalTools.map(({ href, label, icon: Icon }) => (
+                <DropdownMenuItem key={href} asChild>
+                  <Link href={href} className="cursor-pointer">
+                    <Icon className="mr-2 h-4 w-4" />
+                    {label}
+                  </Link>
+                </DropdownMenuItem>
+              ))}
+
+              {developmentExternalTools.map(({ href, label, icon: Icon }) => (
+                <DropdownMenuItem key={href} asChild>
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="cursor-pointer"
+                  >
+                    <Icon className="mr-2 h-4 w-4" />
+                    <span className="flex-1">{label}</span>
+                    <ExternalLink className="ml-2 h-3.5 w-3.5 opacity-60" />
+                  </a>
+                </DropdownMenuItem>
+              ))}
+            </CollapsibleSection>
           </>
         )}
 
