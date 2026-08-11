@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { BudgetPaid, Role } from "@prisma/client";
+import { TRPCError } from "@trpc/server";
 
 import prisma from "@/lib/prisma";
 import { financeAdminProcedure, router } from "../trpc";
@@ -236,28 +237,6 @@ export const financeRouter = router({
       };
     }),
 
-  updateAmount: financeAdminProcedure
-    .input(
-      z.object({
-        id: z.string().min(1),
-        amount: z.number().nonnegative().nullable(),
-      }),
-    )
-    .mutation(async ({ input }) => {
-      const hasAmount = input.amount !== null && input.amount > 0;
-
-      const entry = await prisma.financeEntry.update({
-        where: { id: input.id },
-        data: {
-          amount: hasAmount ? input.amount : null,
-          status: hasAmount ? BudgetPaid.paid : BudgetPaid.pending,
-          paidAt: hasAmount ? new Date() : null,
-        },
-      });
-
-      return { entry };
-    }),
-
   getExpenses: financeAdminProcedure.query(async () => {
     const expenses = await prisma.financeExpense.findMany({
       orderBy: { paidAt: "desc" },
@@ -265,6 +244,21 @@ export const financeRouter = router({
 
     return { expenses };
   }),
+
+  updateAmount: financeAdminProcedure
+    .input(
+      z.object({
+        id: z.string().min(1),
+        amount: z.number().nonnegative().nullable(),
+      }),
+    )
+    .mutation(async () => {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message:
+          "Valores do financeiro são definidos em Serviços e Custos",
+      });
+    }),
 
   createExpense: financeAdminProcedure
     .input(
@@ -275,26 +269,21 @@ export const financeRouter = router({
         paidAt: z.date().optional(),
       }),
     )
-    .mutation(async ({ input }) => {
-      const expense = await prisma.financeExpense.create({
-        data: {
-          name: input.name.trim(),
-          description: input.description.trim(),
-          amount: input.amount,
-          paidAt: input.paidAt ?? new Date(),
-        },
+    .mutation(async () => {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message:
+          "Pagamentos devem ser lançados em Serviços e Custos",
       });
-
-      return { expense };
     }),
 
   deleteExpense: financeAdminProcedure
     .input(z.object({ id: z.string().min(1) }))
-    .mutation(async ({ input }) => {
-      await prisma.financeExpense.delete({
-        where: { id: input.id },
+    .mutation(async () => {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message:
+          "Remoção de pagamentos deve ser feita em Serviços e Custos",
       });
-
-      return {};
     }),
 });

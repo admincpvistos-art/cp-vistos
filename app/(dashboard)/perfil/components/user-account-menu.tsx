@@ -19,6 +19,7 @@ import {
   UserPlus,
   Users,
   Contact,
+  ClipboardList,
   Wallet,
 } from "lucide-react";
 
@@ -259,15 +260,26 @@ export function UserAccountMenu() {
                   </DropdownMenuItem>
 
                   {href === "/perfil/clientes" && canAccessFinance && (
-                    <DropdownMenuItem asChild>
-                      <Link
-                        href="/perfil/financeiro"
-                        className="cursor-pointer"
-                      >
-                        <Wallet className="mr-2 h-4 w-4" />
-                        Financeiro
-                      </Link>
-                    </DropdownMenuItem>
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link
+                          href="/perfil/servicos-e-custos"
+                          className="cursor-pointer"
+                        >
+                          <ClipboardList className="mr-2 h-4 w-4" />
+                          Serviços e Custos
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link
+                          href="/perfil/financeiro"
+                          className="cursor-pointer"
+                        >
+                          <Wallet className="mr-2 h-4 w-4" />
+                          Financeiro
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
                   )}
                 </div>
               ))}

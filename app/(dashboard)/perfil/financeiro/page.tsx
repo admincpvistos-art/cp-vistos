@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -9,9 +10,7 @@ import {
   ArrowDownAZ,
   ArrowUpAZ,
   Loader2,
-  Plus,
   Search,
-  Trash2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -78,78 +77,6 @@ function SummaryCard({
   );
 }
 
-function AmountInput({
-  entryId,
-  initialAmount,
-  onSaved,
-}: {
-  entryId: string;
-  initialAmount: number | null;
-  onSaved: () => void;
-}) {
-  const [value, setValue] = useState(
-    initialAmount !== null && initialAmount !== undefined
-      ? String(initialAmount)
-      : "",
-  );
-
-  useEffect(() => {
-    setValue(
-      initialAmount !== null && initialAmount !== undefined
-        ? String(initialAmount)
-        : "",
-    );
-  }, [initialAmount, entryId]);
-
-  const { mutate, isPending } = trpc.financeRouter.updateAmount.useMutation({
-    onSuccess: () => {
-      onSaved();
-      toast.success("Valor atualizado");
-    },
-    onError: () => {
-      toast.error("Não foi possível salvar o valor");
-    },
-  });
-
-  function save() {
-    const trimmed = value.trim().replace(",", ".");
-    if (!trimmed) {
-      mutate({ id: entryId, amount: null });
-      return;
-    }
-    const parsed = Number(trimmed);
-    if (!Number.isFinite(parsed) || parsed < 0) {
-      toast.error("Informe um valor válido");
-      return;
-    }
-    mutate({ id: entryId, amount: parsed });
-  }
-
-  return (
-    <div className="flex items-center gap-2 justify-center">
-      <Input
-        type="number"
-        min={0}
-        step="0.01"
-        placeholder="R$ 0,00"
-        value={value}
-        disabled={isPending}
-        onChange={(e) => setValue(e.target.value)}
-        onBlur={save}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.currentTarget.blur();
-          }
-        }}
-        className="h-10 w-32 text-center"
-      />
-      {isPending && (
-        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-      )}
-    </div>
-  );
-}
-
 export default function FinanceiroPage() {
   const router = useRouter();
   const [selectedMonth, setSelectedMonth] = useState(currentYearMonth());
@@ -157,9 +84,6 @@ export default function FinanceiroPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [sort, setSort] = useState<"asc" | "desc">("desc");
-  const [expenseName, setExpenseName] = useState("");
-  const [expenseDescription, setExpenseDescription] = useState("");
-  const [expenseAmount, setExpenseAmount] = useState("");
 
   const { data: me, isLoading: loadingMe } = trpc.userRouter.getMe.useQuery(
     undefined,
@@ -187,8 +111,6 @@ export default function FinanceiroPage() {
     }
   }, [loadingMe, me, canAccess, router]);
 
-  const utils = trpc.useUtils();
-
   const summaryQuery = trpc.financeRouter.getSummary.useQuery(
     { yearMonth: selectedMonth },
     { enabled: canAccess },
@@ -206,51 +128,6 @@ export default function FinanceiroPage() {
   const expensesQuery = trpc.financeRouter.getExpenses.useQuery(undefined, {
     enabled: canAccess,
   });
-
-  const { mutate: createExpense, isPending: creatingExpense } =
-    trpc.financeRouter.createExpense.useMutation({
-      onSuccess: () => {
-        setExpenseName("");
-        setExpenseDescription("");
-        setExpenseAmount("");
-        utils.financeRouter.getExpenses.invalidate();
-        utils.financeRouter.getSummary.invalidate();
-        toast.success("Pagamento lançado");
-      },
-      onError: () => {
-        toast.error("Não foi possível lançar o pagamento");
-      },
-    });
-
-  const { mutate: deleteExpense, isPending: deletingExpense } =
-    trpc.financeRouter.deleteExpense.useMutation({
-      onSuccess: () => {
-        utils.financeRouter.getExpenses.invalidate();
-        utils.financeRouter.getSummary.invalidate();
-        toast.success("Pagamento removido");
-      },
-      onError: () => {
-        toast.error("Não foi possível remover o pagamento");
-      },
-    });
-
-  function handleCreateExpense() {
-    const amount = Number(expenseAmount.trim().replace(",", "."));
-    if (!expenseName.trim() || !expenseDescription.trim()) {
-      toast.error("Preencha nome e descrição");
-      return;
-    }
-    if (!Number.isFinite(amount) || amount <= 0) {
-      toast.error("Informe um valor válido");
-      return;
-    }
-
-    createExpense({
-      name: expenseName.trim(),
-      description: expenseDescription.trim(),
-      amount,
-    });
-  }
 
   if (loadingMe || !canAccess) {
     return (
@@ -323,45 +200,15 @@ export default function FinanceiroPage() {
         <div className="mb-6">
           <h2 className="text-xl font-semibold">Pagamentos</h2>
           <p className="text-sm text-foreground/60 mt-1">
-            Lance manualmente gastos (funcionários, envio de documentos, etc.).
-            Eles entram no cálculo do total líquido.
+            Registros somente leitura. Lance novos gastos em{" "}
+            <Link
+              href="/perfil/servicos-e-custos"
+              className="text-primary underline underline-offset-2"
+            >
+              Serviços e Custos
+            </Link>
+            .
           </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-[1.2fr_1.6fr_0.8fr_auto] gap-3 mb-6">
-          <Input
-            placeholder="Nome"
-            value={expenseName}
-            onChange={(e) => setExpenseName(e.target.value)}
-          />
-          <Input
-            placeholder="Descrição do serviço"
-            value={expenseDescription}
-            onChange={(e) => setExpenseDescription(e.target.value)}
-          />
-          <Input
-            type="number"
-            min={0}
-            step="0.01"
-            placeholder="Valor pago"
-            value={expenseAmount}
-            onChange={(e) => setExpenseAmount(e.target.value)}
-          />
-          <Button
-            type="button"
-            onClick={handleCreateExpense}
-            disabled={creatingExpense}
-            className="w-full md:w-auto"
-          >
-            {creatingExpense ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <>
-                <Plus className="mr-2 h-4 w-4" />
-                Adicionar
-              </>
-            )}
-          </Button>
         </div>
 
         <div className="border rounded-xl overflow-hidden">
@@ -378,7 +225,9 @@ export default function FinanceiroPage() {
                   <th className="h-12 px-4 text-center font-medium text-muted-foreground whitespace-nowrap">
                     Valor pago
                   </th>
-                  <th className="h-12 px-4 text-center font-medium text-muted-foreground w-16" />
+                  <th className="h-12 px-4 text-center font-medium text-muted-foreground whitespace-nowrap">
+                    Data
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -396,17 +245,10 @@ export default function FinanceiroPage() {
                       <td className="p-4 text-center whitespace-nowrap font-semibold">
                         {formatBRL(expense.amount)}
                       </td>
-                      <td className="p-4 text-center">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          disabled={deletingExpense}
-                          onClick={() => deleteExpense({ id: expense.id })}
-                          aria-label="Remover pagamento"
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                      <td className="p-4 text-center whitespace-nowrap">
+                        {format(new Date(expense.paidAt), "dd/MM/yyyy", {
+                          locale: ptBR,
+                        })}
                       </td>
                     </tr>
                   ))
@@ -433,8 +275,14 @@ export default function FinanceiroPage() {
               Check-list de recebimentos
             </h2>
             <p className="text-sm text-foreground/60 mt-1">
-              Novos clientes entram automaticamente. Ao preencher o valor, a
-              situação muda para pago e os totais são atualizados.
+              Valores travados: a soma vem da planilha em{" "}
+              <Link
+                href="/perfil/servicos-e-custos"
+                className="text-primary underline underline-offset-2"
+              >
+                Serviços e Custos
+              </Link>
+              .
             </p>
           </div>
 
@@ -532,15 +380,10 @@ export default function FinanceiroPage() {
                           locale: ptBR,
                         })}
                       </td>
-                      <td className="p-4 text-center">
-                        <AmountInput
-                          entryId={entry.id}
-                          initialAmount={entry.amount}
-                          onSaved={() => {
-                            utils.financeRouter.getChecklist.invalidate();
-                            utils.financeRouter.getSummary.invalidate();
-                          }}
-                        />
+                      <td className="p-4 text-center whitespace-nowrap font-semibold">
+                        {entry.amount !== null && entry.amount !== undefined
+                          ? formatBRL(entry.amount)
+                          : "—"}
                       </td>
                       <td className="p-4 text-center">
                         <span

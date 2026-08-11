@@ -131,6 +131,7 @@ model User {
   sessions       Session[]
   comments       Comments[]
   financeEntry   FinanceEntry?
+  serviceCost    ServiceCost?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -142,6 +143,24 @@ model FinanceEntry {
   status BudgetPaid @default(pending)
   paidAt DateTime?
   notes  String?
+
+  userId String @unique @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ServiceCost {
+  id            String     @id @default(auto()) @map("_id") @db.ObjectId
+  renovacao     Float?
+  primeiroVisto Float?
+  reuniaoPaga   Float?
+  monitoramento Float?
+  passaporte    Float?
+  validadeDate  DateTime?
+  limiteDate    DateTime?
+  situacao      BudgetPaid @default(pending)
 
   userId String @unique @db.ObjectId
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)

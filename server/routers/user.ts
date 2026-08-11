@@ -179,6 +179,12 @@ export const userRouter = router({
         },
       });
 
+      await prisma.serviceCost.create({
+        data: {
+          userId: account.id,
+        },
+      });
+
       return {
         message: "Conta criada com sucesso",
         email: account.email,
@@ -492,6 +498,12 @@ export const userRouter = router({
           amount: hasPaidFinance ? budgetValue : null,
           status: hasPaidFinance ? BudgetPaid.paid : BudgetPaid.pending,
           paidAt: hasPaidFinance ? new Date() : null,
+        },
+      });
+
+      await prisma.serviceCost.create({
+        data: {
+          userId: account.id,
         },
       });
 
