@@ -2,7 +2,6 @@
 
 import { z } from "zod";
 import { toast } from "sonner";
-import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
@@ -56,26 +55,29 @@ const formSchema = z
     }
   });
 
-export default function AdminChangePassword() {
+export default function ChangePasswordPage() {
   const router = useRouter();
 
-  const { data, isLoading } = trpc.userRouter.getRole.useQuery();
+  const { data: meData, isLoading } = trpc.userRouter.getMe.useQuery();
   const { mutate: changePassword, isPending } =
     trpc.userRouter.changePassword.useMutation({
       onSuccess: (res) => {
         if (res.error) {
           toast.error(res.message);
-
           return;
         }
 
         toast.success(res.message);
 
-        router.push("/perfil/clientes");
+        const role = meData?.user.role;
+        if (role === "CLIENT") {
+          router.push("/area-do-cliente");
+        } else {
+          router.push("/perfil/clientes");
+        }
       },
       onError: (error) => {
         console.log(error);
-
         toast.error("Ocorreu um erro ao alterar a senha");
       },
     });
@@ -91,67 +93,47 @@ export default function AdminChangePassword() {
     },
   });
 
-  useEffect(() => {
-    if (data !== undefined && data.role !== "ADMIN") {
-      toast.error("Acesso não autorizado");
-
-      router.push("/perfil/clientes");
-    }
-  }, [data, router]);
-
   function onSubmit(values: z.infer<typeof formSchema>) {
     changePassword(values);
   }
 
   return (
-    <div className="w-full lg:w-[calc(100%-var(--dashboard-sidebar-width,250px))] px-6 sm:px-16 lg:ml-[var(--dashboard-sidebar-width,250px)] lg:px-40 transition-[margin,width] duration-300">
-      <h1 className="text-2xl lg:text-3xl xl:text-4xl font-semibold mb-12">
+    <div className="w-full px-6 sm:px-16 lg:px-40 lg:container lg:mx-auto">
+      <h1 className="text-2xl lg:text-3xl xl:text-4xl font-semibold mb-12 mt-6 lg:mt-12">
         Alterar Senha
       </h1>
 
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit)}
-          className="w-full flex flex-col gap-12"
+          className="w-full flex flex-col gap-12 max-w-3xl"
         >
           <div className="w-full flex flex-col gap-6 lg:flex-row">
             <FormField
               control={form.control}
               name="actualPassword"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="line-clamp-1">Senha Atual</FormLabel>
-
+                <FormItem className="w-full">
+                  <FormLabel>Senha Atual*</FormLabel>
                   <FormControl>
-                    <Input
-                      type="password"
-                      disabled={pending}
-                      placeholder="Insira a sua senha atual"
-                      {...field}
-                    />
+                    <Input type="password" disabled={pending} {...field} />
                   </FormControl>
-
                   <FormMessage />
                 </FormItem>
               )}
             />
+          </div>
 
+          <div className="w-full flex flex-col gap-6 lg:flex-row">
             <FormField
               control={form.control}
               name="newPassword"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="line-clamp-1">Nova Senha</FormLabel>
-
+                <FormItem className="w-full">
+                  <FormLabel>Nova Senha*</FormLabel>
                   <FormControl>
-                    <Input
-                      type="password"
-                      placeholder="Insira a sua nova senha"
-                      disabled={pending}
-                      {...field}
-                    />
+                    <Input type="password" disabled={pending} {...field} />
                   </FormControl>
-
                   <FormMessage />
                 </FormItem>
               )}
@@ -161,40 +143,20 @@ export default function AdminChangePassword() {
               control={form.control}
               name="confirmNewPassword"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="line-clamp-1">
-                    Confirmar Nova Senha
-                  </FormLabel>
-
+                <FormItem className="w-full">
+                  <FormLabel>Confirmar Nova Senha*</FormLabel>
                   <FormControl>
-                    <Input
-                      type="password"
-                      disabled={pending}
-                      placeholder="Confirme a sua nova senha"
-                      {...field}
-                    />
+                    <Input type="password" disabled={pending} {...field} />
                   </FormControl>
-
                   <FormMessage />
                 </FormItem>
               )}
             />
           </div>
 
-          <Button
-            disabled={pending}
-            type="submit"
-            size="xl"
-            className="w-full sm:w-fit"
-          >
-            {pending ? (
-              <>
-                Enviando
-                <Loader2 className="ml-2 size-4 animate-spin" />
-              </>
-            ) : (
-              <>Enviar</>
-            )}
+          <Button type="submit" disabled={pending} className="w-fit">
+            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Salvar Nova Senha
           </Button>
         </form>
       </Form>

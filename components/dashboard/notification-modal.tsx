@@ -14,8 +14,16 @@ import { ScrollArea } from "../ui/scroll-area";
 
 export function NotificationModal() {
   const { isModalOpen, closeModal } = useNotificationStore();
+  const { data: me } = trpc.userRouter.getMe.useQuery(undefined, {
+    retry: false,
+  });
+  const canLoadNotifications =
+    me?.user.role === "ADMIN" || me?.user.role === "COLLABORATOR";
 
-  const { data } = trpc.notificationRouter.getAllNotifications.useQuery();
+  const { data } = trpc.notificationRouter.getAllNotifications.useQuery(
+    undefined,
+    { enabled: canLoadNotifications },
+  );
 
   return (
     <AnimatePresence>

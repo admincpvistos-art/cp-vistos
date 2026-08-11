@@ -501,7 +501,7 @@ export default function CreateAccountPage() {
   }
 
   return (
-    <div className="w-full lg:w-[calc(100%-var(--dashboard-sidebar-width,250px))] px-6 sm:px-16 lg:ml-[var(--dashboard-sidebar-width,250px)] lg:px-40 transition-[margin,width] duration-300">
+    <div className="w-full px-6 sm:px-16 lg:px-40 lg:container lg:mx-auto">
       <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold mb-6 mt-6 lg:mt-12">Cadastro da Conta</h1>
 
       <Form {...form}>

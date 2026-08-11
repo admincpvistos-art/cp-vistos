@@ -67,7 +67,7 @@ export default function CollaboratorRegisterPage() {
   }
 
   return (
-    <div className="w-full lg:w-[calc(100%-var(--dashboard-sidebar-width,250px))] px-6 sm:px-16 lg:ml-[var(--dashboard-sidebar-width,250px)] lg:px-40 transition-[margin,width] duration-300">
+    <div className="w-full px-6 sm:px-16 lg:px-40 lg:container lg:mx-auto">
       <h1 className="text-2xl lg:text-3xl xl:text-4xl font-semibold my-6 lg:my-12">Cadastro de Colaborador</h1>
 
       <Form {...form}>

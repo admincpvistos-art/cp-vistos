@@ -16,7 +16,12 @@ import { TRPCError } from "@trpc/server";
 import { addDays, parse } from "date-fns";
 import { fromZonedTime } from "date-fns-tz";
 
-import { adminProcedure, collaboratorProcedure, router } from "../trpc";
+import {
+  adminProcedure,
+  collaboratorProcedure,
+  isUserAuthedProcedure,
+  router,
+} from "../trpc";
 import prisma from "@/lib/prisma";
 
 export const userRouter = router({
@@ -25,6 +30,79 @@ export const userRouter = router({
 
     return { role: collaborator.role };
   }),
+  getMe: isUserAuthedProcedure.query(async (opts) => {
+    const email = opts.ctx.user.user?.email;
+
+    if (!email) {
+      throw new TRPCError({ code: "UNAUTHORIZED" });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        image: true,
+        cel: true,
+        cpf: true,
+        address: true,
+      },
+    });
+
+    if (!user) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "Usuário não encontrado" });
+    }
+
+    return { user };
+  }),
+  updateProfile: isUserAuthedProcedure
+    .input(
+      z.object({
+        name: z
+          .string()
+          .min(1, { message: "Nome é obrigatório" })
+          .min(2, { message: "Nome precisa ter no mínimo 2 caracteres" }),
+        cel: z.string().optional().nullable(),
+        cpf: z.string().optional().nullable(),
+        address: z.string().optional().nullable(),
+        image: z.string().url().optional().nullable(),
+      }),
+    )
+    .mutation(async (opts) => {
+      const email = opts.ctx.user.user?.email;
+
+      if (!email) {
+        throw new TRPCError({ code: "UNAUTHORIZED" });
+      }
+
+      const { name, cel, cpf, address, image } = opts.input;
+
+      const user = await prisma.user.update({
+        where: { email },
+        data: {
+          name,
+          cel: cel || null,
+          cpf: cpf || null,
+          address: address || null,
+          ...(image !== undefined ? { image } : {}),
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          image: true,
+          cel: true,
+          cpf: true,
+          address: true,
+        },
+      });
+
+      return { user, message: "Perfil atualizado com sucesso" };
+    }),
+
   createClient: collaboratorProcedure
     .input(
       z.object({
@@ -1859,7 +1937,7 @@ export const userRouter = router({
 
       return { message: "Perfil movido para clientes ativos" };
     }),
-  changePassword: adminProcedure
+  changePassword: isUserAuthedProcedure
     .input(
       z
         .object({
@@ -1893,7 +1971,11 @@ export const userRouter = router({
     )
     .mutation(async (opts) => {
       const { actualPassword, newPassword } = opts.input;
-      const email = opts.ctx.admin.email;
+      const email = opts.ctx.user.user?.email;
+
+      if (!email) {
+        return { error: true, message: "Usuário não autorizado" };
+      }
 
       const user = await prisma.user.findUnique({
         where: {
@@ -1905,23 +1987,31 @@ export const userRouter = router({
         return { error: true, message: "Usuário não encontrado" };
       }
 
-      const isPasswordCorrect: boolean = await bcrypt.compare(actualPassword, user.password);
+      const usesHash =
+        user.role === Role.ADMIN || user.role === Role.COLLABORATOR;
+
+      const isPasswordCorrect = usesHash
+        ? await bcrypt.compare(actualPassword, user.password)
+        : actualPassword === user.password;
 
       if (!isPasswordCorrect) {
         return { error: true, message: "Senha inválida" };
       }
 
-      const pwHash = await bcrypt.hash(newPassword, 12);
+      const nextPassword = usesHash
+        ? await bcrypt.hash(newPassword, 12)
+        : newPassword;
 
       await prisma.user.update({
         where: {
           email,
         },
         data: {
-          password: pwHash,
+          password: nextPassword,
         },
       });
 
       return { error: false, message: "Senha alterada com sucesso" };
     }),
 });
+

@@ -18,10 +18,18 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 export function NotificationHeaderMenu() {
   const { openModal } = useNotificationStore();
+  const { data: me } = trpc.userRouter.getMe.useQuery(undefined, {
+    retry: false,
+  });
+  const canLoadNotifications =
+    me?.user.role === "ADMIN" || me?.user.role === "COLLABORATOR";
 
   const utils = trpc.useUtils();
 
-  const { data } = trpc.notificationRouter.getNotifications.useQuery();
+  const { data } = trpc.notificationRouter.getNotifications.useQuery(
+    undefined,
+    { enabled: canLoadNotifications },
+  );
   const { mutate: viewNotification, isPending } =
     trpc.notificationRouter.updateViewNotification.useMutation({
       onSuccess: () => {
