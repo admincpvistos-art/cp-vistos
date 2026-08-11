@@ -248,6 +248,16 @@ export function LoginForm() {
                   </>
                 )}
               </Button>
+
+              <p className="text-sm text-center text-foreground/60 -mt-6">
+                Cliente novo?{" "}
+                <a
+                  href="/cadastro"
+                  className="text-primary font-medium underline underline-offset-2"
+                >
+                  Criar conta
+                </a>
+              </p>
             </form>
           </Form>
         </div>

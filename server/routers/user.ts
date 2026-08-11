@@ -20,6 +20,7 @@ import {
   adminProcedure,
   collaboratorProcedure,
   isUserAuthedProcedure,
+  publicProcedure,
   router,
 } from "../trpc";
 import prisma from "@/lib/prisma";
@@ -101,6 +102,87 @@ export const userRouter = router({
       });
 
       return { user, message: "Perfil atualizado com sucesso" };
+    }),
+
+  registerClient: publicProcedure
+    .input(
+      z
+        .object({
+          name: z
+            .string({ required_error: "Nome é obrigatório" })
+            .trim()
+            .min(4, { message: "Nome precisa ter no mínimo 4 caracteres" }),
+          cpf: z
+            .string({ required_error: "CPF é obrigatório" })
+            .refine((val) => val.length === 14, {
+              message: "CPF inválido",
+            }),
+          email: z
+            .string({ required_error: "E-mail é obrigatório" })
+            .trim()
+            .email({ message: "E-mail inválido" })
+            .toLowerCase(),
+          password: z
+            .string({ required_error: "Senha é obrigatória" })
+            .min(6, { message: "Senha precisa ter no mínimo 6 caracteres" }),
+          passwordConfirm: z
+            .string({ required_error: "Confirmação de senha é obrigatória" })
+            .min(6, {
+              message: "Confirmação precisa ter no mínimo 6 caracteres",
+            }),
+        })
+        .refine((data) => data.password === data.passwordConfirm, {
+          message: "As senhas não coincidem",
+          path: ["passwordConfirm"],
+        }),
+    )
+    .mutation(async ({ input }) => {
+      const email = input.email.toLowerCase();
+
+      const emailExists = await prisma.user.findUnique({
+        where: { email },
+      });
+
+      if (emailExists) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Este e-mail já está cadastrado",
+        });
+      }
+
+      const cpfExists = await prisma.user.findFirst({
+        where: { cpf: input.cpf },
+      });
+
+      if (cpfExists) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Este CPF já está cadastrado",
+        });
+      }
+
+      const account = await prisma.user.create({
+        data: {
+          name: input.name,
+          email,
+          password: input.password,
+          cpf: input.cpf,
+          role: Role.CLIENT,
+        },
+      });
+
+      await prisma.financeEntry.create({
+        data: {
+          userId: account.id,
+          amount: null,
+          status: BudgetPaid.pending,
+        },
+      });
+
+      return {
+        message: "Conta criada com sucesso",
+        email: account.email,
+      };
     }),
 
   createClient: collaboratorProcedure
