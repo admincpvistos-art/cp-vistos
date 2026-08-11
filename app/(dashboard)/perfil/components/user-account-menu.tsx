@@ -143,7 +143,7 @@ function CollapsibleSection({
 
 export function UserAccountMenu() {
   const session = useSession();
-  const [adminOpen, setAdminOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(true);
   const [devOpen, setDevOpen] = useState(false);
   const { data } = trpc.userRouter.getMe.useQuery(undefined, {
     enabled: session.status === "authenticated",
@@ -179,8 +179,10 @@ export function UserAccountMenu() {
   return (
     <DropdownMenu
       onOpenChange={(open) => {
-        if (!open) {
-          setAdminOpen(false);
+        if (open) {
+          setAdminOpen(true);
+          setDevOpen(false);
+        } else {
           setDevOpen(false);
         }
       }}
