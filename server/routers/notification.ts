@@ -57,4 +57,16 @@ export const notificationRouter = router({
 
       return {};
     }),
+  updateViewAllNotifications: collaboratorProcedure.mutation(async () => {
+    await prisma.notification.updateMany({
+      where: {
+        viewed: false,
+      },
+      data: {
+        viewed: true,
+      },
+    });
+
+    return {};
+  }),
 });

@@ -34,12 +34,28 @@ export function NotificationHeaderMenu() {
     trpc.notificationRouter.updateViewNotification.useMutation({
       onSuccess: () => {
         utils.notificationRouter.getNotifications.invalidate();
+        utils.notificationRouter.getAllNotifications.invalidate();
       },
       onError: (error) => {
         console.error(error);
-        toast.error("ocorreu um erro ao alterar o status da notificação");
+        toast.error("Ocorreu um erro ao alterar o status da notificação");
       },
     });
+
+  const { mutate: viewAllNotifications, isPending: isPendingAll } =
+    trpc.notificationRouter.updateViewAllNotifications.useMutation({
+      onSuccess: () => {
+        utils.notificationRouter.getNotifications.invalidate();
+        utils.notificationRouter.getAllNotifications.invalidate();
+        toast.success("Todas as notificações foram marcadas como lidas");
+      },
+      onError: (error) => {
+        console.error(error);
+        toast.error("Ocorreu um erro ao marcar as notificações como lidas");
+      },
+    });
+
+  const hasUnread = (data?.notifications.length ?? 0) > 0;
 
   return (
     <Popover>
@@ -50,18 +66,40 @@ export function NotificationHeaderMenu() {
         >
           <Bell />
 
-          {data !== undefined && data.notifications.length > 0 && (
+          {hasUnread && (
             <div className="size-6 flex items-center justify-center bg-primary rounded-full absolute top-0.5 right-1 text-white font-medium text-sm !leading-none">
-              {data.notifications.length}
+              {data!.notifications.length}
             </div>
           )}
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="flex flex-col gap-9 bg-white border-muted shadow-lg">
-        <h4 className="text-base text-foreground font-semibold">
-          Notificações
-        </h4>
+      <PopoverContent className="flex flex-col gap-6 bg-white border-muted shadow-lg">
+        <div className="flex items-center justify-between gap-3">
+          <h4 className="text-base text-foreground font-semibold">
+            Notificações
+          </h4>
+
+          {hasUnread && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={isPendingAll}
+              onClick={() => viewAllNotifications()}
+              className="h-8 px-2 text-xs text-foreground/70 hover:text-foreground"
+            >
+              {isPendingAll ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <>
+                  <CheckCheck className="size-4 mr-1" />
+                  Marcar tudo como lido
+                </>
+              )}
+            </Button>
+          )}
+        </div>
 
         <div className="w-full flex flex-col gap-6">
           <ScrollArea className="w-full h-[300px]">

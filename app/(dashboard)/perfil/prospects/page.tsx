@@ -50,7 +50,7 @@ function ProspectsComponent() {
 
   return (
     <>
-      <div className="w-full px-6 sm:px-16 lg:px-40 lg:container lg:mx-auto">
+      <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-10 max-w-[1920px] mx-auto">
         <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold mb-6 mt-6 lg:mt-12">Prospects</h1>
 
         <Tabs value={category} onValueChange={handleCategory}>

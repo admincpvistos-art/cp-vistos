@@ -191,13 +191,16 @@ export function DataTable<TData, TValue>({ columns, data, category }: DataTableP
         </div>
       </div>
 
-      <div className="border rounded-xl overflow-hidden">
-        <Table>
-          <TableHeader>
+      <div className="border rounded-xl overflow-hidden bg-white">
+        <Table containerClassName="max-h-[min(70vh,720px)]">
+          <TableHeader className="sticky top-0 z-20 bg-white shadow-[0_1px_0_0_hsl(var(--border))]">
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
+              <TableRow key={headerGroup.id} className="hover:bg-white border-b-0">
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
+                  <TableHead
+                    key={header.id}
+                    className="sticky top-0 z-20 bg-white text-center whitespace-nowrap"
+                  >
                     {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
                 ))}
