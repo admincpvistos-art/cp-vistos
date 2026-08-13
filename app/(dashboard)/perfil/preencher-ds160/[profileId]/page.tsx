@@ -6,6 +6,7 @@ import { ArrowLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { CeacBusy, CeacFormPanel } from "@/components/ds160/ceac-form-panel";
+import { CeacOfficialPane } from "@/components/ds160/ceac-official-pane";
 import { CEAC_URL, type CeacPageId } from "@/lib/ds160-ceac";
 import { trpc } from "@/lib/trpc-client";
 
@@ -16,7 +17,6 @@ export default function PreencherDs160Page({
 }) {
   const profileId = params.profileId;
   const [pageId, setPageId] = useState<CeacPageId>("personal1");
-  const [showHint, setShowHint] = useState(true);
 
   const { data, isPending } = trpc.ds160Router.getPacket.useQuery({ profileId });
   const startFill = trpc.ds160Router.startFill.useMutation();
@@ -68,25 +68,8 @@ export default function PreencherDs160Page({
           />
         </div>
 
-        <div className="relative flex min-h-0 flex-col bg-white">
-          {showHint ? (
-            <div className="flex items-start justify-between gap-3 border-b bg-[#fff7e6] px-3 py-2 text-xs text-[#1b2a4a]">
-              <p>
-                Se o quadro abaixo ficar em branco, carregue a extensão{" "}
-                <strong>extensions/ceac-frame</strong> em chrome://extensions (Modo do
-                desenvolvedor → Carregar sem compactação).
-              </p>
-              <button type="button" className="shrink-0 underline" onClick={() => setShowHint(false)}>
-                Fechar
-              </button>
-            </div>
-          ) : null}
-          <iframe
-            id="ceac-frame"
-            title="CEAC DS-160"
-            src={CEAC_URL}
-            className="min-h-0 w-full flex-1 border-0"
-          />
+        <div className="min-h-0">
+          <CeacOfficialPane />
         </div>
       </div>
     </div>
