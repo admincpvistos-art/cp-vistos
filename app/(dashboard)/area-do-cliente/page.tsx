@@ -52,8 +52,12 @@ export default function ClientAreaPage() {
     return data.passport.checklist.filter((item) => matchesSearch(item.name, searchValue));
   }, [data, searchValue]);
 
-  const showVisaCard = !!data?.visa.current && matchesSearch(data.visa.current.name, searchValue);
-  const showPassportCard = !!data?.passport.current && matchesSearch(data.passport.current.name, searchValue);
+  const showVisaCard =
+    !!data &&
+    (!data.visa.current || matchesSearch(data.visa.current.name, searchValue));
+  const showPassportCard =
+    !!data &&
+    (!data.passport.current || matchesSearch(data.passport.current.name, searchValue));
 
   if (session.status === "loading") {
     return (
@@ -93,26 +97,54 @@ export default function ClientAreaPage() {
         ) : (
           <>
             <div className="w-full grid grid-cols-1 gap-6 md:grid-cols-2">
-              {showVisaCard && data.visa.current ? (
-                <ProfileFormBox
-                  variant="visa"
-                  profileId={data.visa.current.profileId}
-                  memberUserId={data.visa.current.userId}
-                  statusForm={data.visa.current.statusForm}
-                  profileName={data.visa.current.name}
-                  formStep={data.visa.current.formStep}
-                />
+              {showVisaCard ? (
+                data.visa.current ? (
+                  <ProfileFormBox
+                    variant="visa"
+                    profileId={data.visa.current.profileId}
+                    memberUserId={data.visa.current.userId}
+                    statusForm={data.visa.current.statusForm}
+                    profileName={data.visa.current.name}
+                    isTitular={data.visa.current.isTitular}
+                    formStep={data.visa.current.formStep}
+                  />
+                ) : data.visa.canAddDependent ? (
+                  <ProfileFormBox
+                    variant="visa"
+                    mode="add"
+                    profileId={null}
+                    memberUserId=""
+                    statusForm="awaiting"
+                    profileName=""
+                    isTitular={false}
+                    formStep={0}
+                  />
+                ) : null
               ) : null}
 
-              {showPassportCard && data.passport.current ? (
-                <ProfileFormBox
-                  variant="passport"
-                  profileId={data.passport.current.profileId}
-                  memberUserId={data.passport.current.userId}
-                  statusForm={data.passport.current.statusForm}
-                  profileName={data.passport.current.name}
-                  formStep={data.passport.current.formStep}
-                />
+              {showPassportCard ? (
+                data.passport.current ? (
+                  <ProfileFormBox
+                    variant="passport"
+                    profileId={data.passport.current.profileId}
+                    memberUserId={data.passport.current.userId}
+                    statusForm={data.passport.current.statusForm}
+                    profileName={data.passport.current.name}
+                    isTitular={data.passport.current.isTitular}
+                    formStep={data.passport.current.formStep}
+                  />
+                ) : data.passport.canAddDependent ? (
+                  <ProfileFormBox
+                    variant="passport"
+                    mode="add"
+                    profileId={null}
+                    memberUserId=""
+                    statusForm="awaiting"
+                    profileName=""
+                    isTitular={false}
+                    formStep={0}
+                  />
+                ) : null
               ) : null}
             </div>
 

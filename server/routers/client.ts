@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { addDays, format, isValid, parse } from "date-fns";
 import { z } from "zod";
 import {
+  BudgetPaid,
   Category,
   PaymentStatus,
   Role,
@@ -171,10 +172,18 @@ async function getGroupServiceMembers(
         profile?.statusForm === StatusForm.awaiting && hasDraft
           ? StatusForm.filling
           : (profile?.statusForm ?? StatusForm.awaiting);
+      const formName = [profile?.form?.firstName, profile?.form?.lastName]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+      const displayName =
+        (category === "passport"
+          ? profile?.passportForm?.fullName?.trim() || formName
+          : formName) || user.name;
 
       return {
         userId: user.id,
-        name: user.name,
+        name: displayName,
         isTitular: !user.payerUserId,
         profileId: profile?.id ?? null,
         statusForm,
@@ -297,12 +306,14 @@ export const clientRouter = router({
         checklist: visa.checklist,
         pendingCount: visa.pendingCount,
         hasService: visa.members.length > 0,
+        canAddDependent: !account.payerUserId,
       },
       passport: {
         current: passport.current,
         checklist: passport.checklist,
         pendingCount: passport.pendingCount,
         hasService: passport.members.length > 0,
+        canAddDependent: !account.payerUserId,
       },
     };
   }),
@@ -422,6 +433,133 @@ export const clientRouter = router({
       }
 
       return { profileId };
+    }),
+  addDependent: isUserAuthedProcedure
+    .input(
+      z.object({
+        name: z
+          .string()
+          .trim()
+          .min(4, { message: "Nome precisa ter no mínimo 4 caracteres" }),
+        cpf: z.string().refine((val) => val.replace(/\D/g, "").length === 11, {
+          message: "CPF inválido",
+        }),
+        category: z.enum(["american_visa", "passport"]),
+      }),
+    )
+    .mutation(async (opts) => {
+      const { user } = opts.ctx.user;
+      const email = user?.email;
+
+      if (!email) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Usuário não encontrado",
+        });
+      }
+
+      const account = await getAccountByEmail(email);
+
+      if (account.payerUserId) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Apenas o titular pode adicionar dependentes.",
+        });
+      }
+
+      const cpfDigits = opts.input.cpf.replace(/\D/g, "");
+      const formattedCpf = opts.input.cpf.length === 14
+        ? opts.input.cpf
+        : cpfDigits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+
+      const existing = await prisma.user.findFirst({
+        where: { cpf: formattedCpf },
+      });
+
+      if (existing) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Este CPF já está cadastrado",
+        });
+      }
+
+      const group = account.group?.trim() || account.name;
+
+      if (!account.group) {
+        await prisma.user.update({
+          where: { id: account.id },
+          data: { group },
+        });
+      }
+
+      const categoryEnum =
+        opts.input.category === "passport"
+          ? Category.passport
+          : Category.american_visa;
+
+      const member = await prisma.user.create({
+        data: {
+          name: opts.input.name,
+          email: `dependente.${cpfDigits}.${account.id}.${Date.now()}@grupo.cpvistos`,
+          password: `dep-${account.id}-${cpfDigits}-${Date.now()}`,
+          cpf: formattedCpf,
+          role: Role.CLIENT,
+          group,
+          payerUserId: account.id,
+          wantsAmericanVisa: categoryEnum === Category.american_visa,
+          wantsPassport: categoryEnum === Category.passport,
+        },
+      });
+
+      await prisma.financeEntry.create({
+        data: {
+          userId: member.id,
+          amount: null,
+          status: BudgetPaid.pending,
+        },
+      });
+
+      await prisma.serviceCost.create({
+        data: {
+          userId: member.id,
+        },
+      });
+
+      const profile = await prisma.profile.create({
+        data: {
+          name: opts.input.name,
+          cpf: formattedCpf,
+          DSNumber: "",
+          DSValid: addDays(new Date(), 30),
+          visaType: VisaType.primeiro_visto,
+          visaClass: VisaClass.B2_B1,
+          category: categoryEnum,
+          paymentStatus: PaymentStatus.pending,
+          user: {
+            connect: { id: member.id },
+          },
+        },
+      });
+
+      if (categoryEnum === Category.american_visa) {
+        await prisma.form.create({
+          data: {
+            profile: {
+              connect: { id: profile.id },
+            },
+          },
+        });
+      } else {
+        await prisma.passportForm.create({
+          data: {
+            profile: {
+              connect: { id: profile.id },
+            },
+          },
+        });
+      }
+
+      return { profileId: profile.id, userId: member.id };
     }),
   getPassportForm: isUserAuthedProcedure
     .input(
