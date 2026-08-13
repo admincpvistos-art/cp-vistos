@@ -33,6 +33,32 @@ async function assertFormNotLocked(profileId: string) {
   }
 }
 
+async function markProfileFilling(profileId: string) {
+  await assertFormNotLocked(profileId);
+
+  const profile = await prisma.profile.findUnique({
+    where: {
+      id: profileId,
+    },
+    select: {
+      statusForm: true,
+    },
+  });
+
+  if (!profile || profile.statusForm !== StatusForm.awaiting) {
+    return;
+  }
+
+  await prisma.profile.update({
+    where: {
+      id: profileId,
+    },
+    data: {
+      statusForm: StatusForm.filling,
+    },
+  });
+}
+
 export const formsRouter = router({
   getProfile: isUserAuthedProcedure
     .input(
@@ -531,6 +557,8 @@ export const formsRouter = router({
         },
       });
 
+      await markProfileFilling(profileId);
+
       return { message: "Informações salvas", redirectStep };
     }),
   getConctactAndAddress: isUserAuthedProcedure
@@ -831,6 +859,8 @@ export const formsRouter = router({
         },
       });
 
+      await markProfileFilling(profileId);
+
       return { message: "Informações salvas", redirectStep };
     }),
   getPassport: isUserAuthedProcedure
@@ -1053,6 +1083,8 @@ export const formsRouter = router({
           lostPassportDetails,
         },
       });
+
+      await markProfileFilling(profileId);
 
       return { message: "Informações salvas", redirectStep };
     }),
@@ -1478,6 +1510,8 @@ export const formsRouter = router({
         },
       });
 
+      await markProfileFilling(profileId);
+
       return { message: "Informações salvas", redirectStep };
     }),
   getTravelCompany: isUserAuthedProcedure
@@ -1704,6 +1738,8 @@ export const formsRouter = router({
           groupName,
         },
       });
+
+      await markProfileFilling(profileId);
 
       return { message: "Informações salvas", redirectStep };
     }),
@@ -2135,6 +2171,8 @@ export const formsRouter = router({
         },
       });
 
+      await markProfileFilling(profileId);
+
       return { message: "Informações salvas", redirectStep };
     }),
   getUSAContact: isUserAuthedProcedure
@@ -2350,6 +2388,8 @@ export const formsRouter = router({
           organizationOrUSAResidentEmail,
         },
       });
+
+      await markProfileFilling(profileId);
 
       return { message: "Informações salvas", redirectStep };
     }),
@@ -2642,6 +2682,8 @@ export const formsRouter = router({
           divorceDate,
         },
       });
+
+      await markProfileFilling(profileId);
 
       return { message: "Informações salvas", redirectStep };
     }),
@@ -2961,6 +3003,8 @@ export const formsRouter = router({
           courses,
         },
       });
+
+      await markProfileFilling(profileId);
 
       return { message: "Informações salvas", redirectStep };
     }),
@@ -3329,6 +3373,8 @@ export const formsRouter = router({
           insurgencyOrganizationDetails,
         },
       });
+
+      await markProfileFilling(profileId);
 
       return { message: "Informações salvas", redirectStep };
     }),
@@ -4430,6 +4476,8 @@ export const formsRouter = router({
           avoidTaxConfirmationDetails,
         },
       });
+
+      await markProfileFilling(profileId);
 
       return { message: "Informações salvas", redirectStep };
     }),

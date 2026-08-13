@@ -118,9 +118,16 @@ async function getGroupServiceMembers(
               category: categoryEnum,
             },
             include: {
+              form: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                },
+              },
               passportForm: {
                 select: {
                   serviceType: true,
+                  fullName: true,
                 },
               },
             },
@@ -137,9 +144,16 @@ async function getGroupServiceMembers(
               category: categoryEnum,
             },
             include: {
+              form: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                },
+              },
               passportForm: {
                 select: {
                   serviceType: true,
+                  fullName: true,
                 },
               },
             },
@@ -150,7 +164,13 @@ async function getGroupServiceMembers(
   const members: AreaMember[] = users
     .map((user) => {
       const profile = user.profiles[0] ?? null;
-      const statusForm = profile?.statusForm ?? StatusForm.awaiting;
+      const hasDraft =
+        Boolean(profile?.form?.firstName || profile?.form?.lastName) ||
+        Boolean(profile?.passportForm?.fullName || profile?.passportForm?.serviceType);
+      const statusForm =
+        profile?.statusForm === StatusForm.awaiting && hasDraft
+          ? StatusForm.filling
+          : (profile?.statusForm ?? StatusForm.awaiting);
 
       return {
         userId: user.id,
@@ -184,7 +204,7 @@ async function getGroupServiceMembers(
   const unlockedCount = Math.min(members.length, startedCount + 1);
   const unlockedMembers = members.slice(0, unlockedCount);
   const current =
-    unlockedMembers.find((member) => member.statusForm !== StatusForm.filled) ??
+    unlockedMembers.find((member) => member.statusForm === StatusForm.awaiting) ??
     null;
   const checklist = members.filter(hasStarted);
 

@@ -112,7 +112,7 @@ export default function PassportFormPage({ params }: { params: { profileId: stri
     onSuccess(result) {
       toast.success(result.message);
       utils.clientRouter.getAreaData.invalidate();
-      utils.clientRouter.getPassportForm.invalidate({ profileId });
+      router.push("/area-do-cliente");
     },
     onError(error) {
       toast.error(error.message || "Não foi possível salvar");

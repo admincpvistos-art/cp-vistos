@@ -108,6 +108,8 @@ export function PassportForm({ passportForm, profileId, isEditing }: Props) {
 
       if (data.redirectStep !== undefined) {
         router.push(`/formulario/${profileId}?formStep=${data.redirectStep}`);
+      } else {
+        router.push("/area-do-cliente");
       }
     },
     onError: (error) => {

@@ -262,6 +262,8 @@ export function PreviousTravelForm({ previousTravelForm, profileId, isEditing }:
 
       if (data.redirectStep !== undefined) {
         router.push(`/formulario/${profileId}?formStep=${data.redirectStep}`);
+      } else {
+        router.push("/area-do-cliente");
       }
     },
     onError: (error) => {
