@@ -15,13 +15,10 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DeleteChecklistRowButton } from "@/components/dashboard/delete-checklist-row-button";
 import { trpc } from "@/lib/trpc-client";
 import { cn } from "@/lib/utils";
-
-const FINANCE_ADMIN_EMAILS = [
-  "cpassessoriavistos@gmail.com",
-  "admin@cpvistos.com",
-];
+import { canAccessFinance } from "@/lib/staff-access";
 
 function formatBRL(value: number) {
   return value.toLocaleString("pt-BR", {
@@ -92,12 +89,7 @@ export default function FinanceiroPage() {
   );
 
   const canAccess = useMemo(() => {
-    const email = me?.user.email?.toLowerCase();
-    return (
-      me?.user.role === "ADMIN" &&
-      !!email &&
-      FINANCE_ADMIN_EMAILS.includes(email)
-    );
+    return canAccessFinance(me?.user.role, me?.user.email);
   }, [me]);
 
   useEffect(() => {
@@ -130,6 +122,39 @@ export default function FinanceiroPage() {
     { yearMonth: expensesMonth || null },
     { enabled: canAccess },
   );
+
+  const utils = trpc.useUtils();
+
+  const {
+    mutate: deleteExpense,
+    isPending: deletingExpense,
+    variables: deletingExpenseVars,
+  } = trpc.financeRouter.deleteExpense.useMutation({
+    onSuccess: (result) => {
+      utils.financeRouter.getExpenses.invalidate();
+      utils.financeRouter.getSummary.invalidate();
+      toast.success(result.message);
+    },
+    onError: (error) => {
+      toast.error(error.message || "Não foi possível excluir o pagamento");
+    },
+  });
+
+  const {
+    mutate: deleteReceipt,
+    isPending: deletingReceipt,
+    variables: deletingReceiptVars,
+  } = trpc.financeRouter.deleteReceipt.useMutation({
+    onSuccess: (result) => {
+      utils.financeRouter.getChecklist.invalidate();
+      utils.financeRouter.getSummary.invalidate();
+      utils.serviceCostRouter.getRows.invalidate();
+      toast.success(result.message);
+    },
+    onError: (error) => {
+      toast.error(error.message || "Não foi possível excluir a linha");
+    },
+  });
 
   if (loadingMe || !canAccess) {
     return (
@@ -252,12 +277,15 @@ export default function FinanceiroPage() {
                   <th className="h-12 px-4 text-center font-medium text-muted-foreground whitespace-nowrap">
                     Data
                   </th>
+                  <th className="h-12 px-4 text-center font-medium text-muted-foreground whitespace-nowrap">
+                    Ação
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {expensesQuery.isLoading ? (
                   <tr>
-                    <td colSpan={4} className="h-24 text-center">
+                    <td colSpan={5} className="h-24 text-center">
                       <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
                     </td>
                   </tr>
@@ -274,12 +302,22 @@ export default function FinanceiroPage() {
                           locale: ptBR,
                         })}
                       </td>
+                      <td className="p-4 text-center">
+                        <DeleteChecklistRowButton
+                          title="Excluir este pagamento?"
+                          description="O gasto sai do check-list de pagamentos e deixa de contar no total do Financeiro."
+                          isPending={
+                            deletingExpense && deletingExpenseVars?.id === expense.id
+                          }
+                          onConfirm={() => deleteExpense({ id: expense.id })}
+                        />
+                      </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
                     <td
-                      colSpan={4}
+                      colSpan={5}
                       className="h-24 text-center text-muted-foreground"
                     >
                       Nenhum pagamento lançado
@@ -382,12 +420,15 @@ export default function FinanceiroPage() {
                   <th className="h-12 px-4 text-center font-medium text-muted-foreground whitespace-nowrap">
                     Situação
                   </th>
+                  <th className="h-12 px-4 text-center font-medium text-muted-foreground sticky right-0 top-0 z-30 bg-white whitespace-nowrap shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.12)]">
+                    Ação
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {checklistQuery.isLoading ? (
                   <tr>
-                    <td colSpan={4} className="h-24 text-center">
+                    <td colSpan={5} className="h-24 text-center">
                       <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
                     </td>
                   </tr>
@@ -429,12 +470,30 @@ export default function FinanceiroPage() {
                           {entry.status === "paid" ? "Pago" : "Pendente"}
                         </span>
                       </td>
+                      <td className="p-4 text-center sticky right-0 z-10 bg-white group-hover:bg-muted/40 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.12)]">
+                        <DeleteChecklistRowButton
+                          title={
+                            entry.isDependent
+                              ? "Excluir linha do dependente?"
+                              : "Cancelar a compra deste cliente?"
+                          }
+                          description={
+                            entry.isDependent
+                              ? "A linha deste dependente sai do Financeiro e de Serviços e Custos. O cadastro do cliente permanece."
+                              : "A linha do titular e dos dependentes do grupo sai do Financeiro e de Serviços e Custos. O cadastro do cliente permanece."
+                          }
+                          isPending={
+                            deletingReceipt && deletingReceiptVars?.id === entry.id
+                          }
+                          onConfirm={() => deleteReceipt({ id: entry.id })}
+                        />
+                      </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
                     <td
-                      colSpan={4}
+                      colSpan={5}
                       className="h-24 text-center text-muted-foreground"
                     >
                       Nenhum cliente encontrado

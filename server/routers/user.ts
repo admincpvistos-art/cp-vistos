@@ -26,6 +26,7 @@ import {
   router,
 } from "../trpc";
 import prisma from "@/lib/prisma";
+import { canCreateClientAccounts } from "@/lib/staff-access";
 import { tripPriorityFromDate } from "@/lib/trip-priority";
 
 function mapProfileToClientTableRow(profile: {
@@ -744,6 +745,18 @@ export const userRouter = router({
       })
     )
     .mutation(async (opts) => {
+      if (
+        !canCreateClientAccounts(
+          opts.ctx.collaborator.role,
+          opts.ctx.collaborator.email,
+        )
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Acesso não autorizado",
+        });
+      }
+
       let scheduleAccount;
       let budgetPaid;
 

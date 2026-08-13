@@ -4,6 +4,9 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, UseFormReturn } from "react-hook-form";
 import { useState, useEffect, ChangeEvent } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 
 import useUserStore from "@/constants/stores/useUserStore";
 import { useSubmitConfirmationStore } from "@/constants/stores/useSubmitConfirmationStore";
@@ -13,6 +16,8 @@ import { Button } from "@/components/ui/button";
 import { AccountForm } from "./components/account-form";
 import { ProfileForm } from "./components/profile-form";
 import { SubmitConfirmationModal } from "@/app/(dashboard)/perfil/criar-conta/components/submit-confirmation-modal";
+import { canCreateClientAccounts } from "@/lib/staff-access";
+import { trpc } from "@/lib/trpc-client";
 
 const profileFormSchema = z
   .object({
@@ -262,9 +267,25 @@ export type formType = UseFormReturn<formValue, any, undefined>;
 export default function CreateAccountPage() {
   const [isProfileSameAsAccount, setIsProfileSameAsAccount] = useState<string>("true");
   const [currentProfile, setCurrentProfile] = useState<number>(0);
+  const router = useRouter();
 
   const { openModal, setFormValues } = useSubmitConfirmationStore();
   const { role } = useUserStore();
+  const { data: me, isLoading: loadingMe } = trpc.userRouter.getMe.useQuery(
+    undefined,
+    { retry: false },
+  );
+
+  useEffect(() => {
+    if (loadingMe || !me) {
+      return;
+    }
+
+    if (!canCreateClientAccounts(me.user.role, me.user.email)) {
+      toast.error("Acesso não autorizado");
+      router.push("/perfil/clientes");
+    }
+  }, [loadingMe, me, router]);
 
   const form = useForm<z.infer<typeof accountFormSchema>>({
     resolver: zodResolver(accountFormSchema),
@@ -498,6 +519,18 @@ export default function CreateAccountPage() {
           }
         });
     }
+  }
+
+  if (
+    loadingMe ||
+    !me ||
+    !canCreateClientAccounts(me.user.role, me.user.email)
+  ) {
+    return (
+      <div className="w-full min-h-[40vh] flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   return (

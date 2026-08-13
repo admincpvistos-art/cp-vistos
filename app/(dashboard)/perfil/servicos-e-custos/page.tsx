@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Loader2, MessageSquare, Plus, Search } from "lucide-react";
+import { DeleteChecklistRowButton } from "@/components/dashboard/delete-checklist-row-button";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,11 +23,7 @@ import {
 } from "@/components/ui/tooltip";
 import { trpc } from "@/lib/trpc-client";
 import { cn } from "@/lib/utils";
-
-const FINANCE_ADMIN_EMAILS = [
-  "cpassessoriavistos@gmail.com",
-  "admin@cpvistos.com",
-];
+import { canAccessFinance } from "@/lib/staff-access";
 
 function formatBRL(value: number) {
   return value.toLocaleString("pt-BR", {
@@ -380,12 +377,7 @@ export default function ServicosECustosPage() {
   );
 
   const canAccess = useMemo(() => {
-    const email = me?.user.email?.toLowerCase();
-    return (
-      me?.user.role === "ADMIN" &&
-      !!email &&
-      FINANCE_ADMIN_EMAILS.includes(email)
-    );
+    return canAccessFinance(me?.user.role, me?.user.email);
   }, [me]);
 
   useEffect(() => {
@@ -419,6 +411,17 @@ export default function ServicosECustosPage() {
       },
       onError: () => {
         toast.error("Não foi possível enviar o pagamento");
+      },
+    });
+
+  const { mutate: deleteRow, isPending: deletingRow, variables: deletingRowVars } =
+    trpc.serviceCostRouter.deleteRow.useMutation({
+      onSuccess: (result) => {
+        invalidateSynced();
+        toast.success(result.message);
+      },
+      onError: (error) => {
+        toast.error(error.message || "Não foi possível excluir a linha");
       },
     });
 
@@ -562,12 +565,15 @@ export default function ServicosECustosPage() {
                   <th className="h-12 px-3 text-center font-medium text-muted-foreground whitespace-nowrap">
                     Situação
                   </th>
+                  <th className="h-12 px-3 text-center font-medium text-muted-foreground sticky right-0 top-0 z-30 bg-white whitespace-nowrap shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.12)]">
+                    Ação
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {rowsQuery.isLoading ? (
                   <tr>
-                    <td colSpan={9} className="h-24 text-center">
+                    <td colSpan={10} className="h-24 text-center">
                       <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
                     </td>
                   </tr>
@@ -688,12 +694,28 @@ export default function ServicosECustosPage() {
                           <span className="text-muted-foreground">—</span>
                         )}
                       </td>
+                      <td className="p-3 text-center sticky right-0 z-10 bg-white group-hover:bg-muted/40 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.12)]">
+                        <DeleteChecklistRowButton
+                          title={
+                            row.isDependent
+                              ? "Excluir linha do dependente?"
+                              : "Cancelar a compra deste cliente?"
+                          }
+                          description={
+                            row.isDependent
+                              ? "A linha deste dependente sai de Serviços e Custos e do Financeiro. O cadastro do cliente permanece."
+                              : "A linha do titular e dos dependentes do grupo sai de Serviços e Custos e do Financeiro. O cadastro do cliente permanece."
+                          }
+                          isPending={deletingRow && deletingRowVars?.id === row.id}
+                          onConfirm={() => deleteRow({ id: row.id })}
+                        />
+                      </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
                     <td
-                      colSpan={9}
+                      colSpan={10}
                       className="h-24 text-center text-muted-foreground"
                     >
                       Nenhum cliente encontrado

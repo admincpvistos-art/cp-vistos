@@ -36,17 +36,29 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { trpc } from "@/lib/trpc-client";
 import { cn } from "@/lib/utils";
-
-const FINANCE_ADMIN_EMAILS = [
-  "cpassessoriavistos@gmail.com",
-  "admin@cpvistos.com",
-] as const;
+import {
+  canAccessFinance as canAccessFinanceTools,
+  isFullAdmin,
+  isOfficeCollaboratorEmail,
+} from "@/lib/staff-access";
 
 const collaboratorTools = [
   { href: "/perfil/clientes", label: "Clientes", icon: Users },
   { href: "/perfil/prospects", label: "Prospects", icon: Contact },
   { href: "/perfil/arquivados", label: "Arquivados", icon: Archive },
   { href: "/perfil/criar-conta", label: "Criar Conta", icon: UserPlus },
+] as const;
+
+const officeCollaboratorTools = [
+  { href: "/perfil/clientes", label: "Clientes", icon: Users },
+  {
+    href: "/perfil/conferir-formularios",
+    label: "Conferir Formulários",
+    icon: ClipboardCheck,
+  },
+  { href: "/perfil/preencher-ds160", label: "Preencher DS-160", icon: FileInput },
+  { href: "/perfil/prospects", label: "Prospects", icon: Contact },
+  { href: "/perfil/arquivados", label: "Arquivados", icon: Archive },
 ] as const;
 
 const adminOnlyTools = [
@@ -154,17 +166,13 @@ export function UserAccountMenu() {
 
   const user = data?.user;
   const role = user?.role;
-  const isAdmin = role === "ADMIN";
-  const isCollaborator = role === "ADMIN" || role === "COLLABORATOR";
   const displayName = user?.name || session.data?.user?.name || "Usuário";
   const displayEmail = user?.email || session.data?.user?.email || "";
   const imageUrl = user?.image || session.data?.user?.image || null;
-  const canAccessFinance =
-    isAdmin &&
-    !!displayEmail &&
-    FINANCE_ADMIN_EMAILS.includes(
-      displayEmail.toLowerCase() as (typeof FINANCE_ADMIN_EMAILS)[number],
-    );
+  const isOfficeCollab = isOfficeCollaboratorEmail(displayEmail);
+  const isAdmin = isFullAdmin(role, displayEmail);
+  const isCollaborator = role === "ADMIN" || role === "COLLABORATOR";
+  const canAccessFinance = canAccessFinanceTools(role, displayEmail);
 
   if (session.status === "unauthenticated") {
     return (
@@ -250,7 +258,11 @@ export function UserAccountMenu() {
 
             <CollapsibleSection
               title={
-                isAdmin ? "Ferramentas de Administração" : "Ferramentas"
+                isOfficeCollab
+                  ? "Colaborador administrador"
+                  : isAdmin
+                    ? "Ferramentas de Administração"
+                    : "Ferramentas"
               }
               open={adminOpen}
               onToggle={() =>
@@ -261,62 +273,71 @@ export function UserAccountMenu() {
                 })
               }
             >
-              {collaboratorTools.map(({ href, label, icon: Icon }) => (
-                <div key={href} className="contents">
-                  <DropdownMenuItem asChild>
-                    <Link href={href} className="cursor-pointer">
-                      <Icon className="mr-2 h-4 w-4" />
-                      {label}
-                    </Link>
-                  </DropdownMenuItem>
+              {isOfficeCollab
+                ? officeCollaboratorTools.map(({ href, label, icon: Icon }) => (
+                    <DropdownMenuItem key={href} asChild>
+                      <Link href={href} className="cursor-pointer">
+                        <Icon className="mr-2 h-4 w-4" />
+                        {label}
+                      </Link>
+                    </DropdownMenuItem>
+                  ))
+                : collaboratorTools.map(({ href, label, icon: Icon }) => (
+                    <div key={href} className="contents">
+                      <DropdownMenuItem asChild>
+                        <Link href={href} className="cursor-pointer">
+                          <Icon className="mr-2 h-4 w-4" />
+                          {label}
+                        </Link>
+                      </DropdownMenuItem>
 
-                  {href === "/perfil/clientes" && isAdmin ? (
-                    <>
-                      <DropdownMenuItem asChild>
-                        <Link
-                          href="/perfil/conferir-formularios"
-                          className="cursor-pointer"
-                        >
-                          <ClipboardCheck className="mr-2 h-4 w-4" />
-                          Conferir Formulários
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link
-                          href="/perfil/preencher-ds160"
-                          className="cursor-pointer"
-                        >
-                          <FileInput className="mr-2 h-4 w-4" />
-                          Preencher DS-160
-                        </Link>
-                      </DropdownMenuItem>
-                    </>
-                  ) : null}
+                      {href === "/perfil/clientes" && isAdmin ? (
+                        <>
+                          <DropdownMenuItem asChild>
+                            <Link
+                              href="/perfil/conferir-formularios"
+                              className="cursor-pointer"
+                            >
+                              <ClipboardCheck className="mr-2 h-4 w-4" />
+                              Conferir Formulários
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link
+                              href="/perfil/preencher-ds160"
+                              className="cursor-pointer"
+                            >
+                              <FileInput className="mr-2 h-4 w-4" />
+                              Preencher DS-160
+                            </Link>
+                          </DropdownMenuItem>
+                        </>
+                      ) : null}
 
-                  {href === "/perfil/clientes" && canAccessFinance && (
-                    <>
-                      <DropdownMenuItem asChild>
-                        <Link
-                          href="/perfil/servicos-e-custos"
-                          className="cursor-pointer"
-                        >
-                          <ClipboardList className="mr-2 h-4 w-4" />
-                          Serviços e Custos
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link
-                          href="/perfil/financeiro"
-                          className="cursor-pointer"
-                        >
-                          <Wallet className="mr-2 h-4 w-4" />
-                          Financeiro
-                        </Link>
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                </div>
-              ))}
+                      {href === "/perfil/clientes" && canAccessFinance && (
+                        <>
+                          <DropdownMenuItem asChild>
+                            <Link
+                              href="/perfil/servicos-e-custos"
+                              className="cursor-pointer"
+                            >
+                              <ClipboardList className="mr-2 h-4 w-4" />
+                              Serviços e Custos
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link
+                              href="/perfil/financeiro"
+                              className="cursor-pointer"
+                            >
+                              <Wallet className="mr-2 h-4 w-4" />
+                              Financeiro
+                            </Link>
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </div>
+                  ))}
 
               {isAdmin &&
                 adminOnlyTools.map(({ href, label, icon: Icon }) => (

@@ -4,6 +4,7 @@ import { TRPCError } from "@trpc/server";
 
 import prisma from "@/lib/prisma";
 import { financeAdminProcedure, router } from "../trpc";
+import { removeClientFromFinance } from "./service-cost";
 
 function startOfDay(date: Date) {
   const d = new Date(date);
@@ -59,50 +60,6 @@ async function sumExpensesBetween(start?: Date, end?: Date) {
   return expenses.reduce((acc, expense) => acc + expense.amount, 0);
 }
 
-async function ensureFinanceEntriesForClients() {
-  const existingEntries = await prisma.financeEntry.findMany({
-    select: { userId: true },
-  });
-  const existingUserIds = new Set(existingEntries.map((entry) => entry.userId));
-
-  const clients = await prisma.user.findMany({
-    where: {
-      role: Role.CLIENT,
-    },
-    select: {
-      id: true,
-      budget: true,
-      budgetPaid: true,
-      createdAt: true,
-    },
-  });
-
-  const clientsWithoutEntry = clients.filter(
-    (client) => !existingUserIds.has(client.id),
-  );
-
-  if (clientsWithoutEntry.length === 0) return;
-
-  await Promise.all(
-    clientsWithoutEntry.map((client) => {
-      const hasPaidAmount =
-        client.budgetPaid === BudgetPaid.paid &&
-        typeof client.budget === "number" &&
-        client.budget > 0;
-
-      return prisma.financeEntry.create({
-        data: {
-          userId: client.id,
-          amount: hasPaidAmount ? client.budget : null,
-          status: hasPaidAmount ? BudgetPaid.paid : BudgetPaid.pending,
-          paidAt: hasPaidAmount ? client.createdAt : null,
-          createdAt: client.createdAt,
-        },
-      });
-    }),
-  );
-}
-
 export const financeRouter = router({
   getSummary: financeAdminProcedure
     .input(
@@ -114,8 +71,6 @@ export const financeRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      await ensureFinanceEntriesForClients();
-
       const now = new Date();
       const selectedMonth =
         input.yearMonth ??
@@ -181,8 +136,6 @@ export const financeRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      await ensureFinanceEntriesForClients();
-
       const search = input.search?.trim();
       const dateFilter = input.yearMonth
         ? (() => {
@@ -319,11 +272,29 @@ export const financeRouter = router({
 
   deleteExpense: financeAdminProcedure
     .input(z.object({ id: z.string().min(1) }))
-    .mutation(async () => {
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message:
-          "Remoção de pagamentos deve ser feita em Serviços e Custos",
+    .mutation(async ({ input }) => {
+      await prisma.financeExpense.delete({
+        where: { id: input.id },
       });
+
+      return { message: "Pagamento excluído." };
+    }),
+
+  deleteReceipt: financeAdminProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .mutation(async ({ input }) => {
+      const entry = await prisma.financeEntry.findUnique({
+        where: { id: input.id },
+        select: { userId: true },
+      });
+
+      if (!entry) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Linha não encontrada",
+        });
+      }
+
+      return removeClientFromFinance(entry.userId);
     }),
 });

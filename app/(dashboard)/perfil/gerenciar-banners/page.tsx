@@ -10,20 +10,26 @@ import { Button } from "@/components/ui/button";
 import { BannerItem } from "./components/banner-item";
 
 import { trpc } from "@/lib/trpc-client";
+import { isFullAdmin } from "@/lib/staff-access";
 
 export default function ManageBannersPage() {
   const router = useRouter();
 
   const { data, isPending } = trpc.websiteRouter.getBanners.useQuery();
-  const { data: roleData } = trpc.userRouter.getRole.useQuery();
+  const { data: me } = trpc.userRouter.getMe.useQuery(undefined, {
+    retry: false,
+  });
 
   useEffect(() => {
-    if (roleData !== undefined && roleData.role !== "ADMIN") {
-      toast.error("Acesso não autorizado");
+    if (!me) {
+      return;
+    }
 
+    if (!isFullAdmin(me.user.role, me.user.email)) {
+      toast.error("Acesso não autorizado");
       router.push("/perfil/clientes");
     }
-  }, [roleData, router]);
+  }, [me, router]);
 
   return (
     <div className="w-full px-6 sm:px-16 lg:px-40 lg:container lg:mx-auto">

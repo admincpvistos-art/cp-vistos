@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
+import { canAccessDs160 } from "@/lib/staff-access";
 import { trpc } from "@/lib/trpc-client";
 
 export function AdminOnly({ children }: { children: ReactNode }) {
@@ -30,7 +31,7 @@ export function AdminOnly({ children }: { children: ReactNode }) {
     );
   }
 
-  if (data?.user.role !== "ADMIN") {
+  if (!canAccessDs160(data?.user.role, data?.user.email)) {
     return (
       <div className="px-6 py-16 text-center text-sm text-muted-foreground">
         Esta ferramenta é exclusiva dos logins de administrador.

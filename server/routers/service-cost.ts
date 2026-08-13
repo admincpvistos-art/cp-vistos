@@ -120,43 +120,45 @@ export async function syncFinanceFromServiceCost(userId: string) {
   };
 }
 
-async function ensureServiceAndFinanceRows() {
-  const clients = await prisma.user.findMany({
-    where: { role: Role.CLIENT },
-    select: { id: true, createdAt: true },
+export async function removeClientFromFinance(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      payerUserId: true,
+      name: true,
+    },
   });
 
-  const [serviceCosts, financeEntries] = await Promise.all([
-    prisma.serviceCost.findMany({ select: { userId: true } }),
-    prisma.financeEntry.findMany({ select: { userId: true } }),
-  ]);
+  if (!user) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Cliente não encontrado",
+    });
+  }
 
-  const serviceIds = new Set(serviceCosts.map((row) => row.userId));
-  const financeIds = new Set(financeEntries.map((row) => row.userId));
+  const ids = [user.id];
 
-  await Promise.all(
-    clients.map(async (client) => {
-      if (!serviceIds.has(client.id)) {
-        await prisma.serviceCost.create({
-          data: {
-            userId: client.id,
-            createdAt: client.createdAt,
-          },
-        });
-      }
+  if (!user.payerUserId) {
+    const dependents = await prisma.user.findMany({
+      where: { payerUserId: user.id },
+      select: { id: true },
+    });
+    ids.push(...dependents.map((dependent) => dependent.id));
+  }
 
-      if (!financeIds.has(client.id)) {
-        await prisma.financeEntry.create({
-          data: {
-            userId: client.id,
-            amount: null,
-            status: BudgetPaid.pending,
-            createdAt: client.createdAt,
-          },
-        });
-      }
-    }),
-  );
+  await prisma.financeEntry.deleteMany({
+    where: { userId: { in: ids } },
+  });
+  await prisma.serviceCost.deleteMany({
+    where: { userId: { in: ids } },
+  });
+
+  return {
+    message: user.payerUserId
+      ? "Linha do dependente excluída."
+      : "Compra cancelada. A linha saiu do Financeiro e de Serviços e Custos.",
+  };
 }
 
 const optionalAmount = z
@@ -173,8 +175,6 @@ export const serviceCostRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      await ensureServiceAndFinanceRows();
-
       const rows = await prisma.serviceCost.findMany({
         include: {
           user: {
@@ -341,6 +341,24 @@ export const serviceCostRouter = router({
         where: { id: input.id },
       });
 
-      return {};
+      return { message: "Pagamento excluído." };
+    }),
+
+  deleteRow: financeAdminProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .mutation(async ({ input }) => {
+      const row = await prisma.serviceCost.findUnique({
+        where: { id: input.id },
+        select: { userId: true },
+      });
+
+      if (!row) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Linha não encontrada",
+        });
+      }
+
+      return removeClientFromFinance(row.userId);
     }),
 });

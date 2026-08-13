@@ -4,6 +4,11 @@ import superjson from "superjson";
 
 import { Context } from "./context";
 import prisma from "@/lib/prisma";
+import {
+  canAccessDs160,
+  canAccessFinance,
+  isOfficeCollaboratorEmail,
+} from "@/lib/staff-access";
 
 const trpc = initTRPC.context<Context>().create({
   transformer: superjson,
@@ -11,10 +16,6 @@ const trpc = initTRPC.context<Context>().create({
 
 export const router = trpc.router;
 export const publicProcedure = trpc.procedure;
-const FINANCE_ADMIN_EMAILS = [
-  "cpassessoriavistos@gmail.com",
-  "admin@cpvistos.com",
-] as const;
 
 export const adminProcedure = trpc.procedure.use(async function isAdmin(opts) {
   const { ctx } = opts;
@@ -36,7 +37,7 @@ export const adminProcedure = trpc.procedure.use(async function isAdmin(opts) {
     },
   });
 
-  if (!admin) {
+  if (!admin || isOfficeCollaboratorEmail(email)) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
 
@@ -57,15 +58,6 @@ export const financeAdminProcedure = trpc.procedure.use(
     }
 
     const email = ctx.user.user.email.toLowerCase();
-
-    if (
-      !FINANCE_ADMIN_EMAILS.includes(
-        email as (typeof FINANCE_ADMIN_EMAILS)[number],
-      )
-    ) {
-      throw new TRPCError({ code: "UNAUTHORIZED" });
-    }
-
     const admin = await prisma.user.findFirst({
       where: {
         email,
@@ -73,13 +65,43 @@ export const financeAdminProcedure = trpc.procedure.use(
       },
     });
 
-    if (!admin) {
+    if (!admin || !canAccessFinance(admin.role, email)) {
       throw new TRPCError({ code: "UNAUTHORIZED" });
     }
 
     return opts.next({
       ctx: {
         admin,
+      },
+    });
+  },
+);
+
+export const ds160StaffProcedure = trpc.procedure.use(
+  async function isDs160Staff(opts) {
+    const { ctx } = opts;
+
+    if (!ctx.user || !ctx.user.user?.email) {
+      throw new TRPCError({ code: "UNAUTHORIZED" });
+    }
+
+    const email = ctx.user.user.email;
+    const staff = await prisma.user.findFirst({
+      where: {
+        email,
+        role: {
+          in: [Role.ADMIN, Role.COLLABORATOR],
+        },
+      },
+    });
+
+    if (!staff || !canAccessDs160(staff.role, email)) {
+      throw new TRPCError({ code: "UNAUTHORIZED" });
+    }
+
+    return opts.next({
+      ctx: {
+        staff,
       },
     });
   },

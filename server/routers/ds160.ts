@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import prisma from "@/lib/prisma";
 import { CEAC_PAGES } from "@/lib/ds160-ceac";
-import { adminProcedure, router } from "../trpc";
+import { ds160StaffProcedure, router } from "../trpc";
 
 const pageIdSchema = z.enum([
   "personal1",
@@ -36,7 +36,7 @@ function packetInclude() {
 }
 
 export const ds160Router = router({
-  list: adminProcedure
+  list: ds160StaffProcedure
     .input(
       z
         .object({
@@ -111,7 +111,7 @@ export const ds160Router = router({
 
       return rows;
     }),
-  getPacket: adminProcedure
+  getPacket: ds160StaffProcedure
     .input(
       z.object({
         profileId: z.string().min(1),
@@ -152,7 +152,7 @@ export const ds160Router = router({
         form: profile.form,
       };
     }),
-  returnToClient: adminProcedure
+  returnToClient: ds160StaffProcedure
     .input(
       z.object({
         profileId: z.string().min(1),
@@ -201,7 +201,7 @@ export const ds160Router = router({
 
       return { message: "Formulário devolvido ao cliente" };
     }),
-  markPageReviewed: adminProcedure
+  markPageReviewed: ds160StaffProcedure
     .input(
       z.object({
         profileId: z.string().min(1),
@@ -246,7 +246,7 @@ export const ds160Router = router({
         ready,
       };
     }),
-  startFill: adminProcedure
+  startFill: ds160StaffProcedure
     .input(
       z.object({
         profileId: z.string().min(1),
