@@ -1,12 +1,26 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
+import { toast } from "sonner";
 import { format } from "date-fns";
-import { Edit, Eye, Lock } from "lucide-react";
+import { Edit, Eye, Loader2, Lock, Trash2 } from "lucide-react";
 import { StatusDS, StatusForm } from "@prisma/client";
 
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { trpc } from "@/lib/trpc-client";
 
 export type FormChecklistItem = {
   userId: string;
@@ -47,6 +61,88 @@ function formatFormStatus(status: StatusForm) {
 
 function statusDSLabel(status: StatusDS | null) {
   return status === "filled" || status === "emitted" ? "Aprovado" : "Aguardando";
+}
+
+function DeleteChecklistRowButton({
+  item,
+  variant,
+}: {
+  item: FormChecklistItem;
+  variant: "visa" | "passport";
+}) {
+  const [open, setOpen] = useState(false);
+  const utils = trpc.useUtils();
+
+  const { mutate: deleteRow, isPending } = trpc.clientRouter.deleteChecklistRow.useMutation({
+    onSuccess(result) {
+      toast.success(result.message);
+      setOpen(false);
+      utils.clientRouter.getAreaData.invalidate();
+    },
+    onError(error) {
+      toast.error(error.message || "Não foi possível excluir a linha");
+    },
+  });
+
+  return (
+    <AlertDialog open={open} onOpenChange={setOpen}>
+      <AlertDialogTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="text-destructive hover:text-destructive"
+          disabled={isPending}
+        >
+          {isPending ? (
+            <Loader2 className="mr-1 size-4 animate-spin" />
+          ) : (
+            <Trash2 className="mr-1 size-4" strokeWidth={1.5} />
+          )}
+          Excluir
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent className="rounded-3xl">
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            {item.isTitular ? "Excluir preenchimento do titular?" : "Excluir dependente do checklist?"}
+          </AlertDialogTitle>
+          <AlertDialogDescription className="text-foreground/70">
+            {item.isTitular
+              ? "A linha sai do checklist e o card de visto ou passaporte volta para Titular, para um novo preenchimento. Só depois disso o card passa a Família ou amigos."
+              : "A linha deste dependente sai do checklist. O card de Família ou amigos permanece e a ordem das demais linhas é atualizada."}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isPending}>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={isPending || !item.profileId}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            onClick={(event) => {
+              event.preventDefault();
+              if (!item.profileId) {
+                return;
+              }
+
+              deleteRow({
+                profileId: item.profileId,
+                category: variant === "passport" ? "passport" : "american_visa",
+              });
+            }}
+          >
+            {isPending ? (
+              <>
+                <Loader2 className="mr-1 size-4 animate-spin" />
+                Excluindo
+              </>
+            ) : (
+              "Excluir"
+            )}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 }
 
 function formHref(item: FormChecklistItem, variant: "visa" | "passport") {
@@ -209,6 +305,10 @@ export function FormChecklist({ variant, items }: Props) {
                         <Lock className="size-3.5" strokeWidth={1.5} />
                         Bloqueado
                       </span>
+                    ) : null}
+
+                    {item.profileId ? (
+                      <DeleteChecklistRowButton item={item} variant={variant} />
                     ) : null}
                   </div>
                 </td>

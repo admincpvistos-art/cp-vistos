@@ -164,6 +164,117 @@ async function getAccountByEmail(email: string) {
   return account;
 }
 
+async function resetServiceForm(profileId: string, userName: string, category: Category) {
+  await prisma.notification.deleteMany({
+    where: { profileId },
+  });
+
+  if (category === Category.passport) {
+    await prisma.passportForm.deleteMany({
+      where: { profileId },
+    });
+    await prisma.passportForm.create({
+      data: {
+        profile: {
+          connect: { id: profileId },
+        },
+      },
+    });
+  } else {
+    await prisma.form.deleteMany({
+      where: { profileId },
+    });
+    await prisma.form.create({
+      data: {
+        profile: {
+          connect: { id: profileId },
+        },
+      },
+    });
+  }
+
+  await prisma.profile.update({
+    where: { id: profileId },
+    data: {
+      name: userName,
+      statusForm: StatusForm.awaiting,
+      formStep: 0,
+      formLocked: null,
+    },
+  });
+}
+
+async function removeDependentFromService(
+  userId: string,
+  profileId: string,
+  category: Category,
+) {
+  await prisma.notification.deleteMany({
+    where: { profileId },
+  });
+  await prisma.comments.deleteMany({
+    where: { profileId },
+  });
+  await prisma.form.deleteMany({
+    where: { profileId },
+  });
+  await prisma.passportForm.deleteMany({
+    where: { profileId },
+  });
+  await prisma.profile.delete({
+    where: { id: profileId },
+  });
+
+  await prisma.user.update({
+    where: { id: userId },
+    data:
+      category === Category.passport
+        ? { wantsPassport: false }
+        : { wantsAmericanVisa: false },
+  });
+
+  const remaining = await prisma.profile.count({
+    where: { userId },
+  });
+  const member = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      payerUserId: true,
+      wantsAmericanVisa: true,
+      wantsPassport: true,
+    },
+  });
+
+  if (
+    remaining === 0 &&
+    member?.payerUserId &&
+    !member.wantsAmericanVisa &&
+    !member.wantsPassport
+  ) {
+    await prisma.financeEntry.deleteMany({
+      where: { userId },
+    });
+    await prisma.serviceCost.deleteMany({
+      where: { userId },
+    });
+    await prisma.annotations.deleteMany({
+      where: { userId },
+    });
+    await prisma.comments.deleteMany({
+      where: { authorId: userId },
+    });
+    await prisma.account.deleteMany({
+      where: { userId },
+    });
+    await prisma.session.deleteMany({
+      where: { userId },
+    });
+    await prisma.user.delete({
+      where: { id: userId },
+    });
+  }
+}
+
 async function getGroupServiceMembers(
   account: { id: string; group: string | null },
   category: ServiceCategory,
@@ -292,7 +403,22 @@ async function getGroupServiceMembers(
   const current =
     unlockedMembers.find((member) => member.statusForm === StatusForm.awaiting) ??
     null;
-  const checklist = members.filter(hasStarted);
+  const checklist = members
+    .filter(hasStarted)
+    .sort((a, b) => {
+      if (a.isTitular !== b.isTitular) {
+        return a.isTitular ? -1 : 1;
+      }
+
+      const aTime = a.updatedAt?.getTime() ?? 0;
+      const bTime = b.updatedAt?.getTime() ?? 0;
+
+      if (aTime !== bTime) {
+        return aTime - bTime;
+      }
+
+      return a.name.localeCompare(b.name, "pt-BR");
+    });
 
   return {
     members,
@@ -613,6 +739,90 @@ export const clientRouter = router({
       }
 
       return { profileId: profile.id, userId: member.id };
+    }),
+  deleteChecklistRow: isUserAuthedProcedure
+    .input(
+      z.object({
+        profileId: z.string().min(1),
+        category: z.enum(["american_visa", "passport"]),
+      }),
+    )
+    .mutation(async (opts) => {
+      const { user } = opts.ctx.user;
+      const email = user?.email;
+
+      if (!email) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Usuário não encontrado",
+        });
+      }
+
+      const account = await getAccountByEmail(email);
+
+      if (account.payerUserId) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Apenas o titular pode excluir linhas do checklist.",
+        });
+      }
+
+      const categoryEnum =
+        opts.input.category === "passport"
+          ? Category.passport
+          : Category.american_visa;
+
+      const profile = await prisma.profile.findUnique({
+        where: {
+          id: opts.input.profileId,
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              group: true,
+              payerUserId: true,
+            },
+          },
+        },
+      });
+
+      if (!profile || profile.category !== categoryEnum) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Linha do checklist não encontrada",
+        });
+      }
+
+      const sameAccount = profile.userId === account.id;
+      const sameGroup =
+        Boolean(account.group) && profile.user.group === account.group;
+
+      if (!sameAccount && !sameGroup) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Você não pode excluir esta linha.",
+        });
+      }
+
+      if (!profile.user.payerUserId) {
+        await resetServiceForm(profile.id, profile.user.name, categoryEnum);
+        return {
+          message:
+            "Linha do titular excluída. O card voltou para um novo preenchimento.",
+        };
+      }
+
+      await removeDependentFromService(
+        profile.user.id,
+        profile.id,
+        categoryEnum,
+      );
+
+      return {
+        message: "Dependente removido do checklist.",
+      };
     }),
   getPassportForm: isUserAuthedProcedure
     .input(
