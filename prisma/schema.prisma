@@ -208,6 +208,9 @@ model Profile {
   statusForm       StatusForm    @default(awaiting)
   formStep         Int           @default(0)
   formLocked       Boolean?
+  ds160ReviewStatus String?
+  ds160ReviewedPages String[]    @default([])
+  formReturnNote   String?
   category         Category
   status           Status        @default(active)
   shipping         Shipping      @default(verifying)

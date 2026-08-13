@@ -19,7 +19,9 @@ import {
   UserPlus,
   Users,
   Contact,
+  ClipboardCheck,
   ClipboardList,
+  FileInput,
   Wallet,
 } from "lucide-react";
 
@@ -42,6 +44,8 @@ const FINANCE_ADMIN_EMAILS = [
 
 const collaboratorTools = [
   { href: "/perfil/clientes", label: "Clientes", icon: Users },
+  { href: "/perfil/conferir-formularios", label: "Conferir Formulários", icon: ClipboardCheck },
+  { href: "/perfil/preencher-ds160", label: "Preencher DS-160", icon: FileInput },
   { href: "/perfil/prospects", label: "Prospects", icon: Contact },
   { href: "/perfil/arquivados", label: "Arquivados", icon: Archive },
   { href: "/perfil/criar-conta", label: "Criar Conta", icon: UserPlus },
@@ -268,7 +272,7 @@ export function UserAccountMenu() {
                     </Link>
                   </DropdownMenuItem>
 
-                  {href === "/perfil/clientes" && canAccessFinance && (
+                  {href === "/perfil/preencher-ds160" && canAccessFinance && (
                     <>
                       <DropdownMenuItem asChild>
                         <Link

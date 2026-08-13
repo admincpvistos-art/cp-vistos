@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "CP Vistos — CEAC no quadro admin",
+  "version": "1.0.0",
+  "description": "Permite abrir o CEAC no painel direito da página Preencher DS-160 do CP Vistos. Uso interno do escritório.",
+  "permissions": ["declarativeNetRequest"],
+  "host_permissions": [
+    "https://ceac.state.gov/*",
+    "https://www.cpvistos.com.br/*",
+    "https://cpvistos.com.br/*",
+    "http://localhost/*"
+  ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "ceac_frame",
+        "enabled": true,
+        "path": "rules.json"
+      }
+    ]
+  }
+}
