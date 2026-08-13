@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { format } from "date-fns";
 import { Edit, Eye, Lock } from "lucide-react";
-import { StatusDS, StatusForm, VisaStatus } from "@prisma/client";
+import { StatusDS, StatusForm } from "@prisma/client";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -15,7 +15,6 @@ export type FormChecklistItem = {
   profileId: string | null;
   statusForm: StatusForm;
   statusDS: StatusDS | null;
-  visaStatus: VisaStatus | null;
   CASVDate: Date | null;
   interviewDate: Date | null;
   DSNumber: string | null;
@@ -46,23 +45,8 @@ function formatFormStatus(status: StatusForm) {
   }
 }
 
-function formatDSStatus(status: StatusDS | null) {
-  switch (status) {
-    case "awaiting":
-      return "Aguardando";
-    case "filling":
-      return "Preenchendo";
-    case "filled":
-      return "Preenchido";
-    case "emitted":
-      return "Emitido";
-    default:
-      return "—";
-  }
-}
-
-function situationLabel(status: VisaStatus | null) {
-  return status === "approved" ? "Aprovado" : "Pendente";
+function statusDSLabel(status: StatusDS | null) {
+  return status === "filled" || status === "emitted" ? "Aprovado" : "Aguardando";
 }
 
 function formHref(item: FormChecklistItem, variant: "visa" | "passport") {
@@ -99,8 +83,8 @@ export function FormChecklist({ variant, items }: Props) {
               <th className="sticky left-0 top-0 z-30 min-w-52 bg-white px-4 py-3 text-xs font-semibold uppercase tracking-wide text-foreground/60 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.12)]">
                 Cliente
               </th>
-              <th className="sticky left-52 top-0 z-30 min-w-[7.5rem] bg-white px-4 py-3 text-xs font-semibold uppercase tracking-wide text-foreground/60 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.12)]">
-                Situação
+              <th className="sticky left-52 top-0 z-30 min-w-[9rem] bg-white px-4 py-3 text-xs font-semibold uppercase tracking-wide text-foreground/60 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.12)]">
+                Status DS
               </th>
               {variant === "visa" ? (
                 <>
@@ -111,9 +95,6 @@ export function FormChecklist({ variant, items }: Props) {
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-foreground/60">Nº DS</th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-foreground/60">
                     Formulário
-                  </th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-foreground/60">
-                    Status DS
                   </th>
                 </>
               ) : (
@@ -146,14 +127,16 @@ export function FormChecklist({ variant, items }: Props) {
                     </span>
                   </div>
                 </td>
-                <td className="sticky left-52 z-10 min-w-[7.5rem] bg-white px-4 py-4 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.12)] group-hover:bg-muted/50">
+                <td className="sticky left-52 z-10 min-w-[9rem] bg-white px-4 py-4 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.12)] group-hover:bg-muted/50">
                   <span
                     className={cn("inline-flex rounded-full px-3 py-1 text-xs font-semibold", {
-                      "bg-emerald-100 text-emerald-700": item.visaStatus === "approved",
-                      "bg-amber-100 text-amber-800": item.visaStatus !== "approved",
+                      "bg-emerald-100 text-emerald-700":
+                        item.statusDS === "filled" || item.statusDS === "emitted",
+                      "bg-amber-100 text-amber-800":
+                        item.statusDS !== "filled" && item.statusDS !== "emitted",
                     })}
                   >
-                    {situationLabel(item.visaStatus)}
+                    {statusDSLabel(item.statusDS)}
                   </span>
                 </td>
                 {variant === "visa" ? (
@@ -176,7 +159,6 @@ export function FormChecklist({ variant, items }: Props) {
                         {formatFormStatus(item.statusForm)}
                       </span>
                     </td>
-                    <td className="px-4 py-4 text-sm font-medium text-foreground">{formatDSStatus(item.statusDS)}</td>
                   </>
                 ) : (
                   <>
