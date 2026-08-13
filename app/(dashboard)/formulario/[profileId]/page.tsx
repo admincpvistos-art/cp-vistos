@@ -39,10 +39,30 @@ export default function FormPage({ params }: { params: { profileId: string } }) 
     return <FormServerError />;
   }
 
-  const { data: formSteps, isPending: isCurrentStepPending } = trpc.formsRouter.getCurrentStep.useQuery({
-    profileId,
-  });
-  const { data: isMinor, isPending: checkIsMinorPending } = trpc.formsRouter.checkIsMinor.useQuery({ profileId });
+  const { data: formSteps, isPending: isCurrentStepPending, error: currentStepError } =
+    trpc.formsRouter.getCurrentStep.useQuery({
+      profileId,
+    });
+  const { data: isMinor, isPending: checkIsMinorPending } = trpc.formsRouter.checkIsMinor.useQuery(
+    { profileId },
+    { enabled: currentStepError?.data?.code !== "FORBIDDEN" },
+  );
+
+  if (currentStepError?.data?.code === "FORBIDDEN") {
+    return (
+      <div className="w-full min-h-[calc(100vh-96px)] flex flex-col items-center justify-center gap-4 px-6">
+        <span className="text-xl font-semibold text-center max-w-md">
+          Formulário enviado e bloqueado. Aguarde o desbloqueio do administrador.
+        </span>
+        <a href={`/resumo-formulario/${profileId}`} className="text-primary font-medium underline">
+          Ver resumo
+        </a>
+        <a href="/area-do-cliente" className="text-muted-foreground font-medium underline">
+          Voltar para a área do cliente
+        </a>
+      </div>
+    );
+  }
 
   const loading = formSteps === undefined || checkIsMinorPending || isCurrentStepPending;
 

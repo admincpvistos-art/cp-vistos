@@ -26,9 +26,32 @@ import { SecurityView } from "../form/security-view";
 interface Props {
   form: FormType;
   profileId: string;
+  formLocked?: boolean;
 }
 
-export function FormView({ form, profileId }: Props) {
+function EditStepButton({
+  profileId,
+  step,
+  formLocked,
+}: {
+  profileId: string;
+  step: number;
+  formLocked?: boolean;
+}) {
+  if (formLocked) {
+    return null;
+  }
+
+  return (
+    <Button size="xl" className="w-full sm:w-fit flex items-center gap-2" asChild>
+      <Link href={`/formulario/${profileId}?formStep=${step}&isEditing=true`}>
+        Editar <Edit className="size-5" strokeWidth={1.5} />
+      </Link>
+    </Button>
+  );
+}
+
+export function FormView({ form, profileId, formLocked = false }: Props) {
   return (
     <div className="w-full flex flex-col gap-9 bg-secondary py-6 px-8 rounded-xl sm:py-8 sm:px-11">
       <div className="w-full flex flex-col items-center justify-between gap-4 md:flex-row-reverse">
@@ -36,17 +59,19 @@ export function FormView({ form, profileId }: Props) {
           Resumo do formulário
         </h2>
 
-        <Button
-          size="xl"
-          className="w-full flex items-center gap-2 sm:w-fit"
-          asChild
-        >
+        <Button size="xl" className="w-full flex items-center gap-2 sm:w-fit" asChild>
           <Link href="/area-do-cliente">
             <MoveLeft className="size-5" strokeWidth={1.5} />
             Voltar para painel
           </Link>
         </Button>
       </div>
+
+      {formLocked ? (
+        <p className="text-sm text-muted-foreground -mt-4">
+          Formulário enviado e bloqueado. A edição só é liberada por um administrador.
+        </p>
+      ) : null}
 
       <Accordion type="single" collapsible className="flex flex-col gap-6">
         <AccordionItem
@@ -59,16 +84,7 @@ export function FormView({ form, profileId }: Props) {
 
           <AccordionContent className="w-full flex flex-col gap-9">
             <PersonalDataView form={form} />
-
-            <Button
-              size="xl"
-              className="w-full sm:w-fit flex items-center gap-2"
-              asChild
-            >
-              <Link href={`/formulario/${profileId}?formStep=0&isEditing=true`}>
-                Editar <Edit className="size-5" strokeWidth={1.5} />
-              </Link>
-            </Button>
+            <EditStepButton profileId={profileId} step={0} formLocked={formLocked} />
           </AccordionContent>
         </AccordionItem>
 
@@ -82,39 +98,18 @@ export function FormView({ form, profileId }: Props) {
 
           <AccordionContent className="w-full flex flex-col gap-9">
             <ContactAndAddressView form={form} />
-
-            <Button
-              size="xl"
-              className="w-full sm:w-fit flex items-center gap-2"
-              asChild
-            >
-              <Link href={`/formulario/${profileId}?formStep=1&isEditing=true`}>
-                Editar <Edit className="size-5" strokeWidth={1.5} />
-              </Link>
-            </Button>
+            <EditStepButton profileId={profileId} step={1} formLocked={formLocked} />
           </AccordionContent>
         </AccordionItem>
 
-        <AccordionItem
-          value="passport"
-          className="bg-white p-6 flex flex-col gap-9 border-0 rounded-lg"
-        >
+        <AccordionItem value="passport" className="bg-white p-6 flex flex-col gap-9 border-0 rounded-lg">
           <AccordionTrigger className="text-lg text-left text-foreground font-semibold hover:no-underline">
             Passaporte
           </AccordionTrigger>
 
           <AccordionContent className="w-full flex flex-col gap-9">
             <PassportView form={form} />
-
-            <Button
-              size="xl"
-              className="w-full sm:w-fit flex items-center gap-2"
-              asChild
-            >
-              <Link href={`/formulario/${profileId}?formStep=2&isEditing=true`}>
-                Editar <Edit className="size-5" strokeWidth={1.5} />
-              </Link>
-            </Button>
+            <EditStepButton profileId={profileId} step={2} formLocked={formLocked} />
           </AccordionContent>
         </AccordionItem>
 
@@ -128,16 +123,7 @@ export function FormView({ form, profileId }: Props) {
 
           <AccordionContent className="w-full flex flex-col gap-9">
             <AboutTravelView form={form} />
-
-            <Button
-              size="xl"
-              className="w-full sm:w-fit flex items-center gap-2"
-              asChild
-            >
-              <Link href={`/formulario/${profileId}?formStep=3&isEditing=true`}>
-                Editar <Edit className="size-5" strokeWidth={1.5} />
-              </Link>
-            </Button>
+            <EditStepButton profileId={profileId} step={3} formLocked={formLocked} />
           </AccordionContent>
         </AccordionItem>
 
@@ -151,16 +137,7 @@ export function FormView({ form, profileId }: Props) {
 
           <AccordionContent className="w-full flex flex-col gap-9">
             <TravelCompanyView form={form} />
-
-            <Button
-              size="xl"
-              className="w-full sm:w-fit flex items-center gap-2"
-              asChild
-            >
-              <Link href={`/formulario/${profileId}?formStep=4&isEditing=true`}>
-                Editar <Edit className="size-5" strokeWidth={1.5} />
-              </Link>
-            </Button>
+            <EditStepButton profileId={profileId} step={4} formLocked={formLocked} />
           </AccordionContent>
         </AccordionItem>
 
@@ -174,16 +151,7 @@ export function FormView({ form, profileId }: Props) {
 
           <AccordionContent className="w-full flex flex-col gap-9">
             <PreviousTravelView form={form} />
-
-            <Button
-              size="xl"
-              className="w-full sm:w-fit flex items-center gap-2"
-              asChild
-            >
-              <Link href={`/formulario/${profileId}?formStep=5&isEditing=true`}>
-                Editar <Edit className="size-5" strokeWidth={1.5} />
-              </Link>
-            </Button>
+            <EditStepButton profileId={profileId} step={5} formLocked={formLocked} />
           </AccordionContent>
         </AccordionItem>
 
@@ -197,39 +165,18 @@ export function FormView({ form, profileId }: Props) {
 
           <AccordionContent className="w-full flex flex-col gap-9">
             <USAContactView form={form} />
-
-            <Button
-              size="xl"
-              className="w-full sm:w-fit flex items-center gap-2"
-              asChild
-            >
-              <Link href={`/formulario/${profileId}?formStep=6&isEditing=true`}>
-                Editar <Edit className="size-5" strokeWidth={1.5} />
-              </Link>
-            </Button>
+            <EditStepButton profileId={profileId} step={6} formLocked={formLocked} />
           </AccordionContent>
         </AccordionItem>
 
-        <AccordionItem
-          value="family"
-          className="bg-white p-6 flex flex-col gap-9 border-0 rounded-lg"
-        >
+        <AccordionItem value="family" className="bg-white p-6 flex flex-col gap-9 border-0 rounded-lg">
           <AccordionTrigger className="text-lg text-left text-foreground font-semibold hover:no-underline">
             Informações da Família
           </AccordionTrigger>
 
           <AccordionContent className="w-full flex flex-col gap-9">
             <FamilyView form={form} />
-
-            <Button
-              size="xl"
-              className="w-full sm:w-fit flex items-center gap-2"
-              asChild
-            >
-              <Link href={`/formulario/${profileId}?formStep=7&isEditing=true`}>
-                Editar <Edit className="size-5" strokeWidth={1.5} />
-              </Link>
-            </Button>
+            <EditStepButton profileId={profileId} step={7} formLocked={formLocked} />
           </AccordionContent>
         </AccordionItem>
 
@@ -243,16 +190,7 @@ export function FormView({ form, profileId }: Props) {
 
           <AccordionContent className="w-full flex flex-col gap-9">
             <WorkEducationView form={form} />
-
-            <Button
-              size="xl"
-              className="w-full sm:w-fit flex items-center gap-2"
-              asChild
-            >
-              <Link href={`/formulario/${profileId}?formStep=8&isEditing=true`}>
-                Editar <Edit className="size-5" strokeWidth={1.5} />
-              </Link>
-            </Button>
+            <EditStepButton profileId={profileId} step={8} formLocked={formLocked} />
           </AccordionContent>
         </AccordionItem>
 
@@ -266,41 +204,18 @@ export function FormView({ form, profileId }: Props) {
 
           <AccordionContent className="w-full flex flex-col gap-9">
             <AdditionalInformationView form={form} />
-
-            <Button
-              size="xl"
-              className="w-full sm:w-fit flex items-center gap-2"
-              asChild
-            >
-              <Link href={`/formulario/${profileId}?formStep=9&isEditing=true`}>
-                Editar <Edit className="size-5" strokeWidth={1.5} />
-              </Link>
-            </Button>
+            <EditStepButton profileId={profileId} step={9} formLocked={formLocked} />
           </AccordionContent>
         </AccordionItem>
 
-        <AccordionItem
-          value="security"
-          className="bg-white p-6 flex flex-col gap-9 border-0 rounded-lg"
-        >
+        <AccordionItem value="security" className="bg-white p-6 flex flex-col gap-9 border-0 rounded-lg">
           <AccordionTrigger className="text-lg text-left text-foreground font-semibold hover:no-underline">
             Segurança
           </AccordionTrigger>
 
           <AccordionContent className="w-full flex flex-col gap-9">
             <SecurityView form={form} />
-
-            <Button
-              size="xl"
-              className="w-full sm:w-fit flex items-center gap-2"
-              asChild
-            >
-              <Link
-                href={`/formulario/${profileId}?formStep=10&isEditing=true`}
-              >
-                Editar <Edit className="size-5" strokeWidth={1.5} />
-              </Link>
-            </Button>
+            <EditStepButton profileId={profileId} step={10} formLocked={formLocked} />
           </AccordionContent>
         </AccordionItem>
       </Accordion>

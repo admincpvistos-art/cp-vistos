@@ -90,7 +90,7 @@ async function createActiveProfile(params: {
   cpf: string;
   category: Category;
 }) {
-  await prisma.profile.create({
+  const profile = await prisma.profile.create({
     data: {
       name: params.name,
       cpf: params.cpf,
@@ -105,6 +105,18 @@ async function createActiveProfile(params: {
       },
     },
   });
+
+  if (params.category === Category.american_visa) {
+    await prisma.form.create({
+      data: {
+        profile: {
+          connect: {
+            id: profile.id,
+          },
+        },
+      },
+    });
+  }
 }
 
 async function createClientWithFinanceAndProfile(params: {
@@ -1421,6 +1433,36 @@ export const userRouter = router({
 
     return { comments };
   }),
+  setFormLocked: adminProcedure
+    .input(
+      z.object({
+        profileId: z.string().min(1),
+        locked: z.boolean(),
+      }),
+    )
+    .mutation(async (opts) => {
+      const { profileId, locked } = opts.input;
+
+      const client = await prisma.profile.update({
+        where: {
+          id: profileId,
+        },
+        data: {
+          formLocked: locked,
+        },
+        include: {
+          user: {
+            include: {
+              profiles: true,
+            },
+          },
+          comments: true,
+          form: true,
+        },
+      });
+
+      return { client };
+    }),
   getClientDetails: collaboratorProcedure
     .input(
       z.object({

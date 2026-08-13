@@ -41,7 +41,7 @@ export default function FormResumePage({ params }: { params: { profileId: string
             </div>
           </div>
         ) : (
-          <FormView form={data.form} profileId={profileId} />
+          <FormView form={data.form} profileId={profileId} formLocked={data.formLocked} />
         )}
       </div>
     </>

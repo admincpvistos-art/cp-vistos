@@ -1,4 +1,4 @@
-import { Edit, NotepadText, RotateCw, MessageCircleMore, FileText, Plus, UserRoundPlusIcon } from "lucide-react";
+import { Edit, NotepadText, RotateCw, MessageCircleMore, FileText, Plus, UserRoundPlusIcon, Lock, Unlock } from "lucide-react";
 import Image from "next/image";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -64,6 +64,16 @@ export function ClientDetailsResume({ handleClose }: Props) {
       setETAStatusValue(client.ETAStatus);
     }
   }, [client]);
+
+  const { mutate: setFormLocked, isPending: isFormLockPending } = trpc.userRouter.setFormLocked.useMutation({
+    onSuccess({ client }) {
+      setClient(client);
+      toast.success(client.formLocked ? "Formulário bloqueado" : "Formulário desbloqueado para edição");
+    },
+    onError(error) {
+      toast.error(error.message || "Não foi possível alterar o bloqueio do formulário");
+    },
+  });
 
   const { mutate: changeProfile, isPending } = trpc.userRouter.getClientDetails.useMutation({
     onSuccess({ client }) {
@@ -170,7 +180,8 @@ export function ClientDetailsResume({ handleClose }: Props) {
     isDSValidPending ||
     isPaymentStatusUpdating ||
     isETAStatusUpdating ||
-    isPending;
+    isPending ||
+    isFormLockPending;
 
   function handleAnnotation() {
     unsetToResume();
@@ -655,6 +666,33 @@ export function ClientDetailsResume({ handleClose }: Props) {
                 <FileText className="w-5 h-5" strokeWidth={1.5} />
                 Formulário
               </Button>
+
+              {role === "ADMIN" && client.statusForm === "filled" ? (
+                <Button
+                  variant="outline"
+                  disabled={isLoading}
+                  size="xl"
+                  className="flex items-center gap-2"
+                  onClick={() =>
+                    setFormLocked({
+                      profileId: client.id,
+                      locked: client.formLocked === false,
+                    })
+                  }
+                >
+                  {client.formLocked !== false ? (
+                    <>
+                      <Unlock className="w-5 h-5" strokeWidth={1.5} />
+                      Desbloquear formulário
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="w-5 h-5" strokeWidth={1.5} />
+                      Bloquear formulário
+                    </>
+                  )}
+                </Button>
+              ) : null}
             </div>
           </div>
         )}

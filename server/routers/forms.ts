@@ -9,6 +9,30 @@ import { differenceInYears, parse } from "date-fns";
 import { fromZonedTime } from "date-fns-tz";
 import { exportTraceState } from "next/dist/trace";
 
+function isFormLocked(statusForm: StatusForm, formLocked: boolean | null) {
+  return statusForm === StatusForm.filled && formLocked !== false;
+}
+
+async function assertFormNotLocked(profileId: string) {
+  const profile = await prisma.profile.findUnique({
+    where: {
+      id: profileId,
+    },
+    select: {
+      formLocked: true,
+      statusForm: true,
+    },
+  });
+
+  if (profile && isFormLocked(profile.statusForm, profile.formLocked)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message:
+        "Formulário enviado e bloqueado. Aguarde o desbloqueio do administrador.",
+    });
+  }
+}
+
 export const formsRouter = router({
   getProfile: isUserAuthedProcedure
     .input(
@@ -51,6 +75,8 @@ export const formsRouter = router({
           profile: {
             select: {
               formStep: true,
+              formLocked: true,
+              statusForm: true,
             },
           },
         },
@@ -60,6 +86,14 @@ export const formsRouter = router({
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Erro ao resgatar a etapa",
+        });
+      }
+
+      if (isFormLocked(form.profile.statusForm, form.profile.formLocked)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message:
+            "Formulário enviado e bloqueado. Aguarde o desbloqueio do administrador.",
         });
       }
 
@@ -111,6 +145,8 @@ export const formsRouter = router({
           profile: {
             select: {
               formStep: true,
+              formLocked: true,
+              statusForm: true,
             },
           },
         },
@@ -123,7 +159,11 @@ export const formsRouter = router({
         });
       }
 
-      return { form, currentStep: form.profile.formStep };
+      return {
+        form,
+        currentStep: form.profile.formStep,
+        formLocked: isFormLocked(form.profile.statusForm, form.profile.formLocked),
+      };
     }),
   getPersonalData: isUserAuthedProcedure
     .input(
@@ -3929,6 +3969,8 @@ export const formsRouter = router({
         ),
     )
     .mutation(async (opts) => {
+      await assertFormNotLocked(opts.input.profileId);
+
       const {
         profileId,
         step,
@@ -4026,9 +4068,12 @@ export const formsRouter = router({
       }
 
       if (isEditing) {
-        profileUpdated = await prisma.profile.findUnique({
+        profileUpdated = await prisma.profile.update({
           where: {
             id: profileId,
+          },
+          data: {
+            formLocked: true,
           },
           include: {
             form: true,
@@ -4060,6 +4105,7 @@ export const formsRouter = router({
           data: {
             formStep: step,
             statusForm: StatusForm.filled,
+            formLocked: true,
           },
           include: {
             form: true,

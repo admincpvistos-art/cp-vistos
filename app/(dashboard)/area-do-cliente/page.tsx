@@ -1,7 +1,6 @@
 "use client";
 
-import { Profile } from "@prisma/client";
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { Loader2, Search } from "lucide-react";
 
@@ -10,33 +9,51 @@ import { trpc } from "@/lib/trpc-client";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProfileFormBox } from "@/components/dashboard/profile-form-box";
+import { FormChecklist } from "@/components/dashboard/form-checklist";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+function matchesSearch(name: string, searchValue: string) {
+  const term = searchValue
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+  if (term.length <= 2) {
+    return true;
+  }
+
+  return name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .includes(term);
+}
 
 export default function ClientAreaPage() {
   const [searchValue, setSearchValue] = useState<string>("");
-  const [profilesFiltered, setProfilesFiltered] = useState<Profile[]>([]);
-
+  const [category, setCategory] = useState("american_visa");
   const session = useSession();
 
-  const { data } = trpc.clientRouter.getProfiles.useQuery();
+  const { data } = trpc.clientRouter.getAreaData.useQuery();
 
-  useEffect(() => {
-    if (data) {
-      const profiles = data.profiles.filter((profile) =>
-        profile.name
-          .toLowerCase()
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .includes(
-            searchValue
-              .toLowerCase()
-              .normalize("NFD")
-              .replace(/[\u0300-\u036f]/g, "")
-          )
-      );
-
-      setProfilesFiltered(profiles);
+  const visaChecklist = useMemo(() => {
+    if (!data) {
+      return [];
     }
-  }, [searchValue, data]);
+
+    return data.visa.checklist.filter((item) => matchesSearch(item.name, searchValue));
+  }, [data, searchValue]);
+
+  const passportChecklist = useMemo(() => {
+    if (!data) {
+      return [];
+    }
+
+    return data.passport.checklist.filter((item) => matchesSearch(item.name, searchValue));
+  }, [data, searchValue]);
+
+  const showVisaCard = !!data?.visa.current && matchesSearch(data.visa.current.name, searchValue);
+  const showPassportCard = !!data?.passport.current && matchesSearch(data.passport.current.name, searchValue);
 
   if (session.status === "loading") {
     return (
@@ -67,48 +84,75 @@ export default function ClientAreaPage() {
         </div>
       </div>
 
-      <div className="w-full flex flex-col gap-x-6 gap-y-9 md:grid md:grid-cols-2">
-        {data !== undefined ? (
-          searchValue.length > 3 && profilesFiltered.length > 0 ? (
-            profilesFiltered.map((profile) => (
-              <ProfileFormBox
-                key={profile.id}
-                profileId={profile.id}
-                statusForm={profile.statusForm}
-                statusDS={profile.statusDS}
-                profileName={profile.name}
-                CASVDate={profile.CASVDate}
-                interviewDate={profile.interviewDate}
-                DSNumber={profile.DSNumber}
-                formStep={profile.formStep}
-                updatedAt={profile.updatedAt}
-              />
-            ))
-          ) : searchValue.length > 3 && profilesFiltered.length === 0 ? (
-            <div className="w-full flex items-center justify-center sm:col-span-2 lg:mt-6">
-              <span className="text-xl font-medium text-foreground/60 md:text-2xl">Nenhum perfil encontrado</span>
-            </div>
-          ) : (
-            data.profiles.map((profile) => (
-              <ProfileFormBox
-                key={profile.id}
-                profileId={profile.id}
-                statusForm={profile.statusForm}
-                statusDS={profile.statusDS}
-                profileName={profile.name}
-                CASVDate={profile.CASVDate}
-                interviewDate={profile.interviewDate}
-                DSNumber={profile.DSNumber}
-                formStep={profile.formStep}
-                updatedAt={profile.updatedAt}
-              />
-            ))
-          )
+      <div className="w-full flex flex-col gap-10">
+        {data === undefined ? (
+          <div className="w-full grid grid-cols-1 gap-6 md:grid-cols-2">
+            <Skeleton className="w-full h-80" />
+            <Skeleton className="w-full h-80" />
+          </div>
         ) : (
           <>
-            <Skeleton className="w-full h-80" />
-            <Skeleton className="w-full h-80" />
-            <Skeleton className="w-full h-80" />
+            <div className="w-full grid grid-cols-1 gap-6 md:grid-cols-2">
+              {showVisaCard && data.visa.current ? (
+                <ProfileFormBox
+                  variant="visa"
+                  profileId={data.visa.current.profileId}
+                  memberUserId={data.visa.current.userId}
+                  statusForm={data.visa.current.statusForm}
+                  statusDS={data.visa.current.statusDS}
+                  profileName={data.visa.current.name}
+                  CASVDate={data.visa.current.CASVDate}
+                  interviewDate={data.visa.current.interviewDate}
+                  DSNumber={data.visa.current.DSNumber}
+                  formStep={data.visa.current.formStep}
+                  updatedAt={data.visa.current.updatedAt}
+                />
+              ) : null}
+
+              {showPassportCard && data.passport.current ? (
+                <ProfileFormBox
+                  variant="passport"
+                  profileId={data.passport.current.profileId}
+                  memberUserId={data.passport.current.userId}
+                  statusForm={data.passport.current.statusForm}
+                  statusDS={data.passport.current.statusDS}
+                  profileName={data.passport.current.name}
+                  CASVDate={data.passport.current.CASVDate}
+                  interviewDate={data.passport.current.interviewDate}
+                  DSNumber={data.passport.current.DSNumber}
+                  protocol={data.passport.current.protocol}
+                  expireDate={data.passport.current.expireDate}
+                  passportType={data.passport.current.passportType}
+                  formStep={data.passport.current.formStep}
+                  updatedAt={data.passport.current.updatedAt}
+                />
+              ) : null}
+            </div>
+
+            {!showVisaCard && !showPassportCard && searchValue.length > 2 ? (
+              <div className="w-full flex items-center justify-center">
+                <span className="text-xl font-medium text-foreground/60 md:text-2xl">Nenhum perfil encontrado</span>
+              </div>
+            ) : null}
+
+            <Tabs value={category} onValueChange={setCategory}>
+              <TabsList className="w-full flex-col h-fit sm:flex-row rounded-xl">
+                <TabsTrigger value="american_visa" className="w-full h-10 rounded-lg sm:text-base sm:font-semibold">
+                  Visto Americano
+                </TabsTrigger>
+                <TabsTrigger value="passport" className="w-full h-10 rounded-lg sm:text-base sm:font-semibold">
+                  Passaporte
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="american_visa" className="mt-6">
+                <FormChecklist variant="visa" items={visaChecklist} />
+              </TabsContent>
+
+              <TabsContent value="passport" className="mt-6">
+                <FormChecklist variant="passport" items={passportChecklist} />
+              </TabsContent>
+            </Tabs>
           </>
         )}
       </div>

@@ -207,6 +207,7 @@ model Profile {
   expireDate       DateTime?
   statusForm       StatusForm    @default(awaiting)
   formStep         Int           @default(0)
+  formLocked       Boolean?
   category         Category
   status           Status        @default(active)
   shipping         Shipping      @default(verifying)
@@ -222,6 +223,7 @@ model Profile {
   userId       String         @db.ObjectId
   user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   form         Form?
+  passportForm PassportForm?
   comments     Comments[]
   notification Notification[]
 
@@ -526,6 +528,33 @@ model Comments {
   profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
   authorId  String  @db.ObjectId
   author    User    @relation(fields: [authorId], references: [id], onDelete: Cascade)
+}
+
+model PassportForm {
+  id                      String    @id @default(auto()) @map("_id") @db.ObjectId
+  serviceType             String?
+  fullName                String?
+  cpf                     String?
+  birthDate               DateTime?
+  birthCity               String?
+  birthState              String?
+  motherName              String?
+  fatherName              String?
+  rg                      String?
+  rgIssuer                String?
+  rgDate                  DateTime?
+  phone                   String?
+  email                   String?
+  address                 String?
+  currentPassportNumber   String?
+  currentPassportExpire   DateTime?
+  notes                   String?
+
+  profileId String  @unique @db.ObjectId
+  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Notification {
