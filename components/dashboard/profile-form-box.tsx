@@ -120,13 +120,19 @@ export function ProfileFormBox({
 
   const passportTypeLabel =
     passportType === "renovacao" ? "Renovação" : passportType === "primeiro" ? "Primeiro passaporte" : "—";
+  const isPassport = variant === "passport";
 
   return (
-    <div className="w-full bg-foreground rounded-2xl p-8 flex flex-col gap-6">
+    <div
+      className={cn(
+        "w-full rounded-2xl p-8 flex flex-col gap-6",
+        isPassport ? "bg-primary" : "bg-foreground",
+      )}
+    >
       <div className="w-full flex flex-col gap-4 sm:flex-row sm:justify-between">
         <div className="flex flex-col gap-1 items-center sm:items-start">
           <span className="text-xs font-semibold uppercase tracking-wide text-white/70">
-            {variant === "passport" ? "Passaporte" : "Visto Americano"}
+            {isPassport ? "Passaporte ou Renovação" : "Visto Americano"}
           </span>
           <h6 className="text-2xl font-semibold text-white">{profileName}</h6>
 
@@ -154,19 +160,24 @@ export function ProfileFormBox({
       </div>
 
       <div className="w-full flex flex-col gap-4">
-        <div className="w-full flex flex-col gap-4 items-center p-9 bg-[#6A7DA6] rounded-lg sm:flex-row sm:justify-around">
-          {variant === "passport" ? (
+        <div
+          className={cn(
+            "w-full flex flex-col gap-4 items-center p-9 rounded-lg sm:flex-row sm:justify-around",
+            isPassport ? "bg-[#8FB4E0]" : "bg-[#6A7DA6]",
+          )}
+        >
+          {isPassport ? (
             <>
               <div className="w-fit flex flex-col items-center gap-1">
-                <span className="text-sm font-medium text-white/75">Tipo</span>
+                <span className="text-sm font-medium text-white/80">Tipo</span>
                 <span className="text-lg font-semibold text-white">{passportTypeLabel}</span>
               </div>
               <div className="w-fit flex flex-col items-center gap-1">
-                <span className="text-sm font-medium text-white/75">Protocolo</span>
+                <span className="text-sm font-medium text-white/80">Protocolo</span>
                 <span className="text-lg font-semibold text-white">{protocol || "---"}</span>
               </div>
               <div className="w-fit flex flex-col items-center gap-1">
-                <span className="text-sm font-medium text-white/75">Validade</span>
+                <span className="text-sm font-medium text-white/80">Validade</span>
                 <span className="text-lg font-semibold text-white">
                   {expireDate ? format(new Date(expireDate), "dd/MM/yyyy") : "--/--/----"}
                 </span>
@@ -195,17 +206,15 @@ export function ProfileFormBox({
         </div>
 
         <div className="w-full flex flex-col gap-2 items-center sm:flex-row sm:justify-between">
-          {variant === "visa" ? (
-            <div className="flex items-center gap-2 h-5">
-              <span className="text-secondary text-base font-medium">Status DS</span>
-              <div className="h-full w-[1.5px] rounded-full bg-secondary" />
-              <strong className="text-secondary text-base font-semibold">{statusDSFormatted}</strong>
-            </div>
-          ) : (
-            <span className="text-secondary text-sm font-medium">
-              Destino de envio administrativo será definido em seguida.
+          <div className="flex items-center gap-2 h-5">
+            <span className="text-secondary text-base font-medium">
+              {isPassport ? "Status" : "Status DS"}
             </span>
-          )}
+            <div className="h-full w-[1.5px] rounded-full bg-secondary" />
+            <strong className="text-secondary text-base font-semibold">
+              {isPassport ? (statusForm === "filled" ? "Enviado" : "Aguardando") : statusDSFormatted}
+            </strong>
+          </div>
 
           <span className="text-secondary text-sm font-medium">
             Última Atualização: {updatedAt ? format(new Date(updatedAt), "dd/MM/yyyy") : "--/--/----"}

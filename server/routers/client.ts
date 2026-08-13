@@ -99,6 +99,7 @@ async function getGroupServiceMembers(
           role: Role.CLIENT,
           group: account.group,
           OR: [
+            { id: account.id },
             category === "passport"
               ? { wantsPassport: true }
               : { wantsAmericanVisa: true },
