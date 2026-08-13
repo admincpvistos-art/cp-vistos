@@ -93,59 +93,55 @@ function ServiceSelectionFields({
   disabled?: boolean;
 }) {
   return (
-    <div className="flex flex-col gap-3">
-      <FormLabel className="text-base font-medium text-foreground/70">
+    <div className="flex flex-col gap-2">
+      <FormLabel className="text-sm font-medium text-foreground/70">
         Serviço contratado
       </FormLabel>
-      <p className="text-sm text-foreground/60 -mt-1">
-        Obrigatório. Pode marcar os dois.
+      <p className="text-xs text-foreground/60">
+        Obrigatório. Se contratou os dois serviços, marque os dois.
       </p>
-      <FormField
-        name={visaName}
-        render={({ field }) => (
-          <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-xl border border-secondary/40 bg-white p-3">
-            <FormControl>
-              <Checkbox
-                checked={field.value}
-                disabled={disabled}
-                onCheckedChange={(checked) => field.onChange(checked === true)}
-                className="mt-0.5 rounded"
-              />
-            </FormControl>
-            <div className="space-y-0.5 leading-none">
-              <FormLabel className="text-sm font-medium cursor-pointer">
+      <div className="flex gap-2">
+        <FormField
+          name={visaName}
+          render={({ field }) => (
+            <FormItem className="flex flex-1 flex-row items-center space-x-2 space-y-0 rounded-lg border border-secondary/40 bg-white px-2.5 py-2">
+              <FormControl>
+                <Checkbox
+                  checked={field.value}
+                  disabled={disabled}
+                  onCheckedChange={(checked) =>
+                    field.onChange(checked === true)
+                  }
+                  className="rounded"
+                />
+              </FormControl>
+              <FormLabel className="text-sm font-medium cursor-pointer leading-none">
                 Visto Americano
               </FormLabel>
-              <p className="text-xs text-foreground/55">
-                Entra em Clientes Ativos após o formulário na área do cliente.
-              </p>
-            </div>
-          </FormItem>
-        )}
-      />
-      <FormField
-        name={passportName}
-        render={({ field }) => (
-          <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-xl border border-secondary/40 bg-white p-3">
-            <FormControl>
-              <Checkbox
-                checked={field.value}
-                disabled={disabled}
-                onCheckedChange={(checked) => field.onChange(checked === true)}
-                className="mt-0.5 rounded"
-              />
-            </FormControl>
-            <div className="space-y-0.5 leading-none">
-              <FormLabel className="text-sm font-medium cursor-pointer">
+            </FormItem>
+          )}
+        />
+        <FormField
+          name={passportName}
+          render={({ field }) => (
+            <FormItem className="flex flex-1 flex-row items-center space-x-2 space-y-0 rounded-lg border border-secondary/40 bg-white px-2.5 py-2">
+              <FormControl>
+                <Checkbox
+                  checked={field.value}
+                  disabled={disabled}
+                  onCheckedChange={(checked) =>
+                    field.onChange(checked === true)
+                  }
+                  className="rounded"
+                />
+              </FormControl>
+              <FormLabel className="text-sm font-medium cursor-pointer leading-none">
                 Passaporte
               </FormLabel>
-              <p className="text-xs text-foreground/55">
-                Abre a linha imediatamente na tabela de Passaporte.
-              </p>
-            </div>
-          </FormItem>
-        )}
-      />
+            </FormItem>
+          )}
+        />
+      </div>
       <FormField
         name={visaName}
         render={() => <FormMessage className="text-sm text-red-500" />}

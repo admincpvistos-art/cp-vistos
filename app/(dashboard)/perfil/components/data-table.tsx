@@ -2,7 +2,7 @@
 
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
-import { Search } from "lucide-react";
+import { Loader2, Search, UserPlus } from "lucide-react";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -19,6 +19,13 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import useClientDetailsModalStore from "@/constants/stores/useClientDetailsModalStore";
 
@@ -29,9 +36,116 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   category: "american_visa" | "passport" | "e_ta";
+  enableGroupAdd?: boolean;
 }
 
-export function DataTable<TData, TValue>({ columns, data, category }: DataTableProps<TData, TValue>) {
+function formatCpf(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  return digits
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+}
+
+function AddGroupMemberForm({
+  category,
+}: {
+  category: "american_visa" | "passport" | "e_ta";
+}) {
+  const [name, setName] = useState("");
+  const [cpf, setCpf] = useState("");
+  const [group, setGroup] = useState("");
+  const utils = trpc.useUtils();
+
+  const groupsQuery = trpc.userRouter.getClientGroups.useQuery();
+
+  const { mutate, isPending } = trpc.userRouter.addGroupMember.useMutation({
+    onSuccess: (data) => {
+      setName("");
+      setCpf("");
+      toast.success(data.message);
+      utils.userRouter.getActiveClients.invalidate({ category });
+      utils.userRouter.getClientGroups.invalidate();
+      utils.serviceCostRouter.getRows.invalidate();
+      utils.financeRouter.getChecklist.invalidate();
+      utils.financeRouter.getSummary.invalidate();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Não foi possível adicionar");
+    },
+  });
+
+  function handleAdd() {
+    if (!name.trim() || name.trim().length < 4) {
+      toast.error("Informe o nome completo");
+      return;
+    }
+    if (cpf.length !== 14) {
+      toast.error("CPF inválido");
+      return;
+    }
+    if (!group) {
+      toast.error("Selecione o grupo");
+      return;
+    }
+
+    mutate({ name: name.trim(), cpf, group, category });
+  }
+
+  return (
+    <div className="w-full flex flex-col gap-2 lg:flex-row lg:items-center">
+      <Input
+        placeholder="Nome completo"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        disabled={isPending}
+        className="h-12 lg:max-w-[220px]"
+      />
+      <Input
+        placeholder="CPF"
+        value={cpf}
+        onChange={(e) => setCpf(formatCpf(e.target.value))}
+        disabled={isPending}
+        className="h-12 lg:max-w-[160px]"
+      />
+      <Select value={group} onValueChange={setGroup} disabled={isPending}>
+        <SelectTrigger className="h-12 lg:max-w-[220px]">
+          <SelectValue placeholder="Grupo do titular" />
+        </SelectTrigger>
+        <SelectContent>
+          {groupsQuery.data?.groups.length ? (
+            groupsQuery.data.groups.map((groupName) => (
+              <SelectItem key={groupName} value={groupName}>
+                {groupName}
+              </SelectItem>
+            ))
+          ) : (
+            <SelectItem value="__empty" disabled>
+              Nenhum grupo cadastrado
+            </SelectItem>
+          )}
+        </SelectContent>
+      </Select>
+      <Button
+        type="button"
+        onClick={handleAdd}
+        disabled={isPending}
+        className="h-12"
+      >
+        {isPending ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <>
+            <UserPlus className="mr-2 h-4 w-4" />
+            Adicionar ao grupo
+          </>
+        )}
+      </Button>
+    </div>
+  );
+}
+
+export function DataTable<TData, TValue>({ columns, data, category, enableGroupAdd = false }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
@@ -180,7 +294,7 @@ export function DataTable<TData, TValue>({ columns, data, category }: DataTableP
 
   return (
     <div>
-      <div className="flex items-center py-4">
+      <div className="flex flex-col gap-3 py-4 xl:flex-row xl:items-center xl:justify-between">
         <div className="h-12 flex items-center gap-2 border border-muted/70 rounded-xl transition duration-300 bg-background px-3 py-2 text-sm group focus-within:border-primary hover:border-border w-full sm:max-w-xs">
           <Search className="w-5 h-5 text-border flex-shrink-0" strokeWidth={1.5} />
 
@@ -193,6 +307,8 @@ export function DataTable<TData, TValue>({ columns, data, category }: DataTableP
             className="flex h-full w-full transition border-0 duration-300 bg-background text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0  disabled:cursor-not-allowed disabled:opacity-50"
           />
         </div>
+
+        {enableGroupAdd && <AddGroupMemberForm category={category} />}
       </div>
 
       <div className="border rounded-xl overflow-hidden bg-white">

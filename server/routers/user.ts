@@ -378,6 +378,132 @@ export const userRouter = router({
       };
     }),
 
+  getClientGroups: collaboratorProcedure.query(async () => {
+    const titulars = await prisma.user.findMany({
+      where: {
+        role: Role.CLIENT,
+        group: { not: null },
+        payerUserId: null,
+      },
+      select: {
+        group: true,
+      },
+      orderBy: { group: "asc" },
+    });
+
+    const groups = Array.from(
+      new Set(
+        titulars
+          .map((user) => user.group?.trim())
+          .filter((group): group is string => Boolean(group)),
+      ),
+    ).sort((a, b) => a.localeCompare(b, "pt-BR"));
+
+    return { groups };
+  }),
+
+  addGroupMember: collaboratorProcedure
+    .input(
+      z.object({
+        name: z
+          .string()
+          .trim()
+          .min(4, { message: "Nome precisa ter no mínimo 4 caracteres" }),
+        cpf: z.string().refine((val) => val.length === 14, {
+          message: "CPF inválido",
+        }),
+        group: z.string().trim().min(1, { message: "Grupo é obrigatório" }),
+        category: z.enum(["american_visa", "passport", "e_ta"]),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const category =
+        input.category === "passport"
+          ? Category.passport
+          : input.category === "e_ta"
+            ? Category.e_ta
+            : Category.american_visa;
+
+      const titular = await prisma.user.findFirst({
+        where: {
+          role: Role.CLIENT,
+          group: input.group,
+          payerUserId: null,
+        },
+        select: { id: true, group: true, createdAt: true },
+      });
+
+      if (!titular) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Grupo não encontrado. Cadastre o titular primeiro.",
+        });
+      }
+
+      const existingUser = await prisma.user.findFirst({
+        where: { cpf: input.cpf },
+      });
+
+      if (existingUser) {
+        const alreadyInCategory = await prisma.profile.findFirst({
+          where: {
+            userId: existingUser.id,
+            category,
+          },
+        });
+
+        if (alreadyInCategory) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Este CPF já possui linha nesta tabela",
+          });
+        }
+
+        await createActiveProfile({
+          userId: existingUser.id,
+          name: input.name,
+          cpf: input.cpf,
+          category,
+        });
+
+        await prisma.user.update({
+          where: { id: existingUser.id },
+          data: {
+            wantsAmericanVisa:
+              existingUser.wantsAmericanVisa ||
+              category === Category.american_visa,
+            wantsPassport:
+              existingUser.wantsPassport || category === Category.passport,
+          },
+        });
+
+        return { message: "Cliente adicionado ao grupo" };
+      }
+
+      const digits = cpfDigits(input.cpf);
+      const member = await createClientWithFinanceAndProfile({
+        name: input.name,
+        email: `dependente.${digits}.${titular.id}.${Date.now()}@grupo.cpvistos`,
+        password: `dep-${titular.id}-${digits}-${Date.now()}`,
+        cpf: input.cpf,
+        group: input.group,
+        payerUserId: titular.id,
+        wantsAmericanVisa: category === Category.american_visa,
+        wantsPassport: category === Category.passport,
+      });
+
+      if (category !== Category.passport) {
+        await createActiveProfile({
+          userId: member.id,
+          name: input.name,
+          cpf: input.cpf,
+          category,
+        });
+      }
+
+      return { message: "Cliente adicionado ao grupo" };
+    }),
+
   createClient: collaboratorProcedure
     .input(
       z.object({

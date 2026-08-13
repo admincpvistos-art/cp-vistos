@@ -1,5 +1,3 @@
-import { UserRoundX } from "lucide-react";
-
 import { trpc } from "@/lib/trpc-client";
 
 import { Skeleton } from "@/components/ui/skeleton";
@@ -30,15 +28,12 @@ export function Passport() {
     );
   }
 
-  if (data?.clients.length === 0) {
-    return (
-      <div className="mt-10 w-full flex flex-col items-center justify-center gap-2 text-muted-foreground">
-        <UserRoundX className="size-8" />
-
-        <span className="text-base font-medium">Nenhum cliente encontrado</span>
-      </div>
-    );
-  }
-
-  return <DataTable columns={columns} data={data?.clients ?? []} category="passport" />;
+  return (
+    <DataTable
+      columns={columns}
+      data={data?.clients ?? []}
+      category="passport"
+      enableGroupAdd
+    />
+  );
 }
