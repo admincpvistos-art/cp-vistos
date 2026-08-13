@@ -119,7 +119,7 @@ export default function ClientAreaPage() {
                     isTitular={false}
                     formStep={0}
                   />
-                ) : null}
+                ) : null
               ) : null}
 
               {showPassportCard ? (
