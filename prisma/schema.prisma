@@ -125,6 +125,8 @@ model User {
   passwordScheduleAccount String?
   scheduleAccount         ScheduleAccount?
   payerUserId             String?          @db.ObjectId
+  wantsAmericanVisa       Boolean          @default(false)
+  wantsPassport           Boolean          @default(false)
 
   profiles       Profile[]
   annotations    Annotations[]

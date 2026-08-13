@@ -48,6 +48,8 @@
 - [x] Página pública `/cadastro` + `registerClient` + linha financeira/serviço
 - [x] Cadastro de grupo: titular completo + pessoas adicionais (nome/CPF)
 - [x] Dependentes com linha própria e valores "-" ; pagamento segue o titular
+- [x] Seleção obrigatória de serviço (Visto Americano e/ou Passaporte) no cadastro
+- [x] Passaporte cria linha imediata em Clientes Ativos; Visto Americano aguarda o formulário
 
 ## Como continuar
 

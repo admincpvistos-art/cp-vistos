@@ -84,10 +84,11 @@ function cpfDigits(cpf: string) {
   return cpf.replace(/\D/g, "");
 }
 
-async function createDefaultActiveProfile(params: {
+async function createActiveProfile(params: {
   userId: string;
   name: string;
   cpf: string;
+  category: Category;
 }) {
   await prisma.profile.create({
     data: {
@@ -97,7 +98,7 @@ async function createDefaultActiveProfile(params: {
       DSValid: addDays(new Date(), 30),
       visaType: VisaType.primeiro_visto,
       visaClass: VisaClass.B2_B1,
-      category: Category.american_visa,
+      category: params.category,
       paymentStatus: PaymentStatus.pending,
       user: {
         connect: { id: params.userId },
@@ -113,6 +114,8 @@ async function createClientWithFinanceAndProfile(params: {
   cpf: string;
   group: string;
   payerUserId?: string;
+  wantsAmericanVisa: boolean;
+  wantsPassport: boolean;
 }) {
   const account = await prisma.user.create({
     data: {
@@ -123,6 +126,8 @@ async function createClientWithFinanceAndProfile(params: {
       role: Role.CLIENT,
       group: params.group,
       payerUserId: params.payerUserId,
+      wantsAmericanVisa: params.wantsAmericanVisa,
+      wantsPassport: params.wantsPassport,
     },
   });
 
@@ -140,11 +145,16 @@ async function createClientWithFinanceAndProfile(params: {
     },
   });
 
-  await createDefaultActiveProfile({
-    userId: account.id,
-    name: params.name,
-    cpf: params.cpf,
-  });
+  // Passaporte entra imediatamente em Clientes Ativos.
+  // Visto americano só após o formulário da área do cliente.
+  if (params.wantsPassport) {
+    await createActiveProfile({
+      userId: account.id,
+      name: params.name,
+      cpf: params.cpf,
+      category: Category.passport,
+    });
+  }
 
   return account;
 }
@@ -256,22 +266,38 @@ export const userRouter = router({
             }),
           additionalPeople: z
             .array(
-              z.object({
-                name: z
-                  .string()
-                  .trim()
-                  .min(4, { message: "Nome precisa ter no mínimo 4 caracteres" }),
-                cpf: z.string().refine((val) => val.length === 14, {
-                  message: "CPF inválido",
-                }),
-              }),
+              z
+                .object({
+                  name: z
+                    .string()
+                    .trim()
+                    .min(4, { message: "Nome precisa ter no mínimo 4 caracteres" }),
+                  cpf: z.string().refine((val) => val.length === 14, {
+                    message: "CPF inválido",
+                  }),
+                  wantsAmericanVisa: z.boolean(),
+                  wantsPassport: z.boolean(),
+                })
+                .refine(
+                  (person) => person.wantsAmericanVisa || person.wantsPassport,
+                  {
+                    message: "Selecione pelo menos um serviço",
+                    path: ["wantsAmericanVisa"],
+                  },
+                ),
             )
             .optional()
             .default([]),
+          wantsAmericanVisa: z.boolean(),
+          wantsPassport: z.boolean(),
         })
         .refine((data) => data.password === data.passwordConfirm, {
           message: "As senhas não coincidem",
           path: ["passwordConfirm"],
+        })
+        .refine((data) => data.wantsAmericanVisa || data.wantsPassport, {
+          message: "Selecione pelo menos um serviço",
+          path: ["wantsAmericanVisa"],
         })
         .superRefine((data, ctx) => {
           const cpfs = [
@@ -328,6 +354,8 @@ export const userRouter = router({
         password: input.password,
         cpf: input.cpf,
         group: input.name,
+        wantsAmericanVisa: input.wantsAmericanVisa,
+        wantsPassport: input.wantsPassport,
       });
 
       for (const person of additionalPeople) {
@@ -339,6 +367,8 @@ export const userRouter = router({
           cpf: person.cpf,
           group: input.name,
           payerUserId: titular.id,
+          wantsAmericanVisa: person.wantsAmericanVisa,
+          wantsPassport: person.wantsPassport,
         });
       }
 

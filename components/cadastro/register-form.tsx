@@ -13,6 +13,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Form,
   FormControl,
@@ -42,20 +43,36 @@ const formSchema = z
       .min(6, "Confirmação precisa ter no mínimo 6 caracteres"),
     additionalPeople: z
       .array(
-        z.object({
-          name: z
-            .string()
-            .trim()
-            .min(4, "Nome completo precisa ter no mínimo 4 caracteres"),
-          cpf: z.string().refine((val) => val.length === 14, "CPF inválido"),
-        }),
+        z
+          .object({
+            name: z
+              .string()
+              .trim()
+              .min(4, "Nome completo precisa ter no mínimo 4 caracteres"),
+            cpf: z.string().refine((val) => val.length === 14, "CPF inválido"),
+            wantsAmericanVisa: z.boolean(),
+            wantsPassport: z.boolean(),
+          })
+          .refine(
+            (person) => person.wantsAmericanVisa || person.wantsPassport,
+            {
+              message: "Selecione pelo menos um serviço",
+              path: ["wantsAmericanVisa"],
+            },
+          ),
       )
       .optional()
       .default([]),
+    wantsAmericanVisa: z.boolean(),
+    wantsPassport: z.boolean(),
   })
   .refine((data) => data.password === data.passwordConfirm, {
     message: "As senhas não coincidem",
     path: ["passwordConfirm"],
+  })
+  .refine((data) => data.wantsAmericanVisa || data.wantsPassport, {
+    message: "Selecione pelo menos um serviço",
+    path: ["wantsAmericanVisa"],
   });
 
 function formatCpf(value: string) {
@@ -64,6 +81,77 @@ function formatCpf(value: string) {
     .replace(/(\d{3})(\d)/, "$1.$2")
     .replace(/(\d{3})(\d)/, "$1.$2")
     .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+}
+
+function ServiceSelectionFields({
+  visaName,
+  passportName,
+  disabled,
+}: {
+  visaName: "wantsAmericanVisa" | `additionalPeople.${number}.wantsAmericanVisa`;
+  passportName: "wantsPassport" | `additionalPeople.${number}.wantsPassport`;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      <FormLabel className="text-base font-medium text-foreground/70">
+        Serviço contratado
+      </FormLabel>
+      <p className="text-sm text-foreground/60 -mt-1">
+        Obrigatório. Pode marcar os dois.
+      </p>
+      <FormField
+        name={visaName}
+        render={({ field }) => (
+          <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-xl border border-secondary/40 bg-white p-3">
+            <FormControl>
+              <Checkbox
+                checked={field.value}
+                disabled={disabled}
+                onCheckedChange={(checked) => field.onChange(checked === true)}
+                className="mt-0.5 rounded"
+              />
+            </FormControl>
+            <div className="space-y-0.5 leading-none">
+              <FormLabel className="text-sm font-medium cursor-pointer">
+                Visto Americano
+              </FormLabel>
+              <p className="text-xs text-foreground/55">
+                Entra em Clientes Ativos após o formulário na área do cliente.
+              </p>
+            </div>
+          </FormItem>
+        )}
+      />
+      <FormField
+        name={passportName}
+        render={({ field }) => (
+          <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-xl border border-secondary/40 bg-white p-3">
+            <FormControl>
+              <Checkbox
+                checked={field.value}
+                disabled={disabled}
+                onCheckedChange={(checked) => field.onChange(checked === true)}
+                className="mt-0.5 rounded"
+              />
+            </FormControl>
+            <div className="space-y-0.5 leading-none">
+              <FormLabel className="text-sm font-medium cursor-pointer">
+                Passaporte
+              </FormLabel>
+              <p className="text-xs text-foreground/55">
+                Abre a linha imediatamente na tabela de Passaporte.
+              </p>
+            </div>
+          </FormItem>
+        )}
+      />
+      <FormField
+        name={visaName}
+        render={() => <FormMessage className="text-sm text-red-500" />}
+      />
+    </div>
+  );
 }
 
 export function RegisterForm() {
@@ -87,6 +175,8 @@ export function RegisterForm() {
       password: "",
       passwordConfirm: "",
       additionalPeople: [],
+      wantsAmericanVisa: false,
+      wantsPassport: false,
     },
   });
 
@@ -135,7 +225,12 @@ export function RegisterForm() {
   function addPerson() {
     form.setValue("additionalPeople", [
       ...additionalPeople,
-      { name: "", cpf: "" },
+      {
+        name: "",
+        cpf: "",
+        wantsAmericanVisa: false,
+        wantsPassport: false,
+      },
     ]);
   }
 
@@ -218,6 +313,12 @@ export function RegisterForm() {
                     <FormMessage className="text-sm text-red-500" />
                   </FormItem>
                 )}
+              />
+
+              <ServiceSelectionFields
+                visaName="wantsAmericanVisa"
+                passportName="wantsPassport"
+                disabled={isPending}
               />
 
               <FormField
@@ -335,7 +436,7 @@ export function RegisterForm() {
                   </h2>
                   <p className="text-sm text-foreground/60">
                     O titular dá nome ao grupo e é quem paga. Cada pessoa
-                    adicional vira uma linha própria, só com nome e CPF.
+                    adicional informa nome, CPF e o serviço contratado.
                   </p>
                 </div>
 
@@ -401,6 +502,12 @@ export function RegisterForm() {
                           <FormMessage className="text-sm text-red-500" />
                         </FormItem>
                       )}
+                    />
+
+                    <ServiceSelectionFields
+                      visaName={`additionalPeople.${index}.wantsAmericanVisa`}
+                      passportName={`additionalPeople.${index}.wantsPassport`}
+                      disabled={isPending}
                     />
                   </div>
                 ))}
