@@ -44,8 +44,6 @@ const FINANCE_ADMIN_EMAILS = [
 
 const collaboratorTools = [
   { href: "/perfil/clientes", label: "Clientes", icon: Users },
-  { href: "/perfil/conferir-formularios", label: "Conferir Formulários", icon: ClipboardCheck },
-  { href: "/perfil/preencher-ds160", label: "Preencher DS-160", icon: FileInput },
   { href: "/perfil/prospects", label: "Prospects", icon: Contact },
   { href: "/perfil/arquivados", label: "Arquivados", icon: Archive },
   { href: "/perfil/criar-conta", label: "Criar Conta", icon: UserPlus },
@@ -272,7 +270,30 @@ export function UserAccountMenu() {
                     </Link>
                   </DropdownMenuItem>
 
-                  {href === "/perfil/preencher-ds160" && canAccessFinance && (
+                  {href === "/perfil/clientes" && isAdmin ? (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link
+                          href="/perfil/conferir-formularios"
+                          className="cursor-pointer"
+                        >
+                          <ClipboardCheck className="mr-2 h-4 w-4" />
+                          Conferir Formulários
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link
+                          href="/perfil/preencher-ds160"
+                          className="cursor-pointer"
+                        >
+                          <FileInput className="mr-2 h-4 w-4" />
+                          Preencher DS-160
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
+                  ) : null}
+
+                  {href === "/perfil/clientes" && canAccessFinance && (
                     <>
                       <DropdownMenuItem asChild>
                         <Link
