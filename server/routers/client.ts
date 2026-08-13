@@ -15,6 +15,83 @@ import {
 
 import { isUserAuthedProcedure, router } from "../trpc";
 import prisma from "@/lib/prisma";
+import { cpfsMatch, namesMatch } from "@/lib/person-name";
+
+async function assertTitularPassportIdentity(
+  profileId: string,
+  fullName?: string | null,
+  cpf?: string | null,
+) {
+  if (!fullName) {
+    return;
+  }
+
+  const profile = await prisma.profile.findUnique({
+    where: { id: profileId },
+    include: {
+      user: {
+        select: {
+          name: true,
+          cpf: true,
+          payerUserId: true,
+        },
+      },
+    },
+  });
+
+  if (!profile || profile.user.payerUserId) {
+    return;
+  }
+
+  if (!namesMatch(fullName, profile.user.name)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message:
+        "Nome completo do titular deve coincidir com o cadastro da conta.",
+    });
+  }
+
+  if (!cpfsMatch(cpf, profile.user.cpf)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "CPF do titular deve coincidir com o cadastro da conta.",
+    });
+  }
+}
+
+async function syncPassportPersonName(profileId: string, fullName?: string | null) {
+  if (!fullName) {
+    return;
+  }
+
+  const profile = await prisma.profile.findUnique({
+    where: { id: profileId },
+    select: {
+      userId: true,
+      user: {
+        select: {
+          payerUserId: true,
+        },
+      },
+    },
+  });
+
+  if (!profile) {
+    return;
+  }
+
+  await prisma.profile.update({
+    where: { id: profileId },
+    data: { name: fullName },
+  });
+
+  if (profile.user.payerUserId) {
+    await prisma.user.update({
+      where: { id: profile.userId },
+      data: { name: fullName },
+    });
+  }
+}
 
 type ServiceCategory = "american_visa" | "passport";
 
@@ -437,13 +514,6 @@ export const clientRouter = router({
   addDependent: isUserAuthedProcedure
     .input(
       z.object({
-        name: z
-          .string()
-          .trim()
-          .min(4, { message: "Nome precisa ter no mínimo 4 caracteres" }),
-        cpf: z.string().refine((val) => val.replace(/\D/g, "").length === 11, {
-          message: "CPF inválido",
-        }),
         category: z.enum(["american_visa", "passport"]),
       }),
     )
@@ -467,22 +537,6 @@ export const clientRouter = router({
         });
       }
 
-      const cpfDigits = opts.input.cpf.replace(/\D/g, "");
-      const formattedCpf = opts.input.cpf.length === 14
-        ? opts.input.cpf
-        : cpfDigits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
-
-      const existing = await prisma.user.findFirst({
-        where: { cpf: formattedCpf },
-      });
-
-      if (existing) {
-        throw new TRPCError({
-          code: "CONFLICT",
-          message: "Este CPF já está cadastrado",
-        });
-      }
-
       const group = account.group?.trim() || account.name;
 
       if (!account.group) {
@@ -496,13 +550,13 @@ export const clientRouter = router({
         opts.input.category === "passport"
           ? Category.passport
           : Category.american_visa;
+      const stamp = Date.now();
 
       const member = await prisma.user.create({
         data: {
-          name: opts.input.name,
-          email: `dependente.${cpfDigits}.${account.id}.${Date.now()}@grupo.cpvistos`,
-          password: `dep-${account.id}-${cpfDigits}-${Date.now()}`,
-          cpf: formattedCpf,
+          name: "Dependente",
+          email: `dependente.${account.id}.${stamp}@grupo.cpvistos`,
+          password: `dep-${account.id}-${stamp}`,
           role: Role.CLIENT,
           group,
           payerUserId: account.id,
@@ -527,8 +581,7 @@ export const clientRouter = router({
 
       const profile = await prisma.profile.create({
         data: {
-          name: opts.input.name,
-          cpf: formattedCpf,
+          name: "Dependente",
           DSNumber: "",
           DSValid: addDays(new Date(), 30),
           visaType: VisaType.primeiro_visto,
@@ -615,6 +668,12 @@ export const clientRouter = router({
         });
       }
 
+      await assertTitularPassportIdentity(
+        opts.input.profileId,
+        opts.input.fullName,
+        opts.input.cpf,
+      );
+
       const data = {
         serviceType: opts.input.serviceType || null,
         fullName: opts.input.fullName || null,
@@ -649,6 +708,8 @@ export const clientRouter = router({
         },
         update: data,
       });
+
+      await syncPassportPersonName(opts.input.profileId, opts.input.fullName);
 
       await prisma.profile.update({
         where: {
@@ -692,6 +753,12 @@ export const clientRouter = router({
         });
       }
 
+      await assertTitularPassportIdentity(
+        opts.input.profileId,
+        opts.input.fullName,
+        opts.input.cpf,
+      );
+
       const data = {
         serviceType: opts.input.serviceType,
         fullName: opts.input.fullName,
@@ -726,6 +793,8 @@ export const clientRouter = router({
         },
         update: data,
       });
+
+      await syncPassportPersonName(opts.input.profileId, opts.input.fullName);
 
       await prisma.profile.update({
         where: {

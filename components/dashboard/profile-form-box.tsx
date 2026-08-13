@@ -1,12 +1,10 @@
 "use client";
 
 import { toast } from "sonner";
-import { ArrowRight, FileText, Loader2, UserPlus } from "lucide-react";
+import { ArrowRight, FileText, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc-client";
 
@@ -21,14 +19,6 @@ interface Props {
   mode?: "fill" | "add";
 }
 
-function maskCpf(value: string) {
-  const digits = value.replace(/\D/g, "").slice(0, 11);
-  return digits
-    .replace(/^(\d{3})(\d)/, "$1.$2")
-    .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
-    .replace(/\.(\d{3})(\d)/, ".$1-$2");
-}
-
 export function ProfileFormBox({
   variant,
   profileId,
@@ -41,9 +31,8 @@ export function ProfileFormBox({
 }: Props) {
   const router = useRouter();
   const isPassport = variant === "passport";
+  const isAdd = mode === "add";
   const utils = trpc.useUtils();
-  const [dependentName, setDependentName] = useState("");
-  const [dependentCpf, setDependentCpf] = useState("");
 
   const formLink = profileId
     ? isPassport
@@ -68,7 +57,6 @@ export function ProfileFormBox({
 
   const { mutate: addDependent, isPending: isAdding } = trpc.clientRouter.addDependent.useMutation({
     onSuccess({ profileId: createdProfileId }) {
-      toast.success("Dependente adicionado");
       utils.clientRouter.getAreaData.invalidate();
       router.push(
         isPassport
@@ -77,11 +65,18 @@ export function ProfileFormBox({
       );
     },
     onError(error) {
-      toast.error(error.message || "Não foi possível adicionar o dependente");
+      toast.error(error.message || "Não foi possível abrir o formulário do dependente");
     },
   });
 
   function openForm() {
+    if (isAdd) {
+      addDependent({
+        category: isPassport ? "passport" : "american_visa",
+      });
+      return;
+    }
+
     if (!profileId) {
       startMemberForm({
         userId: memberUserId,
@@ -93,24 +88,16 @@ export function ProfileFormBox({
     router.push(formLink);
   }
 
-  function submitDependent() {
-    addDependent({
-      name: dependentName.trim(),
-      cpf: dependentCpf,
-      category: isPassport ? "passport" : "american_visa",
-    });
-  }
-
-  const actionLabel =
-    statusForm === "filling"
-      ? "Continuar preenchimento"
-      : statusForm === "filled"
-        ? "Ver resumo"
-        : "Preencher formulário";
-
+  const busy = isStarting || isAdding;
+  const showTitular = !isAdd && isTitular;
+  const title = isAdd ? "Adicionar dependente" : profileName;
   const description = isPassport
-    ? "Dados para primeiro passaporte ou renovação. Datas, protocolo e andamento ficam no checklist depois do envio."
-    : "Dados do visto americano. CASV, entrevista, número DS e status ficam no checklist depois que você e a equipe atualizarem.";
+    ? showTitular
+      ? "Preencha o mesmo formulário com os dados do cadastro de login. Depois do salvamento, este card passa a ser para família ou amigos."
+      : "Abre o mesmo formulário em branco para o dependente. Nome e sobrenome entram no checklist ao salvar."
+    : showTitular
+      ? "Preencha o mesmo formulário com os dados do cadastro de login. Depois do salvamento, este card passa a ser para família ou amigos."
+      : "Abre o mesmo formulário em branco para o dependente. Nome e sobrenome entram no checklist ao salvar.";
 
   return (
     <div
@@ -119,87 +106,35 @@ export function ProfileFormBox({
         isPassport ? "bg-primary" : "bg-foreground",
       )}
     >
-      {mode === "add" ? (
-        <>
-          <div className="flex flex-col gap-3">
-            <span className="text-xs font-semibold uppercase tracking-wide text-white/70">
-              {isPassport ? "Passaporte ou Renovação" : "Visto Americano"}
-            </span>
-            <h6 className="text-2xl font-semibold text-white">Adicionar dependente</h6>
-            <span className="w-fit px-2 py-1 text-sm font-semibold uppercase text-center rounded-lg bg-white/15 text-white">
-              Família ou amigos
-            </span>
-            <p className="text-sm text-white/80 leading-relaxed max-w-md">
-              Inclua quem adquiriu o serviço com você. Depois do salvamento, a linha entra no checklist e a edição
-              continua por lá.
-            </p>
-          </div>
+      <div className="flex flex-col gap-3">
+        <span className="text-xs font-semibold uppercase tracking-wide text-white/70">
+          {isPassport ? "Passaporte ou Renovação" : "Visto Americano"}
+        </span>
+        <h6 className="text-2xl font-semibold text-white">{title}</h6>
+        <span className="w-fit px-2 py-1 text-sm font-semibold uppercase text-center rounded-lg bg-white/15 text-white">
+          {showTitular ? "Titular" : "Família ou amigos"}
+        </span>
+        <p className="text-sm text-white/80 leading-relaxed max-w-md">{description}</p>
+      </div>
 
-          <div className="mt-auto flex flex-col gap-3">
-            <Input
-              value={dependentName}
-              onChange={(event) => setDependentName(event.target.value)}
-              placeholder="Nome completo"
-              className="h-12 bg-white text-foreground"
-            />
-            <Input
-              value={dependentCpf}
-              onChange={(event) => setDependentCpf(maskCpf(event.target.value))}
-              placeholder="CPF"
-              className="h-12 bg-white text-foreground"
-            />
-            <Button
-              variant="secondary"
-              size="xl"
-              className="w-full h-14 rounded-2xl text-base font-semibold justify-between px-6"
-              disabled={isAdding}
-              onClick={submitDependent}
-            >
-              <span className="flex items-center gap-2">
-                {isAdding ? <Loader2 className="size-5 animate-spin" /> : <UserPlus className="size-5" strokeWidth={1.75} />}
-                Adicionar e preencher
-              </span>
-              <ArrowRight className="size-5" strokeWidth={1.75} />
-            </Button>
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="flex flex-col gap-3">
-            <span className="text-xs font-semibold uppercase tracking-wide text-white/70">
-              {isPassport ? "Passaporte ou Renovação" : "Visto Americano"}
-            </span>
-            <h6 className="text-2xl font-semibold text-white">{profileName}</h6>
-            <span className="w-fit px-2 py-1 text-sm font-semibold uppercase text-center rounded-lg bg-white/15 text-white">
-              {isTitular ? "Titular" : "Dependente"}
-            </span>
-            <p className="text-sm text-white/80 leading-relaxed max-w-md">{description}</p>
-          </div>
-
-          <div className="mt-auto flex flex-col gap-3">
-            <Button
-              variant="secondary"
-              size="xl"
-              className="w-full h-14 rounded-2xl text-base font-semibold justify-between px-6"
-              disabled={isStarting}
-              onClick={openForm}
-            >
-              <span className="flex items-center gap-2">
-                {isStarting ? (
-                  <Loader2 className="size-5 animate-spin" />
-                ) : (
-                  <FileText className="size-5" strokeWidth={1.75} />
-                )}
-                {actionLabel}
-              </span>
-              <ArrowRight className="size-5" strokeWidth={1.75} />
-            </Button>
-            <span className="text-xs text-white/70 text-center sm:text-left">
-              Acompanhe o processo no checklist abaixo.
-            </span>
-          </div>
-        </>
-      )}
+      <div className="mt-auto flex flex-col gap-3">
+        <Button
+          variant="secondary"
+          size="xl"
+          className="w-full h-14 rounded-2xl text-base font-semibold justify-between px-6"
+          disabled={busy}
+          onClick={openForm}
+        >
+          <span className="flex items-center gap-2">
+            {busy ? <Loader2 className="size-5 animate-spin" /> : <FileText className="size-5" strokeWidth={1.75} />}
+            Preencher formulário
+          </span>
+          <ArrowRight className="size-5" strokeWidth={1.75} />
+        </Button>
+        <span className="text-xs text-white/70 text-center sm:text-left">
+          A edição de quem já salvou fica no checklist abaixo.
+        </span>
+      </div>
     </div>
   );
 }

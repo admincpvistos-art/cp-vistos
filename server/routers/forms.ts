@@ -7,7 +7,7 @@ import { NotificationStatusForm, StatusForm } from "@prisma/client";
 import isEmail from "validator/lib/isEmail";
 import { differenceInYears, parse } from "date-fns";
 import { fromZonedTime } from "date-fns-tz";
-import { exportTraceState } from "next/dist/trace";
+import { cpfsMatch, namesMatch } from "@/lib/person-name";
 
 function isFormLocked(statusForm: StatusForm, formLocked: boolean | null) {
   return statusForm === StatusForm.filled && formLocked !== false;
@@ -29,6 +29,90 @@ async function assertFormNotLocked(profileId: string) {
       code: "FORBIDDEN",
       message:
         "Formulário enviado e bloqueado. Aguarde o desbloqueio do administrador.",
+    });
+  }
+}
+
+async function assertTitularIdentity(
+  profileId: string,
+  firstName?: string | null,
+  lastName?: string | null,
+  cpf?: string | null,
+) {
+  if (!firstName || !lastName) {
+    return;
+  }
+
+  const profile = await prisma.profile.findUnique({
+    where: {
+      id: profileId,
+    },
+    include: {
+      user: {
+        select: {
+          name: true,
+          cpf: true,
+          payerUserId: true,
+        },
+      },
+    },
+  });
+
+  if (!profile || profile.user.payerUserId) {
+    return;
+  }
+
+  if (!namesMatch(`${firstName} ${lastName}`, profile.user.name)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message:
+        "Nome e sobrenome do titular devem coincidir com o cadastro da conta.",
+    });
+  }
+
+  if (!cpfsMatch(cpf, profile.user.cpf)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "CPF do titular deve coincidir com o cadastro da conta.",
+    });
+  }
+}
+
+async function syncFormPersonName(
+  profileId: string,
+  firstName?: string | null,
+  lastName?: string | null,
+) {
+  if (!firstName || !lastName) {
+    return;
+  }
+
+  const displayName = `${firstName} ${lastName}`.trim();
+  const profile = await prisma.profile.findUnique({
+    where: { id: profileId },
+    select: {
+      userId: true,
+      user: {
+        select: {
+          payerUserId: true,
+        },
+      },
+    },
+  });
+
+  if (!profile) {
+    return;
+  }
+
+  await prisma.profile.update({
+    where: { id: profileId },
+    data: { name: displayName },
+  });
+
+  if (profile.user.payerUserId) {
+    await prisma.user.update({
+      where: { id: profile.userId },
+      data: { name: displayName },
     });
   }
 }
@@ -347,6 +431,9 @@ export const formsRouter = router({
         USSocialSecurityNumber,
         USTaxpayerIDNumber,
       } = opts.input;
+
+      await assertTitularIdentity(profileId, firstName, lastName, cpf);
+
       let profileUpdated;
 
       if (isEditing) {
@@ -422,6 +509,8 @@ export const formsRouter = router({
           message: "Erro ao procurar o formulário",
         });
       }
+
+      await syncFormPersonName(profileId, firstName, lastName);
 
       await prisma.form.update({
         where: {
@@ -528,6 +617,9 @@ export const formsRouter = router({
           message: "Erro ao procurar o formulário",
         });
       }
+
+      await assertTitularIdentity(profileId, firstName, lastName, cpf);
+      await syncFormPersonName(profileId, firstName, lastName);
 
       await prisma.form.update({
         where: {
