@@ -108,7 +108,7 @@ export default function ClientAreaPage() {
                     isTitular={data.visa.current.isTitular}
                     formStep={data.visa.current.formStep}
                   />
-                ) : data.visa.canAddDependent && data.visa.checklist.length > 0 ? (
+                ) : data.visa.canAddDependent ? (
                   <ProfileFormBox
                     variant="visa"
                     mode="add"
@@ -133,7 +133,7 @@ export default function ClientAreaPage() {
                     isTitular={data.passport.current.isTitular}
                     formStep={data.passport.current.formStep}
                   />
-                ) : data.passport.canAddDependent && data.passport.checklist.length > 0 ? (
+                ) : data.passport.canAddDependent ? (
                   <ProfileFormBox
                     variant="passport"
                     mode="add"

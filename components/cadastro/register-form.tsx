@@ -24,6 +24,34 @@ import {
 } from "@/components/ui/form";
 import { trpc } from "@/lib/trpc-client";
 
+const personSchema = z
+  .object({
+    name: z
+      .string()
+      .trim()
+      .min(4, "Nome completo precisa ter no mínimo 4 caracteres"),
+    cpf: z.string().refine((val) => val.length === 14, "CPF inválido"),
+    wantsAmericanVisa: z.boolean(),
+    wantsPassport: z.boolean(),
+  })
+  .refine((person) => person.wantsAmericanVisa || person.wantsPassport, {
+    message: "Selecione pelo menos um serviço",
+    path: ["wantsAmericanVisa"],
+  });
+
+type PersonInput = z.infer<typeof personSchema>;
+
+const emptyPerson: PersonInput = {
+  name: "",
+  cpf: "",
+  wantsAmericanVisa: false,
+  wantsPassport: false,
+};
+
+function cpfDigits(value: string) {
+  return value.replace(/\D/g, "");
+}
+
 const formSchema = z
   .object({
     name: z
@@ -41,28 +69,7 @@ const formSchema = z
     passwordConfirm: z
       .string()
       .min(6, "Confirmação precisa ter no mínimo 6 caracteres"),
-    additionalPeople: z
-      .array(
-        z
-          .object({
-            name: z
-              .string()
-              .trim()
-              .min(4, "Nome completo precisa ter no mínimo 4 caracteres"),
-            cpf: z.string().refine((val) => val.length === 14, "CPF inválido"),
-            wantsAmericanVisa: z.boolean(),
-            wantsPassport: z.boolean(),
-          })
-          .refine(
-            (person) => person.wantsAmericanVisa || person.wantsPassport,
-            {
-              message: "Selecione pelo menos um serviço",
-              path: ["wantsAmericanVisa"],
-            },
-          ),
-      )
-      .optional()
-      .default([]),
+    additionalPeople: z.array(personSchema).optional().default([]),
     wantsAmericanVisa: z.boolean(),
     wantsPassport: z.boolean(),
   })
@@ -83,14 +90,20 @@ function formatCpf(value: string) {
     .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
 }
 
-function ServiceSelectionFields({
-  visaName,
-  passportName,
+function ServiceChoice({
+  visaChecked,
+  passportChecked,
+  onVisaChange,
+  onPassportChange,
   disabled,
+  error,
 }: {
-  visaName: "wantsAmericanVisa" | `additionalPeople.${number}.wantsAmericanVisa`;
-  passportName: "wantsPassport" | `additionalPeople.${number}.wantsPassport`;
+  visaChecked: boolean;
+  passportChecked: boolean;
+  onVisaChange: (checked: boolean) => void;
+  onPassportChange: (checked: boolean) => void;
   disabled?: boolean;
+  error?: string;
 }) {
   return (
     <div className="flex flex-col gap-2">
@@ -101,53 +114,77 @@ function ServiceSelectionFields({
         Obrigatório. Se contratou os dois serviços, marque os dois.
       </p>
       <div className="flex gap-2">
-        <FormField
-          name={visaName}
-          render={({ field }) => (
-            <FormItem className="flex flex-1 flex-row items-center space-x-2 space-y-0 rounded-lg border border-secondary/40 bg-white px-2.5 py-2">
-              <FormControl>
-                <Checkbox
-                  checked={field.value}
-                  disabled={disabled}
-                  onCheckedChange={(checked) =>
-                    field.onChange(checked === true)
-                  }
-                  className="rounded"
-                />
-              </FormControl>
-              <FormLabel className="text-sm font-medium cursor-pointer leading-none">
-                Visto Americano
-              </FormLabel>
-            </FormItem>
-          )}
-        />
-        <FormField
-          name={passportName}
-          render={({ field }) => (
-            <FormItem className="flex flex-1 flex-row items-center space-x-2 space-y-0 rounded-lg border border-secondary/40 bg-white px-2.5 py-2">
-              <FormControl>
-                <Checkbox
-                  checked={field.value}
-                  disabled={disabled}
-                  onCheckedChange={(checked) =>
-                    field.onChange(checked === true)
-                  }
-                  className="rounded"
-                />
-              </FormControl>
-              <FormLabel className="text-sm font-medium cursor-pointer leading-none">
-                Passaporte
-              </FormLabel>
-            </FormItem>
-          )}
-        />
+        <label className="flex flex-1 flex-row items-center space-x-2 space-y-0 rounded-lg border border-secondary/40 bg-white px-2.5 py-2">
+          <Checkbox
+            checked={visaChecked}
+            disabled={disabled}
+            onCheckedChange={(checked) => onVisaChange(checked === true)}
+            className="rounded"
+          />
+          <span className="text-sm font-medium cursor-pointer leading-none">
+            Visto Americano
+          </span>
+        </label>
+        <label className="flex flex-1 flex-row items-center space-x-2 space-y-0 rounded-lg border border-secondary/40 bg-white px-2.5 py-2">
+          <Checkbox
+            checked={passportChecked}
+            disabled={disabled}
+            onCheckedChange={(checked) => onPassportChange(checked === true)}
+            className="rounded"
+          />
+          <span className="text-sm font-medium cursor-pointer leading-none">
+            Passaporte
+          </span>
+        </label>
       </div>
+      {error ? <p className="text-sm text-red-500">{error}</p> : null}
+    </div>
+  );
+}
+
+function ServiceSelectionFields({
+  visaName,
+  passportName,
+  disabled,
+}: {
+  visaName: "wantsAmericanVisa";
+  passportName: "wantsPassport";
+  disabled?: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <FormField
+        name={visaName}
+        render={({ field: visaField }) => (
+          <FormField
+            name={passportName}
+            render={({ field: passportField }) => (
+              <ServiceChoice
+                visaChecked={visaField.value}
+                passportChecked={passportField.value}
+                onVisaChange={visaField.onChange}
+                onPassportChange={passportField.onChange}
+                disabled={disabled}
+              />
+            )}
+          />
+        )}
+      />
       <FormField
         name={visaName}
         render={() => <FormMessage className="text-sm text-red-500" />}
       />
     </div>
   );
+}
+
+function serviceLabels(person: PersonInput) {
+  return [
+    person.wantsAmericanVisa ? "Visto Americano" : null,
+    person.wantsPassport ? "Passaporte" : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 export function RegisterForm() {
@@ -158,6 +195,13 @@ export function RegisterForm() {
     "password",
   );
   const [userSubmitted, setUserSubmitted] = useState(false);
+  const [draftOpen, setDraftOpen] = useState(false);
+  const [draft, setDraft] = useState<PersonInput>(emptyPerson);
+  const [draftErrors, setDraftErrors] = useState<{
+    name?: string;
+    cpf?: string;
+    wantsAmericanVisa?: string;
+  }>({});
 
   const router = useRouter();
   const session = useSession();
@@ -210,24 +254,79 @@ export function RegisterForm() {
   }, [session, router, userSubmitted]);
 
   function onSubmit(values: z.infer<typeof formSchema>) {
+    if (draftOpen) {
+      const hasContent =
+        draft.name.trim() ||
+        draft.cpf.trim() ||
+        draft.wantsAmericanVisa ||
+        draft.wantsPassport;
+
+      if (hasContent) {
+        toast.error(
+          "Salve o dependente em preenchimento antes de criar a conta.",
+        );
+        return;
+      }
+    }
+
     registerClient({
       ...values,
-      additionalPeople: (values.additionalPeople ?? []).filter(
-        (person) => person.name.trim() || person.cpf.trim(),
-      ),
+      additionalPeople: values.additionalPeople ?? [],
     });
   }
 
   function addPerson() {
-    form.setValue("additionalPeople", [
-      ...additionalPeople,
-      {
-        name: "",
-        cpf: "",
-        wantsAmericanVisa: false,
-        wantsPassport: false,
-      },
-    ]);
+    if (draftOpen) {
+      toast.message("Salve o dependente atual antes de adicionar outro.");
+      return;
+    }
+
+    setDraft(emptyPerson);
+    setDraftErrors({});
+    setDraftOpen(true);
+  }
+
+  function cancelDraft() {
+    setDraft(emptyPerson);
+    setDraftErrors({});
+    setDraftOpen(false);
+  }
+
+  function savePerson() {
+    const parsed = personSchema.safeParse(draft);
+
+    if (!parsed.success) {
+      const nextErrors: {
+        name?: string;
+        cpf?: string;
+        wantsAmericanVisa?: string;
+      } = {};
+
+      for (const issue of parsed.error.issues) {
+        const field = issue.path[0];
+        if (field === "name" || field === "cpf" || field === "wantsAmericanVisa") {
+          nextErrors[field] = issue.message;
+        }
+      }
+
+      setDraftErrors(nextErrors);
+      return;
+    }
+
+    const titularCpf = cpfDigits(form.getValues("cpf"));
+    const savedCpfs = additionalPeople.map((person) => cpfDigits(person.cpf));
+    const draftCpf = cpfDigits(parsed.data.cpf);
+
+    if ((titularCpf && titularCpf === draftCpf) || savedCpfs.includes(draftCpf)) {
+      setDraftErrors({ cpf: "CPF repetido no cadastro" });
+      return;
+    }
+
+    form.setValue("additionalPeople", [...additionalPeople, parsed.data]);
+    setDraft(emptyPerson);
+    setDraftErrors({});
+    setDraftOpen(false);
+    toast.success("Dependente salvo. Adicione outro ou crie a conta.");
   }
 
   function removePerson(index: number) {
@@ -258,8 +357,8 @@ export function RegisterForm() {
               Criar conta de cliente
             </h1>
             <p className="text-base text-foreground/70 sm:text-lg">
-              Preencha os dados do titular do pedido. Se o serviço também for
-              para familiares, adicione as outras pessoas abaixo.
+              Preencha os dados do titular. Dependentes podem ter serviços
+              diferentes — salve cada um antes de criar a conta.
             </p>
           </div>
 
@@ -428,96 +527,138 @@ export function RegisterForm() {
               <div className="rounded-2xl border border-secondary/40 bg-[#f7f9fd] p-4 sm:p-5 flex flex-col gap-4">
                 <div className="flex flex-col gap-1">
                   <h2 className="text-lg font-semibold text-foreground">
-                    Mais pessoas no grupo
+                    Dependentes
                   </h2>
                   <p className="text-sm text-foreground/60">
-                    O titular dá nome ao grupo. Deverá ser preenchido nome, CPF
-                    e serviços individuais.
+                    Salve cada dependente com nome, CPF e serviços. Depois crie
+                    a conta com todos de uma vez.
                   </p>
                 </div>
 
-                {additionalPeople.map((_, index) => (
+                {additionalPeople.map((person, index) => (
                   <div
-                    key={`additional-${index}`}
-                    className="rounded-xl border border-secondary/30 bg-white p-4 flex flex-col gap-4"
+                    key={`${person.cpf}-${index}`}
+                    className="rounded-xl border border-secondary/30 bg-white p-4 flex items-start justify-between gap-3"
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-foreground/70">
-                        Pessoa {index + 2}
-                      </span>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        disabled={isPending}
-                        onClick={() => removePerson(index)}
-                        aria-label="Remover pessoa"
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground">
+                        {person.name}
+                      </p>
+                      <p className="mt-1 text-sm text-foreground/60">
+                        {person.cpf}
+                        {serviceLabels(person) ? ` · ${serviceLabels(person)}` : ""}
+                      </p>
                     </div>
-
-                    <FormField
-                      control={form.control}
-                      name={`additionalPeople.${index}.name`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm font-medium text-foreground/70">
-                            Nome completo
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Nome completo"
-                              disabled={isPending}
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage className="text-sm text-red-500" />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name={`additionalPeople.${index}.cpf`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm font-medium text-foreground/70">
-                            CPF
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="000.000.000-00"
-                              disabled={isPending}
-                              value={field.value}
-                              onChange={(e) =>
-                                field.onChange(formatCpf(e.target.value))
-                              }
-                            />
-                          </FormControl>
-                          <FormMessage className="text-sm text-red-500" />
-                        </FormItem>
-                      )}
-                    />
-
-                    <ServiceSelectionFields
-                      visaName={`additionalPeople.${index}.wantsAmericanVisa`}
-                      passportName={`additionalPeople.${index}.wantsPassport`}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
                       disabled={isPending}
-                    />
+                      onClick={() => removePerson(index)}
+                      aria-label="Remover dependente"
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
                   </div>
                 ))}
 
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={isPending}
-                  onClick={addPerson}
-                  className="w-full"
-                >
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Adicionar mais pessoas
-                </Button>
+                {draftOpen ? (
+                  <div className="rounded-xl border border-secondary/30 bg-white p-4 flex flex-col gap-4">
+                    <span className="text-sm font-medium text-foreground/70">
+                      Novo dependente
+                    </span>
+
+                    <div className="flex flex-col gap-1.5">
+                      <FormLabel className="text-sm font-medium text-foreground/70">
+                        Nome completo
+                      </FormLabel>
+                      <Input
+                        placeholder="Nome completo"
+                        disabled={isPending}
+                        value={draft.name}
+                        onChange={(event) =>
+                          setDraft((current) => ({
+                            ...current,
+                            name: event.target.value,
+                          }))
+                        }
+                      />
+                      {draftErrors.name ? (
+                        <p className="text-sm text-red-500">{draftErrors.name}</p>
+                      ) : null}
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <FormLabel className="text-sm font-medium text-foreground/70">
+                        CPF
+                      </FormLabel>
+                      <Input
+                        placeholder="000.000.000-00"
+                        disabled={isPending}
+                        value={draft.cpf}
+                        onChange={(event) =>
+                          setDraft((current) => ({
+                            ...current,
+                            cpf: formatCpf(event.target.value),
+                          }))
+                        }
+                      />
+                      {draftErrors.cpf ? (
+                        <p className="text-sm text-red-500">{draftErrors.cpf}</p>
+                      ) : null}
+                    </div>
+
+                    <ServiceChoice
+                      visaChecked={draft.wantsAmericanVisa}
+                      passportChecked={draft.wantsPassport}
+                      onVisaChange={(checked) =>
+                        setDraft((current) => ({
+                          ...current,
+                          wantsAmericanVisa: checked,
+                        }))
+                      }
+                      onPassportChange={(checked) =>
+                        setDraft((current) => ({
+                          ...current,
+                          wantsPassport: checked,
+                        }))
+                      }
+                      disabled={isPending}
+                      error={draftErrors.wantsAmericanVisa}
+                    />
+
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <Button
+                        type="button"
+                        disabled={isPending}
+                        onClick={savePerson}
+                        className="sm:flex-1"
+                      >
+                        Salvar dependente
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={isPending}
+                        onClick={cancelDraft}
+                        className="sm:flex-1"
+                      >
+                        Cancelar
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isPending}
+                    onClick={addPerson}
+                    className="w-full"
+                  >
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Adicionar dependente
+                  </Button>
+                )}
               </div>
 
               <Button

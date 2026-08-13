@@ -282,24 +282,24 @@ async function getGroupServiceMembers(
   const categoryEnum =
     category === "passport" ? Category.passport : Category.american_visa;
 
+  const wantsService =
+    category === "passport"
+      ? { wantsPassport: true }
+      : { wantsAmericanVisa: true };
+  const hasServiceProfile = {
+    profiles: {
+      some: {
+        category: categoryEnum,
+      },
+    },
+  };
+
   const users = account.group
     ? await prisma.user.findMany({
         where: {
           role: Role.CLIENT,
           group: account.group,
-          OR: [
-            { id: account.id },
-            category === "passport"
-              ? { wantsPassport: true }
-              : { wantsAmericanVisa: true },
-            {
-              profiles: {
-                some: {
-                  category: categoryEnum,
-                },
-              },
-            },
-          ],
+          OR: [wantsService, hasServiceProfile],
         },
         include: {
           profiles: {
@@ -326,6 +326,7 @@ async function getGroupServiceMembers(
     : await prisma.user.findMany({
         where: {
           id: account.id,
+          OR: [wantsService, hasServiceProfile],
         },
         include: {
           profiles: {
