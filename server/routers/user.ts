@@ -80,6 +80,75 @@ function mapProfileToClientTableRow(profile: {
   };
 }
 
+function cpfDigits(cpf: string) {
+  return cpf.replace(/\D/g, "");
+}
+
+async function createDefaultActiveProfile(params: {
+  userId: string;
+  name: string;
+  cpf: string;
+}) {
+  await prisma.profile.create({
+    data: {
+      name: params.name,
+      cpf: params.cpf,
+      DSNumber: "",
+      DSValid: addDays(new Date(), 30),
+      visaType: VisaType.primeiro_visto,
+      visaClass: VisaClass.B2_B1,
+      category: Category.american_visa,
+      paymentStatus: PaymentStatus.pending,
+      user: {
+        connect: { id: params.userId },
+      },
+    },
+  });
+}
+
+async function createClientWithFinanceAndProfile(params: {
+  name: string;
+  email: string;
+  password: string;
+  cpf: string;
+  group: string;
+  payerUserId?: string;
+}) {
+  const account = await prisma.user.create({
+    data: {
+      name: params.name,
+      email: params.email,
+      password: params.password,
+      cpf: params.cpf,
+      role: Role.CLIENT,
+      group: params.group,
+      payerUserId: params.payerUserId,
+    },
+  });
+
+  await prisma.financeEntry.create({
+    data: {
+      userId: account.id,
+      amount: null,
+      status: BudgetPaid.pending,
+    },
+  });
+
+  await prisma.serviceCost.create({
+    data: {
+      userId: account.id,
+    },
+  });
+
+  await createDefaultActiveProfile({
+    userId: account.id,
+    name: params.name,
+    cpf: params.cpf,
+  });
+
+  return account;
+}
+
 export const userRouter = router({
   getRole: collaboratorProcedure.query(async (opts) => {
     const { collaborator } = opts.ctx;
@@ -185,14 +254,50 @@ export const userRouter = router({
             .min(6, {
               message: "Confirmação precisa ter no mínimo 6 caracteres",
             }),
+          additionalPeople: z
+            .array(
+              z.object({
+                name: z
+                  .string()
+                  .trim()
+                  .min(4, { message: "Nome precisa ter no mínimo 4 caracteres" }),
+                cpf: z.string().refine((val) => val.length === 14, {
+                  message: "CPF inválido",
+                }),
+              }),
+            )
+            .optional()
+            .default([]),
         })
         .refine((data) => data.password === data.passwordConfirm, {
           message: "As senhas não coincidem",
           path: ["passwordConfirm"],
+        })
+        .superRefine((data, ctx) => {
+          const cpfs = [
+            data.cpf,
+            ...(data.additionalPeople ?? []).map((person) => person.cpf),
+          ];
+          const seen = new Set<string>();
+          cpfs.forEach((cpf, index) => {
+            const digits = cpfDigits(cpf);
+            if (seen.has(digits)) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "CPF repetido no cadastro",
+                path:
+                  index === 0
+                    ? ["cpf"]
+                    : ["additionalPeople", index - 1, "cpf"],
+              });
+            }
+            seen.add(digits);
+          });
         }),
     )
     .mutation(async ({ input }) => {
       const email = input.email.toLowerCase();
+      const additionalPeople = input.additionalPeople ?? [];
 
       const emailExists = await prisma.user.findUnique({
         where: { email },
@@ -205,44 +310,41 @@ export const userRouter = router({
         });
       }
 
-      const cpfExists = await prisma.user.findFirst({
-        where: { cpf: input.cpf },
+      const allCpfs = [input.cpf, ...additionalPeople.map((person) => person.cpf)];
+      const existingCpf = await prisma.user.findFirst({
+        where: { cpf: { in: allCpfs } },
       });
 
-      if (cpfExists) {
+      if (existingCpf) {
         throw new TRPCError({
           code: "CONFLICT",
-          message: "Este CPF já está cadastrado",
+          message: "Um dos CPFs já está cadastrado",
         });
       }
 
-      const account = await prisma.user.create({
-        data: {
-          name: input.name,
-          email,
-          password: input.password,
-          cpf: input.cpf,
-          role: Role.CLIENT,
-        },
+      const titular = await createClientWithFinanceAndProfile({
+        name: input.name,
+        email,
+        password: input.password,
+        cpf: input.cpf,
+        group: input.name,
       });
 
-      await prisma.financeEntry.create({
-        data: {
-          userId: account.id,
-          amount: null,
-          status: BudgetPaid.pending,
-        },
-      });
-
-      await prisma.serviceCost.create({
-        data: {
-          userId: account.id,
-        },
-      });
+      for (const person of additionalPeople) {
+        const digits = cpfDigits(person.cpf);
+        await createClientWithFinanceAndProfile({
+          name: person.name,
+          email: `dependente.${digits}.${titular.id}@grupo.cpvistos`,
+          password: `dep-${titular.id}-${digits}-${Date.now()}`,
+          cpf: person.cpf,
+          group: input.name,
+          payerUserId: titular.id,
+        });
+      }
 
       return {
         message: "Conta criada com sucesso",
-        email: account.email,
+        email: titular.email,
       };
     }),
 

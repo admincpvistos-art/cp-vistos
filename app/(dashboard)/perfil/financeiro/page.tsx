@@ -398,7 +398,12 @@ export default function FinanceiroPage() {
                       className="border-b group hover:bg-muted/40"
                     >
                       <td className="p-4 font-medium sticky left-0 z-10 bg-white group-hover:bg-muted/40 min-w-[220px]">
-                        {entry.name}
+                        <div>{entry.name}</div>
+                        {entry.groupName && (
+                          <div className="text-xs text-muted-foreground font-normal">
+                            Grupo: {entry.groupName}
+                          </div>
+                        )}
                       </td>
                       <td className="p-4 text-center whitespace-nowrap">
                         {format(new Date(entry.registeredAt), "dd/MM/yyyy", {
@@ -406,9 +411,11 @@ export default function FinanceiroPage() {
                         })}
                       </td>
                       <td className="p-4 text-center whitespace-nowrap font-semibold">
-                        {entry.amount !== null && entry.amount !== undefined
-                          ? formatBRL(entry.amount)
-                          : "—"}
+                        {entry.isDependent
+                          ? "-"
+                          : entry.amount !== null && entry.amount !== undefined
+                            ? formatBRL(entry.amount)
+                            : "—"}
                       </td>
                       <td className="p-4 text-center">
                         <span

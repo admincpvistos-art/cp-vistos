@@ -580,56 +580,82 @@ export default function ServicosECustosPage() {
                       <td className="p-3 font-medium sticky left-0 z-10 bg-white group-hover:bg-muted/40 min-w-[200px]">
                         <div>{row.clientName}</div>
                         <div className="text-xs text-muted-foreground font-normal">
-                          Total: {formatBRL(row.total)}
+                          {row.isDependent
+                            ? `Grupo: ${row.groupName ?? "—"}`
+                            : `Total: ${formatBRL(row.total)}`}
                         </div>
                       </td>
                       <td className="p-2 text-center">
-                        <AmountCell
-                          rowId={row.id}
-                          field="renovacao"
-                          initialValue={row.renovacao}
-                          onSaved={invalidateSynced}
-                        />
+                        {row.isDependent ? (
+                          <span className="text-muted-foreground">-</span>
+                        ) : (
+                          <AmountCell
+                            rowId={row.id}
+                            field="renovacao"
+                            initialValue={row.renovacao}
+                            onSaved={invalidateSynced}
+                          />
+                        )}
                       </td>
                       <td className="p-2 text-center">
-                        <AmountCell
-                          rowId={row.id}
-                          field="primeiroVisto"
-                          initialValue={row.primeiroVisto}
-                          onSaved={invalidateSynced}
-                        />
+                        {row.isDependent ? (
+                          <span className="text-muted-foreground">-</span>
+                        ) : (
+                          <AmountCell
+                            rowId={row.id}
+                            field="primeiroVisto"
+                            initialValue={row.primeiroVisto}
+                            onSaved={invalidateSynced}
+                          />
+                        )}
                       </td>
                       <td className="p-2 text-center">
-                        <AmountCell
-                          rowId={row.id}
-                          field="reuniaoPaga"
-                          initialValue={row.reuniaoPaga}
-                          onSaved={invalidateSynced}
-                        />
+                        {row.isDependent ? (
+                          <span className="text-muted-foreground">-</span>
+                        ) : (
+                          <AmountCell
+                            rowId={row.id}
+                            field="reuniaoPaga"
+                            initialValue={row.reuniaoPaga}
+                            onSaved={invalidateSynced}
+                          />
+                        )}
                       </td>
                       <td className="p-2 text-center">
-                        <AmountCell
-                          rowId={row.id}
-                          field="monitoramento"
-                          initialValue={row.monitoramento}
-                          onSaved={invalidateSynced}
-                        />
+                        {row.isDependent ? (
+                          <span className="text-muted-foreground">-</span>
+                        ) : (
+                          <AmountCell
+                            rowId={row.id}
+                            field="monitoramento"
+                            initialValue={row.monitoramento}
+                            onSaved={invalidateSynced}
+                          />
+                        )}
                       </td>
                       <td className="p-2 text-center">
-                        <AmountCell
-                          rowId={row.id}
-                          field="passaporte"
-                          initialValue={row.passaporte}
-                          onSaved={invalidateSynced}
-                        />
+                        {row.isDependent ? (
+                          <span className="text-muted-foreground">-</span>
+                        ) : (
+                          <AmountCell
+                            rowId={row.id}
+                            field="passaporte"
+                            initialValue={row.passaporte}
+                            onSaved={invalidateSynced}
+                          />
+                        )}
                       </td>
                       <td className="p-2 text-center">
-                        <OutrosCell
-                          rowId={row.id}
-                          initialValue={row.outros}
-                          initialComment={row.outrosComment}
-                          onSaved={invalidateSynced}
-                        />
+                        {row.isDependent ? (
+                          <span className="text-muted-foreground">-</span>
+                        ) : (
+                          <OutrosCell
+                            rowId={row.id}
+                            initialValue={row.outros}
+                            initialComment={row.outrosComment}
+                            onSaved={invalidateSynced}
+                          />
+                        )}
                       </td>
                       <td className="p-2 text-center">
                         <DateCell

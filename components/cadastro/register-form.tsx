@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2, Trash2, UserPlus } from "lucide-react";
 import { signIn, useSession } from "next-auth/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -40,6 +40,18 @@ const formSchema = z
     passwordConfirm: z
       .string()
       .min(6, "Confirmação precisa ter no mínimo 6 caracteres"),
+    additionalPeople: z
+      .array(
+        z.object({
+          name: z
+            .string()
+            .trim()
+            .min(4, "Nome completo precisa ter no mínimo 4 caracteres"),
+          cpf: z.string().refine((val) => val.length === 14, "CPF inválido"),
+        }),
+      )
+      .optional()
+      .default([]),
   })
   .refine((data) => data.password === data.passwordConfirm, {
     message: "As senhas não coincidem",
@@ -74,8 +86,11 @@ export function RegisterForm() {
       email: "",
       password: "",
       passwordConfirm: "",
+      additionalPeople: [],
     },
   });
+
+  const additionalPeople = form.watch("additionalPeople") ?? [];
 
   const { mutate: registerClient, isPending } =
     trpc.userRouter.registerClient.useMutation({
@@ -109,7 +124,26 @@ export function RegisterForm() {
   }, [session, router, userSubmitted]);
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    registerClient(values);
+    registerClient({
+      ...values,
+      additionalPeople: (values.additionalPeople ?? []).filter(
+        (person) => person.name.trim() || person.cpf.trim(),
+      ),
+    });
+  }
+
+  function addPerson() {
+    form.setValue("additionalPeople", [
+      ...additionalPeople,
+      { name: "", cpf: "" },
+    ]);
+  }
+
+  function removePerson(index: number) {
+    form.setValue(
+      "additionalPeople",
+      additionalPeople.filter((_, personIndex) => personIndex !== index),
+    );
   }
 
   return (
@@ -133,8 +167,8 @@ export function RegisterForm() {
               Criar conta de cliente
             </h1>
             <p className="text-base text-foreground/70 sm:text-lg">
-              Preencha seus dados para acessar a área do cliente. Este link é
-              destinado a quem já contratou os serviços da CP Vistos.
+              Preencha os dados do titular do pedido. Se o serviço também for
+              para familiares, adicione as outras pessoas abaixo.
             </p>
           </div>
 
@@ -149,7 +183,7 @@ export function RegisterForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-base font-medium text-foreground/70">
-                      Nome completo
+                      Nome completo do titular
                     </FormLabel>
                     <FormControl>
                       <Input
@@ -293,6 +327,95 @@ export function RegisterForm() {
                   </FormItem>
                 )}
               />
+
+              <div className="rounded-2xl border border-secondary/40 bg-[#f7f9fd] p-4 sm:p-5 flex flex-col gap-4">
+                <div className="flex flex-col gap-1">
+                  <h2 className="text-lg font-semibold text-foreground">
+                    Mais pessoas no grupo
+                  </h2>
+                  <p className="text-sm text-foreground/60">
+                    O titular dá nome ao grupo e é quem paga. Cada pessoa
+                    adicional vira uma linha própria, só com nome e CPF.
+                  </p>
+                </div>
+
+                {additionalPeople.map((_, index) => (
+                  <div
+                    key={`additional-${index}`}
+                    className="rounded-xl border border-secondary/30 bg-white p-4 flex flex-col gap-4"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-foreground/70">
+                        Pessoa {index + 2}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        disabled={isPending}
+                        onClick={() => removePerson(index)}
+                        aria-label="Remover pessoa"
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name={`additionalPeople.${index}.name`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium text-foreground/70">
+                            Nome completo
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Nome completo"
+                              disabled={isPending}
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage className="text-sm text-red-500" />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name={`additionalPeople.${index}.cpf`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium text-foreground/70">
+                            CPF
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="000.000.000-00"
+                              disabled={isPending}
+                              value={field.value}
+                              onChange={(e) =>
+                                field.onChange(formatCpf(e.target.value))
+                              }
+                            />
+                          </FormControl>
+                          <FormMessage className="text-sm text-red-500" />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                ))}
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isPending}
+                  onClick={addPerson}
+                  className="w-full"
+                >
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Adicionar mais pessoas
+                </Button>
+              </div>
 
               <Button
                 size="xl"

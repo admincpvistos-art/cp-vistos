@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { BudgetPaid, Role } from "@prisma/client";
+import { BudgetPaid, PaymentStatus, Role } from "@prisma/client";
+import { TRPCError } from "@trpc/server";
 
 import prisma from "@/lib/prisma";
 import { tripPriorityFromDate } from "@/lib/trip-priority";
@@ -23,9 +24,58 @@ function sumServiceValues(row: {
   );
 }
 
+async function applyFinanceStatus(params: {
+  userId: string;
+  amount: number | null;
+  status: BudgetPaid;
+  paidAt: Date | null;
+}) {
+  const existingFinance = await prisma.financeEntry.findUnique({
+    where: { userId: params.userId },
+  });
+
+  if (existingFinance) {
+    await prisma.financeEntry.update({
+      where: { id: existingFinance.id },
+      data: {
+        amount: params.amount,
+        status: params.status,
+        paidAt: params.paidAt,
+      },
+    });
+  } else {
+    await prisma.financeEntry.create({
+      data: {
+        userId: params.userId,
+        amount: params.amount,
+        status: params.status,
+        paidAt: params.paidAt,
+      },
+    });
+  }
+
+  await prisma.profile.updateMany({
+    where: { userId: params.userId },
+    data: {
+      paymentStatus:
+        params.status === BudgetPaid.paid
+          ? PaymentStatus.paid
+          : PaymentStatus.pending,
+    },
+  });
+}
+
 export async function syncFinanceFromServiceCost(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, payerUserId: true },
+  });
+
+  if (!user) return null;
+
+  const titularId = user.payerUserId ?? user.id;
   const serviceCost = await prisma.serviceCost.findUnique({
-    where: { userId },
+    where: { userId: titularId },
   });
 
   if (!serviceCost) return null;
@@ -33,32 +83,35 @@ export async function syncFinanceFromServiceCost(userId: string) {
   const total = sumServiceValues(serviceCost);
   const hasAmount = total > 0;
   const financeStatus = hasAmount ? BudgetPaid.paid : BudgetPaid.pending;
+  const existingTitularFinance = await prisma.financeEntry.findUnique({
+    where: { userId: titularId },
+  });
+  const paidAt = hasAmount
+    ? existingTitularFinance?.paidAt ?? new Date()
+    : null;
 
-  const existingFinance = await prisma.financeEntry.findUnique({
-    where: { userId },
+  await applyFinanceStatus({
+    userId: titularId,
+    amount: hasAmount ? total : null,
+    status: financeStatus,
+    paidAt,
   });
 
-  if (existingFinance) {
-    await prisma.financeEntry.update({
-      where: { id: existingFinance.id },
-      data: {
-        amount: hasAmount ? total : null,
+  const dependents = await prisma.user.findMany({
+    where: { payerUserId: titularId },
+    select: { id: true },
+  });
+
+  await Promise.all(
+    dependents.map((dependent) =>
+      applyFinanceStatus({
+        userId: dependent.id,
+        amount: null,
         status: financeStatus,
-        paidAt: hasAmount
-          ? existingFinance.paidAt ?? new Date()
-          : null,
-      },
-    });
-  } else {
-    await prisma.financeEntry.create({
-      data: {
-        userId,
-        amount: hasAmount ? total : null,
-        status: financeStatus,
-        paidAt: hasAmount ? new Date() : null,
-      },
-    });
-  }
+        paidAt,
+      }),
+    ),
+  );
 
   return {
     total,
@@ -130,6 +183,8 @@ export const serviceCostRouter = router({
               name: true,
               email: true,
               createdAt: true,
+              group: true,
+              payerUserId: true,
             },
           },
         },
@@ -137,30 +192,41 @@ export const serviceCostRouter = router({
 
       const searchLower = input.search?.trim().toLowerCase();
       const filtered = searchLower
-        ? rows.filter((row) =>
-            row.user.name.toLowerCase().includes(searchLower),
+        ? rows.filter(
+            (row) =>
+              row.user.name.toLowerCase().includes(searchLower) ||
+              (row.user.group ?? "").toLowerCase().includes(searchLower),
           )
         : rows;
 
-      const sorted = [...filtered].sort(
-        (a, b) => b.user.createdAt.getTime() - a.user.createdAt.getTime(),
-      );
+      const sorted = [...filtered].sort((a, b) => {
+        const groupA = (a.user.group || a.user.name).toLowerCase();
+        const groupB = (b.user.group || b.user.name).toLowerCase();
+        if (groupA !== groupB) return groupA.localeCompare(groupB, "pt-BR");
+        const depA = a.user.payerUserId ? 1 : 0;
+        const depB = b.user.payerUserId ? 1 : 0;
+        if (depA !== depB) return depA - depB;
+        return b.user.createdAt.getTime() - a.user.createdAt.getTime();
+      });
 
       return {
         rows: sorted.map((row) => {
-          const total = sumServiceValues(row);
+          const isDependent = Boolean(row.user.payerUserId);
+          const total = isDependent ? 0 : sumServiceValues(row);
           return {
             id: row.id,
             userId: row.userId,
             clientName: row.user.name,
             clientEmail: row.user.email,
-            renovacao: row.renovacao,
-            primeiroVisto: row.primeiroVisto,
-            reuniaoPaga: row.reuniaoPaga,
-            monitoramento: row.monitoramento,
-            passaporte: row.passaporte,
-            outros: row.outros,
-            outrosComment: row.outrosComment,
+            groupName: row.user.group,
+            isDependent,
+            renovacao: isDependent ? null : row.renovacao,
+            primeiroVisto: isDependent ? null : row.primeiroVisto,
+            reuniaoPaga: isDependent ? null : row.reuniaoPaga,
+            monitoramento: isDependent ? null : row.monitoramento,
+            passaporte: isDependent ? null : row.passaporte,
+            outros: isDependent ? null : row.outros,
+            outrosComment: isDependent ? null : row.outrosComment,
             validadeDate: row.validadeDate,
             situacao: tripPriorityFromDate(row.validadeDate),
             total,
@@ -186,18 +252,55 @@ export const serviceCostRouter = router({
     .mutation(async ({ input }) => {
       const { id, outrosComment, ...rest } = input;
 
+      const current = await prisma.serviceCost.findUnique({
+        where: { id },
+        include: {
+          user: { select: { payerUserId: true } },
+        },
+      });
+
+      if (!current) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Linha não encontrada",
+        });
+      }
+
+      const isDependent = Boolean(current.user.payerUserId);
+      const amountKeys = [
+        "renovacao",
+        "primeiroVisto",
+        "reuniaoPaga",
+        "monitoramento",
+        "passaporte",
+        "outros",
+      ] as const;
+      const tryingAmount =
+        outrosComment !== undefined ||
+        amountKeys.some((key) => rest[key] !== undefined);
+
+      if (isDependent && tryingAmount) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message:
+            "Valores do grupo são preenchidos apenas no titular",
+        });
+      }
+
       const updated = await prisma.serviceCost.update({
         where: { id },
-        data: {
-          ...rest,
-          ...(outrosComment !== undefined
-            ? {
-                outrosComment: outrosComment?.trim()
-                  ? outrosComment.trim()
-                  : null,
-              }
-            : {}),
-        },
+        data: isDependent
+          ? { validadeDate: rest.validadeDate }
+          : {
+              ...rest,
+              ...(outrosComment !== undefined
+                ? {
+                    outrosComment: outrosComment?.trim()
+                      ? outrosComment.trim()
+                      : null,
+                  }
+                : {}),
+            },
       });
 
       const sync = await syncFinanceFromServiceCost(updated.userId);

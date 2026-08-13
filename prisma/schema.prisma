@@ -124,6 +124,7 @@ model User {
   emailScheduleAccount    String?
   passwordScheduleAccount String?
   scheduleAccount         ScheduleAccount?
+  payerUserId             String?          @db.ObjectId
 
   profiles       Profile[]
   annotations    Annotations[]

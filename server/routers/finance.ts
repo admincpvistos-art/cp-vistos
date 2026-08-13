@@ -205,6 +205,8 @@ export const financeRouter = router({
               name: true,
               email: true,
               createdAt: true,
+              group: true,
+              payerUserId: true,
             },
           },
         },
@@ -213,27 +215,44 @@ export const financeRouter = router({
       const searchLower = search?.toLowerCase();
 
       const filtered = searchLower
-        ? entries.filter((entry) =>
-            entry.user.name.toLowerCase().includes(searchLower),
+        ? entries.filter(
+            (entry) =>
+              entry.user.name.toLowerCase().includes(searchLower) ||
+              (entry.user.group ?? "").toLowerCase().includes(searchLower),
           )
         : entries;
 
       const sorted = [...filtered].sort((a, b) => {
+        const groupA = (a.user.group || a.user.name).toLowerCase();
+        const groupB = (b.user.group || b.user.name).toLowerCase();
+        if (groupA !== groupB) {
+          return input.sort === "asc"
+            ? groupA.localeCompare(groupB, "pt-BR")
+            : groupB.localeCompare(groupA, "pt-BR");
+        }
+        const depA = a.user.payerUserId ? 1 : 0;
+        const depB = b.user.payerUserId ? 1 : 0;
+        if (depA !== depB) return depA - depB;
         const diff = a.user.createdAt.getTime() - b.user.createdAt.getTime();
         return input.sort === "asc" ? diff : -diff;
       });
 
       return {
-        entries: sorted.map((entry) => ({
-          id: entry.id,
-          amount: entry.amount,
-          status: entry.status,
-          paidAt: entry.paidAt,
-          userId: entry.userId,
-          name: entry.user.name,
-          email: entry.user.email,
-          registeredAt: entry.user.createdAt,
-        })),
+        entries: sorted.map((entry) => {
+          const isDependent = Boolean(entry.user.payerUserId);
+          return {
+            id: entry.id,
+            amount: isDependent ? null : entry.amount,
+            status: entry.status,
+            paidAt: entry.paidAt,
+            userId: entry.userId,
+            name: entry.user.name,
+            email: entry.user.email,
+            groupName: entry.user.group,
+            isDependent,
+            registeredAt: entry.user.createdAt,
+          };
+        }),
       };
     }),
 

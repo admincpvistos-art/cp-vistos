@@ -48,6 +48,10 @@ export const {
             return null;
           }
 
+          if (user.payerUserId) {
+            return null;
+          }
+
           if (user.role === "ADMIN" || user.role === "COLLABORATOR") {
             const isAdminPasswordCorrect = await bcrypt.compare(password, user.password);
 

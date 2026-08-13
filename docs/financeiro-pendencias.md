@@ -46,6 +46,8 @@
 - [x] Gastos pontuais lançados em Serviços e Custos → `FinanceExpense`
 - [x] Cards de recebimentos e totais líquidos
 - [x] Página pública `/cadastro` + `registerClient` + linha financeira/serviço
+- [x] Cadastro de grupo: titular completo + pessoas adicionais (nome/CPF)
+- [x] Dependentes com linha própria e valores "-" ; pagamento segue o titular
 
 ## Como continuar
 
