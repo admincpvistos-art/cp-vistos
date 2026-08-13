@@ -1,6 +1,6 @@
 # Extensão CP Vistos — CEAC ao lado do DS-160
 
-O CEAC não pode ser aberto em iframe (`X-Frame-Options: DENY` e loop de redirecionamento). Esta extensão abre o site oficial no **painel lateral do Chrome**, como uma página normal (captcha e sessão funcionam).
+O CEAC não pode ser aberto em iframe (`X-Frame-Options: DENY` e loop de redirecionamento). Esta extensão abre o site oficial como **página normal** sobre o quadro do DS-160 e devolve o foco depois de Copiar.
 
 ## Instalação / atualização
 

@@ -12,6 +12,7 @@ import {
   type CeacPageId,
   type Ds160Packet,
 } from "@/lib/ds160-ceac";
+import { focusCeacWindow } from "@/lib/ds160-ceac-window";
 
 interface Props {
   packet: Ds160Packet;
@@ -47,7 +48,7 @@ export function CeacFormPanel({
     if (next) {
       setActiveId(next.id);
     }
-    toast.success("Copiado");
+    focusCeacWindow();
   }
 
   return (

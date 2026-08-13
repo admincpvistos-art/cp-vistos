@@ -1,29 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { CEAC_URL } from "@/lib/ds160-ceac";
-
-function openCeacBeside() {
-  const width = Math.floor(window.screen.availWidth / 2);
-  const height = window.screen.availHeight;
-
-  try {
-    window.moveTo(0, 0);
-    window.resizeTo(width, height);
-  } catch {
-    // alguns browsers bloqueiam resize
-  }
-
-  window.open(
-    CEAC_URL,
-    "cp-vistos-ceac",
-    `popup=yes,width=${Math.max(480, window.screen.availWidth - width)},height=${height},left=${width},top=0`,
-  );
-}
+import { openCeacOverElement } from "@/lib/ds160-ceac-window";
 
 export function CeacOfficialPane() {
+  const paneRef = useRef<HTMLDivElement>(null);
   const [extensionReady, setExtensionReady] = useState(false);
 
   useEffect(() => {
@@ -37,41 +21,49 @@ export function CeacOfficialPane() {
     }
 
     window.addEventListener("message", onMessage);
-    window.postMessage({ type: "CP_VISTOS_OPEN_CEAC_PANEL" }, "*");
+    window.postMessage({ type: "CP_VISTOS_CEAC_EXT_PING" }, "*");
 
     return () => window.removeEventListener("message", onMessage);
   }, []);
+
+  function openOverPane() {
+    if (!paneRef.current) {
+      return;
+    }
+
+    openCeacOverElement(paneRef.current, { useExtension: extensionReady });
+  }
 
   function openPanel() {
     window.postMessage({ type: "CP_VISTOS_OPEN_CEAC_PANEL" }, "*");
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col items-center justify-center gap-5 bg-[#f4f1ea] px-8 text-center text-[#1b2a4a]">
+    <div
+      ref={paneRef}
+      className="flex h-full min-h-0 flex-col items-center justify-center gap-5 bg-[#f4f1ea] px-8 text-center text-[#1b2a4a]"
+    >
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#0b3a6e]">
           Online Nonimmigrant Visa Application
         </p>
         <h2 className="mt-2 text-xl font-semibold">CEAC oficial</h2>
         <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-[#314060]">
-          O site do governo não pode ser aberto dentro deste quadro — ele entra em loop de
-          redirecionamento. O CEAC precisa abrir como página normal, ao lado deste formulário.
+          O site do governo bloqueia iframe, então ele não pode viver <em>dentro</em> deste
+          quadro. A janela oficial abre exatamente em cima deste quadrado e, ao clicar em
+          Copiar, volta para a frente para você colar.
         </p>
       </div>
 
       <div className="flex w-full max-w-sm flex-col gap-2">
+        <Button className="h-11" onClick={openOverPane}>
+          Abrir CEAC neste quadro
+        </Button>
         {extensionReady ? (
-          <Button className="h-11" onClick={openPanel}>
+          <Button variant="outline" className="h-11" onClick={openPanel}>
             Abrir CEAC no painel do Chrome
           </Button>
         ) : null}
-        <Button
-          variant={extensionReady ? "outline" : "default"}
-          className="h-11"
-          onClick={openCeacBeside}
-        >
-          Abrir CEAC ao lado (metade da tela)
-        </Button>
         <Button variant="outline" className="h-11" asChild>
           <a href={CEAC_URL} target="_blank" rel="noreferrer">
             Abrir CEAC em nova aba
@@ -80,9 +72,9 @@ export function CeacOfficialPane() {
       </div>
 
       <p className="max-w-md text-xs text-[#6b7280]">
-        Com a extensão <strong>CP Vistos — CEAC ao lado do DS-160</strong> (v1.1), o site abre no
-        painel direito do Chrome. Sem ela, use o botão de metade da tela. Recarregue a extensão se
-        ainda estiver na versão antiga.
+        O painel do Chrome (extensão v1.2) fica na mesma janela e não some ao copiar. Sem a
+        extensão, use <strong>Abrir CEAC neste quadro</strong>: depois de Copiar, o CEAC volta
+        sozinho para colar com Ctrl+V.
       </p>
     </div>
   );

@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "CP Vistos — CEAC ao lado do DS-160",
-  "version": "1.1.0",
-  "description": "Abre o CEAC no painel lateral do Chrome, ao lado do formulário do CP Vistos. Uso interno.",
-  "permissions": ["sidePanel"],
+  "version": "1.2.0",
+  "description": "Abre o CEAC como página normal sobre o quadro do DS-160 e devolve o foco ao copiar. Uso interno.",
+  "permissions": ["sidePanel", "windows"],
   "host_permissions": [
     "https://www.cpvistos.com.br/*",
     "https://cpvistos.com.br/*",
@@ -15,6 +15,9 @@
   },
   "side_panel": {
     "default_path": "sidepanel.html"
+  },
+  "action": {
+    "default_title": "Abrir CEAC"
   },
   "content_scripts": [
     {
