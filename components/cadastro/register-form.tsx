@@ -435,8 +435,8 @@ export function RegisterForm() {
                     Mais pessoas no grupo
                   </h2>
                   <p className="text-sm text-foreground/60">
-                    O titular dá nome ao grupo e é quem paga. Cada pessoa
-                    adicional informa nome, CPF e o serviço contratado.
+                    O titular dá nome ao grupo. Deverá ser preenchido nome, CPF
+                    e serviços individuais.
                   </p>
                 </div>
 
