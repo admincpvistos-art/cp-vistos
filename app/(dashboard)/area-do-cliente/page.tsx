@@ -87,8 +87,8 @@ export default function ClientAreaPage() {
       <div className="w-full flex flex-col gap-10">
         {data === undefined ? (
           <div className="w-full grid grid-cols-1 gap-6 md:grid-cols-2">
-            <Skeleton className="w-full h-80" />
-            <Skeleton className="w-full h-80" />
+            <Skeleton className="w-full h-72" />
+            <Skeleton className="w-full h-72" />
           </div>
         ) : (
           <>
@@ -99,13 +99,8 @@ export default function ClientAreaPage() {
                   profileId={data.visa.current.profileId}
                   memberUserId={data.visa.current.userId}
                   statusForm={data.visa.current.statusForm}
-                  statusDS={data.visa.current.statusDS}
                   profileName={data.visa.current.name}
-                  CASVDate={data.visa.current.CASVDate}
-                  interviewDate={data.visa.current.interviewDate}
-                  DSNumber={data.visa.current.DSNumber}
                   formStep={data.visa.current.formStep}
-                  updatedAt={data.visa.current.updatedAt}
                 />
               ) : null}
 
@@ -115,16 +110,8 @@ export default function ClientAreaPage() {
                   profileId={data.passport.current.profileId}
                   memberUserId={data.passport.current.userId}
                   statusForm={data.passport.current.statusForm}
-                  statusDS={data.passport.current.statusDS}
                   profileName={data.passport.current.name}
-                  CASVDate={data.passport.current.CASVDate}
-                  interviewDate={data.passport.current.interviewDate}
-                  DSNumber={data.passport.current.DSNumber}
-                  protocol={data.passport.current.protocol}
-                  expireDate={data.passport.current.expireDate}
-                  passportType={data.passport.current.passportType}
                   formStep={data.passport.current.formStep}
-                  updatedAt={data.passport.current.updatedAt}
                 />
               ) : null}
             </div>
