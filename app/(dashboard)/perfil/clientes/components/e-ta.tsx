@@ -33,7 +33,6 @@ export function E_TA() {
       columns={columns}
       data={data?.clients ?? []}
       category="e_ta"
-      enableGroupAdd
     />
   );
 }

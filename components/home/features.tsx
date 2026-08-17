@@ -16,7 +16,7 @@ const bodyAnimation = {
     opacity: 1,
     transition: {
       duration: 1,
-      ease: "easeInOut",
+      ease: "easeInOut" as const,
     },
   },
 };
@@ -43,7 +43,7 @@ const itemAnimation = {
     opacity: 1,
     transition: {
       duration: 0.7,
-      ease: "easeInOut",
+      ease: "easeInOut" as const,
     },
   },
 };

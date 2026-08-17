@@ -40,5 +40,5 @@ export function PassportProspects() {
     );
   }
 
-  return <DataTable columns={columns} data={data?.clients ?? []} category="passport" />;
+  return <DataTable columns={columns} data={data?.clients ?? []} category="passport" listStatus="prospect" />;
 }

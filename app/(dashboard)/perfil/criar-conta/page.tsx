@@ -98,8 +98,8 @@ const profileFormSchema = z
       .optional(),
     entryDate: z.string({ required_error: "Data de entrada é obrigatório" }).optional(),
     process: z
-      .string({
-        invalid_type_error: "Processo inválido",
+      .enum(["ESTA", "E-TA", ""], {
+        message: "Classificação inválida",
       })
       .optional(),
     ETAStatus: z

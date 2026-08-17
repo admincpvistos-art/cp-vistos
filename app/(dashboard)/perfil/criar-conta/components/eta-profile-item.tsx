@@ -45,11 +45,13 @@ export function ETAProfileItem({ profile }: ETAProfileItemProps) {
         <div className="w-full flex flex-col">
           <span className="text-xs font-medium opacity-50">Categoria</span>
 
-          <span className="text-base font-medium">{profile.category}</span>
+          <span className="text-base font-medium">
+            {profile.category === "E-TA" ? "ESTA / E-TA" : profile.category}
+          </span>
         </div>
 
         <div className="w-full flex flex-col">
-          <span className="text-xs font-medium opacity-50">Processo</span>
+          <span className="text-xs font-medium opacity-50">Classificação</span>
 
           <span className="text-base font-medium">{profile.process ? profile.process : "---"}</span>
         </div>

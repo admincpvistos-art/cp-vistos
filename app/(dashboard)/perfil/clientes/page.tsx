@@ -62,7 +62,7 @@ function ClientsComponent() {
               Passaporte
             </TabsTrigger>
             <TabsTrigger value="e_ta" className="w-full h-10 rounded-lg sm:text-base sm:font-semibold">
-              E-TA
+              ESTA / E-TA
             </TabsTrigger>
           </TabsList>
 

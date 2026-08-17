@@ -90,6 +90,23 @@ async function createActiveProfile(params: {
   name: string;
   cpf: string;
   category: Category;
+  status?: Status;
+  CASVDate?: Date;
+  interviewDate?: Date;
+  interviewTime?: string;
+  meetingDate?: Date;
+  visaType?: VisaType;
+  visaStatus?: VisaStatus;
+  shipping?: Shipping;
+  taxDate?: Date;
+  statusDS?: StatusDS;
+  responsibleCpf?: string;
+  protocol?: string;
+  entryDate?: Date;
+  scheduleDate?: Date;
+  process?: string;
+  passport?: string;
+  ETAStatus?: ETAStatus;
 }) {
   const profile = await prisma.profile.create({
     data: {
@@ -97,10 +114,26 @@ async function createActiveProfile(params: {
       cpf: params.cpf,
       DSNumber: "",
       DSValid: addDays(new Date(), 30),
-      visaType: VisaType.primeiro_visto,
       visaClass: VisaClass.B2_B1,
       category: params.category,
       paymentStatus: PaymentStatus.pending,
+      status: params.status ?? Status.active,
+      CASVDate: params.CASVDate,
+      interviewDate: params.interviewDate,
+      interviewTime: params.interviewTime,
+      meetingDate: params.meetingDate,
+      visaType: params.visaType ?? VisaType.primeiro_visto,
+      visaStatus: params.visaStatus,
+      shipping: params.shipping,
+      taxDate: params.taxDate,
+      statusDS: params.statusDS,
+      responsibleCpf: params.responsibleCpf,
+      protocol: params.protocol,
+      entryDate: params.entryDate,
+      scheduleDate: params.scheduleDate,
+      process: params.process,
+      passport: params.passport,
+      ETAStatus: params.ETAStatus,
       user: {
         connect: { id: params.userId },
       },
@@ -427,6 +460,24 @@ export const userRouter = router({
         }),
         group: z.string().trim().min(1, { message: "Grupo é obrigatório" }),
         category: z.enum(["american_visa", "passport", "e_ta"]),
+        status: z.enum(["active", "prospect", "archived"]).default("active"),
+        CASVDate: z.string().date().optional(),
+        interviewDate: z.string().date().optional(),
+        interviewTime: z.string().regex(/^\d{2}:\d{2}$/, "Horário inválido").optional(),
+        meetingDate: z.string().date().optional(),
+        visaType: z.enum(["primeiro_visto", "renovacao"]).optional(),
+        visaStatus: z.enum(["awaiting", "in_progress", "approved", "disapproved", "finished"]).optional(),
+        scheduleAccount: z.enum(["active", "inactive"]).optional(),
+        shipping: z.enum(["verifying", "pickup", "sedex", "c_pickup", "c_sedex"]).optional(),
+        taxDate: z.string().date().optional(),
+        statusDS: z.enum(["awaiting", "filling", "filled", "emitted"]).optional(),
+        responsibleCpf: z.string().optional(),
+        protocol: z.string().trim().optional(),
+        entryDate: z.string().date().optional(),
+        scheduleDate: z.string().date().optional(),
+        process: z.enum(["ESTA", "E-TA"]).optional(),
+        passport: z.string().trim().optional(),
+        ETAStatus: z.enum(["analysis", "approved", "disapproved"]).optional(),
       }),
     )
     .mutation(async ({ input }) => {
@@ -436,6 +487,27 @@ export const userRouter = router({
           : input.category === "e_ta"
             ? Category.e_ta
             : Category.american_visa;
+      const inputDate = (value?: string) =>
+        value ? fromZonedTime(parse(value, "yyyy-MM-dd", new Date()), "America/Sao_Paulo") : undefined;
+      const profileData = {
+        status: input.status as Status,
+        CASVDate: inputDate(input.CASVDate),
+        interviewDate: inputDate(input.interviewDate),
+        interviewTime: input.interviewTime,
+        meetingDate: inputDate(input.meetingDate),
+        visaType: input.visaType as VisaType | undefined,
+        visaStatus: input.visaStatus as VisaStatus | undefined,
+        shipping: input.shipping as Shipping | undefined,
+        taxDate: inputDate(input.taxDate),
+        statusDS: input.statusDS as StatusDS | undefined,
+        responsibleCpf: input.responsibleCpf || undefined,
+        protocol: input.protocol || undefined,
+        entryDate: inputDate(input.entryDate),
+        scheduleDate: inputDate(input.scheduleDate),
+        process: input.process || undefined,
+        passport: input.passport || undefined,
+        ETAStatus: input.ETAStatus as ETAStatus | undefined,
+      };
 
       const titular = await prisma.user.findFirst({
         where: {
@@ -477,11 +549,13 @@ export const userRouter = router({
           name: input.name,
           cpf: input.cpf,
           category,
+          ...profileData,
         });
 
         await prisma.user.update({
           where: { id: existingUser.id },
           data: {
+            ...(input.scheduleAccount ? { scheduleAccount: input.scheduleAccount as ScheduleAccount } : {}),
             wantsAmericanVisa:
               existingUser.wantsAmericanVisa ||
               category === Category.american_visa,
@@ -505,12 +579,25 @@ export const userRouter = router({
         wantsPassport: category === Category.passport,
       });
 
-      if (category !== Category.passport) {
+      if (category === Category.passport) {
+        await prisma.profile.updateMany({
+          where: { userId: member.id, category },
+          data: profileData,
+        });
+      } else {
         await createActiveProfile({
           userId: member.id,
           name: input.name,
           cpf: input.cpf,
           category,
+          ...profileData,
+        });
+      }
+
+      if (input.scheduleAccount) {
+        await prisma.user.update({
+          where: { id: member.id },
+          data: { scheduleAccount: input.scheduleAccount as ScheduleAccount },
         });
       }
 
@@ -699,8 +786,8 @@ export const userRouter = router({
                   .optional(),
                 entryDate: z.string({ required_error: "Data de entrada é obrigatório" }).optional(),
                 process: z
-                  .string({
-                    invalid_type_error: "Processo inválido",
+                  .enum(["ESTA", "E-TA", ""], {
+                    message: "Classificação inválida",
                   })
                   .optional(),
                 ETAStatus: z
@@ -1096,8 +1183,8 @@ export const userRouter = router({
             .optional(),
           entryDate: z.string({ required_error: "Data de entrada é obrigatório" }).optional(),
           process: z
-            .string({
-              invalid_type_error: "Processo inválido",
+            .enum(["ESTA", "E-TA", ""], {
+              message: "Classificação inválida",
             })
             .optional(),
           ETAStatus: z
@@ -2037,7 +2124,7 @@ export const userRouter = router({
           scheduleTime: z.string().optional(),
           scheduleLocation: z.string().optional(),
           entryDate: z.string().optional(),
-          process: z.string().optional(),
+          process: z.enum(["ESTA", "E-TA", ""]).optional(),
           ETAStatus: z
             .enum(["Em Análise", "Aprovado", "Reprovado", ""], {
               message: "Status inválido",

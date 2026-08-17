@@ -26,6 +26,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 import useClientDetailsModalStore from "@/constants/stores/useClientDetailsModalStore";
 
@@ -36,7 +45,7 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   category: "american_visa" | "passport" | "e_ta";
-  enableGroupAdd?: boolean;
+  listStatus?: "active" | "prospect" | "archived";
 }
 
 function formatCpf(value: string) {
@@ -49,12 +58,16 @@ function formatCpf(value: string) {
 
 function AddGroupMemberForm({
   category,
+  listStatus,
 }: {
   category: "american_visa" | "passport" | "e_ta";
+  listStatus: "active" | "prospect" | "archived";
 }) {
+  const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [cpf, setCpf] = useState("");
   const [group, setGroup] = useState("");
+  const [values, setValues] = useState<Record<string, string>>({});
   const utils = trpc.useUtils();
 
   const groupsQuery = trpc.userRouter.getClientGroups.useQuery();
@@ -63,8 +76,13 @@ function AddGroupMemberForm({
     onSuccess: (data) => {
       setName("");
       setCpf("");
+      setGroup("");
+      setValues({});
+      setOpen(false);
       toast.success(data.message);
-      utils.userRouter.getActiveClients.invalidate({ category });
+      utils.userRouter.getActiveClients.invalidate();
+      utils.userRouter.getProspectsClients.invalidate();
+      utils.userRouter.getArchivedClients.invalidate();
       utils.userRouter.getClientGroups.invalidate();
       utils.serviceCostRouter.getRows.invalidate();
       utils.financeRouter.getChecklist.invalidate();
@@ -89,63 +107,124 @@ function AddGroupMemberForm({
       return;
     }
 
-    mutate({ name: name.trim(), cpf, group, category });
+    mutate({
+      name: name.trim(),
+      cpf,
+      group,
+      category,
+      status: listStatus,
+      ...values,
+    });
   }
 
-  return (
-    <div className="w-full flex flex-col gap-2 lg:flex-row lg:items-center">
-      <Input
-        placeholder="Nome completo"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        disabled={isPending}
-        className="h-12 lg:max-w-[220px]"
-      />
-      <Input
-        placeholder="CPF"
-        value={cpf}
-        onChange={(e) => setCpf(formatCpf(e.target.value))}
-        disabled={isPending}
-        className="h-12 lg:max-w-[160px]"
-      />
-      <Select value={group} onValueChange={setGroup} disabled={isPending}>
-        <SelectTrigger className="h-12 lg:max-w-[220px]">
-          <SelectValue placeholder="Grupo do titular" />
-        </SelectTrigger>
+  const setValue = (key: string, value: string) =>
+    setValues((current) => {
+      const next = { ...current };
+      if (value) {
+        next[key] = value;
+      } else {
+        delete next[key];
+      }
+      return next;
+    });
+  const field = (key: string, label: string, type = "text") => (
+    <label className="grid gap-1.5 text-sm font-medium">
+      {label}
+      <Input type={type} value={values[key] ?? ""} onChange={(event) => setValue(key, event.target.value)} disabled={isPending} />
+    </label>
+  );
+  const select = (key: string, label: string, options: [string, string][]) => (
+    <label className="grid gap-1.5 text-sm font-medium">
+      {label}
+      <Select value={values[key] ?? ""} onValueChange={(value) => setValue(key, value)} disabled={isPending}>
+        <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
         <SelectContent>
-          {groupsQuery.data?.groups.length ? (
-            groupsQuery.data.groups.map((groupName) => (
-              <SelectItem key={groupName} value={groupName}>
-                {groupName}
-              </SelectItem>
-            ))
-          ) : (
-            <SelectItem value="__empty" disabled>
-              Nenhum grupo cadastrado
-            </SelectItem>
-          )}
+          {options.map(([value, optionLabel]) => <SelectItem key={value} value={value}>{optionLabel}</SelectItem>)}
         </SelectContent>
       </Select>
-      <Button
-        type="button"
-        onClick={handleAdd}
-        disabled={isPending}
-        className="h-12"
-      >
-        {isPending ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <>
-            <UserPlus className="mr-2 h-4 w-4" />
-            Adicionar ao grupo
-          </>
-        )}
-      </Button>
-    </div>
+    </label>
+  );
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button type="button" className="h-12">
+          <UserPlus className="mr-2 h-4 w-4" />
+          Adicionar cliente
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Adicionar cliente</DialogTitle>
+          <DialogDescription>Preencha os dados disponíveis para esta linha da tabela.</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="grid gap-1.5 text-sm font-medium">
+            Nome completo
+            <Input value={name} onChange={(event) => setName(event.target.value)} disabled={isPending} />
+          </label>
+          <label className="grid gap-1.5 text-sm font-medium">
+            CPF
+            <Input value={cpf} onChange={(event) => setCpf(formatCpf(event.target.value))} disabled={isPending} />
+          </label>
+          <label className="grid gap-1.5 text-sm font-medium sm:col-span-2">
+            Grupo do titular
+            <Select value={group} onValueChange={setGroup} disabled={isPending}>
+              <SelectTrigger><SelectValue placeholder="Selecione o grupo" /></SelectTrigger>
+              <SelectContent>
+                {groupsQuery.data?.groups.map((groupName) => <SelectItem key={groupName} value={groupName}>{groupName}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </label>
+
+          {category === "american_visa" && (
+            <>
+              {field("CASVDate", "Data do CASV", "date")}
+              {field("interviewDate", "Data da entrevista", "date")}
+              {field("interviewTime", "Horário da entrevista", "time")}
+              {field("meetingDate", "Data da reunião", "date")}
+              {select("visaType", "Tipo de visto", [["primeiro_visto", "Primeiro visto"], ["renovacao", "Renovação"]])}
+              {select("visaStatus", "Andamento", [["awaiting", "Aguardando"], ["in_progress", "Em andamento"], ["approved", "Aprovado"], ["disapproved", "Reprovado"], ["finished", "Finalizado"]])}
+              {select("scheduleAccount", "Conta de agendamento", [["active", "Ativa"], ["inactive", "Inativa"]])}
+              {select("shipping", "Envio", [["verifying", "A verificar"], ["pickup", "Retirada"], ["sedex", "SEDEX"], ["c_pickup", "C-Retirada"], ["c_sedex", "C-SEDEX"]])}
+              {field("taxDate", "Data da taxa", "date")}
+              {select("statusDS", "DS-160", [["awaiting", "Aguardando"], ["filling", "Preenchendo"], ["filled", "Preenchido"], ["emitted", "Emitido"]])}
+            </>
+          )}
+          {category === "passport" && (
+            <>
+              {field("responsibleCpf", "CPF do responsável")}
+              {field("protocol", "Protocolo")}
+              {field("entryDate", "Data de entrada", "date")}
+              {field("scheduleDate", "Data do agendamento", "date")}
+            </>
+          )}
+          {category === "e_ta" && (
+            <>
+              {select("process", "Classificação", [
+                ["ESTA", "ESTA"],
+                ["E-TA", "E-TA"],
+              ])}
+              {field("passport", "Passaporte")}
+              {select("ETAStatus", "Andamento", [
+                ["analysis", "Em análise"],
+                ["approved", "Aprovado"],
+                ["disapproved", "Reprovado"],
+              ])}
+            </>
+          )}
+        </div>
+        <DialogFooter>
+          <Button type="button" onClick={handleAdd} disabled={isPending}>
+            {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar cliente"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
-export function DataTable<TData, TValue>({ columns, data, category, enableGroupAdd = false }: DataTableProps<TData, TValue>) {
+export function DataTable<TData, TValue>({ columns, data, category, listStatus = "active" }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
@@ -308,7 +387,7 @@ export function DataTable<TData, TValue>({ columns, data, category, enableGroupA
           />
         </div>
 
-        {enableGroupAdd && <AddGroupMemberForm category={category} />}
+        <AddGroupMemberForm category={category} listStatus={listStatus} />
       </div>
 
       <div className="border rounded-xl overflow-hidden bg-white">
@@ -325,6 +404,8 @@ export function DataTable<TData, TValue>({ columns, data, category, enableGroupA
                         "left-0 z-30 min-w-52 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.12)]",
                       header.column.id === "tripPriority" &&
                         "left-52 z-30 min-w-[7.5rem] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.12)]",
+                      (header.column.id === "visaStatus" || header.column.id === "ETAStatus") &&
+                        "right-0 z-30 min-w-40 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.12)]",
                     )}
                   >
                     {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
@@ -358,6 +439,8 @@ export function DataTable<TData, TValue>({ columns, data, category, enableGroupA
                           "sticky left-0 z-10 min-w-52 bg-white group-hover:bg-muted/50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.12)]",
                         cell.column.id === "tripPriority" &&
                           "sticky left-52 z-10 min-w-[7.5rem] bg-white group-hover:bg-muted/50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.12)]",
+                        (cell.column.id === "visaStatus" || cell.column.id === "ETAStatus") &&
+                          "sticky right-0 z-10 min-w-40 bg-white group-hover:bg-muted/50 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.12)]",
                       )}
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}

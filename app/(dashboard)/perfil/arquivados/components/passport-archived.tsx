@@ -40,5 +40,5 @@ export function PassportArchived() {
     );
   }
 
-  return <DataTable columns={columns} data={data?.clients ?? []} category="passport" />;
+  return <DataTable columns={columns} data={data?.clients ?? []} category="passport" listStatus="archived" />;
 }

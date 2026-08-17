@@ -33,7 +33,6 @@ export function Passport() {
       columns={columns}
       data={data?.clients ?? []}
       category="passport"
-      enableGroupAdd
     />
   );
 }

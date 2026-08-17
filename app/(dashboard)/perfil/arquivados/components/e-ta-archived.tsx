@@ -40,5 +40,5 @@ export function E_TA_Archived() {
     );
   }
 
-  return <DataTable columns={columns} data={data?.clients ?? []} category="e_ta" />;
+  return <DataTable columns={columns} data={data?.clients ?? []} category="e_ta" listStatus="archived" />;
 }

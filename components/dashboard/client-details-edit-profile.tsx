@@ -120,8 +120,8 @@ const formSchema = z
       .optional(),
     entryDate: z.string({ required_error: "Data de entrada é obrigatório" }).optional(),
     process: z
-      .string({
-        invalid_type_error: "Processo inválido",
+      .enum(["ESTA", "E-TA", ""], {
+        message: "Classificação inválida",
       })
       .optional(),
     ETAStatus: z
@@ -262,7 +262,7 @@ export function ClientDetailsEditProfile({ handleClose }: Props) {
       scheduleTime: client?.scheduleTime ?? "",
       scheduleLocation: client?.scheduleLocation ?? "",
       entryDate: client?.entryDate ? format(client.entryDate, "dd/MM/yyyy") : "",
-      process: client?.process ?? "",
+      process: client?.process === "ESTA" || client?.process === "E-TA" ? client.process : "",
       ETAStatus:
         client?.ETAStatus === "analysis"
           ? "Em Análise"
@@ -1458,11 +1458,20 @@ export function ClientDetailsEditProfile({ handleClose }: Props) {
                 name="process"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="truncate">Processo</FormLabel>
+                    <FormLabel className="truncate">Classificação</FormLabel>
 
-                    <FormControl>
-                      <Input placeholder="Insira o processo" {...field} />
-                    </FormControl>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className={cn(field.value === "" && "[&>span]:text-muted-foreground")}>
+                          <SelectValue placeholder="Selecione a classificação" />
+                        </SelectTrigger>
+                      </FormControl>
+
+                      <SelectContent>
+                        <SelectItem value="ESTA">ESTA</SelectItem>
+                        <SelectItem value="E-TA">E-TA</SelectItem>
+                      </SelectContent>
+                    </Select>
 
                     <FormMessage className="font-normal text-destructive" />
                   </FormItem>

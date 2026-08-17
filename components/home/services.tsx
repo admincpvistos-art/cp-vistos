@@ -63,7 +63,7 @@ const textAnimation = {
     opacity: 1,
     transition: {
       duration: 0.7,
-      ease: "easeInOut",
+      ease: "easeInOut" as const,
     },
   },
 };
@@ -78,7 +78,7 @@ const carouselAnimation = {
     opacity: 1,
     transition: {
       duration: 1.5,
-      ease: "easeInOut",
+      ease: "easeInOut" as const,
     },
   },
 };
@@ -95,7 +95,7 @@ const buttonAnimation = {
     opacity: "var(--opacity-animate)",
     transition: {
       duration: 1,
-      ease: "easeInOut",
+      ease: "easeInOut" as const,
     },
   },
 };

@@ -244,7 +244,7 @@ export function ProfileForm({
                 <SelectContent>
                   <SelectItem value="Visto Americano">Visto Americano</SelectItem>
                   <SelectItem value="Passaporte">Passaporte</SelectItem>
-                  <SelectItem value="E-TA">E-TA</SelectItem>
+                  <SelectItem value="E-TA">ESTA / E-TA</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -928,11 +928,20 @@ export function ProfileForm({
             name={`profiles.${currentProfile}.process`}
             render={({ field }) => (
               <FormItem className="flex flex-col gap-1">
-                <FormLabel className="truncate">Processo</FormLabel>
+                <FormLabel className="truncate">Classificação</FormLabel>
 
-                <FormControl>
-                  <Input placeholder="Insira o processo" {...field} />
-                </FormControl>
+                <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger className={cn(field.value === "" && "[&>span]:text-muted-foreground")}>
+                      <SelectValue placeholder="Selecione a classificação" />
+                    </SelectTrigger>
+                  </FormControl>
+
+                  <SelectContent>
+                    <SelectItem value="ESTA">ESTA</SelectItem>
+                    <SelectItem value="E-TA">E-TA</SelectItem>
+                  </SelectContent>
+                </Select>
 
                 <FormMessage className="font-normal text-destructive" />
               </FormItem>

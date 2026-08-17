@@ -40,5 +40,5 @@ export function AmericanVisaArchived() {
     );
   }
 
-  return <DataTable columns={columns} data={data?.clients ?? []} category="american_visa" />;
+  return <DataTable columns={columns} data={data?.clients ?? []} category="american_visa" listStatus="archived" />;
 }

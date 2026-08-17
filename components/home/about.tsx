@@ -14,7 +14,7 @@ const imageAnimation = {
     opacity: 1,
     transition: {
       duration: 1,
-      ease: "easeInOut",
+      ease: "easeInOut" as const,
     },
   },
 };
@@ -43,7 +43,7 @@ const itemAnimation = {
     opacity: "var(--opacity-animate)",
     transition: {
       duration: 0.7,
-      ease: "easeInOut",
+      ease: "easeInOut" as const,
     },
   },
 };

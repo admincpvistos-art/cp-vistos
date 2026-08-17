@@ -33,7 +33,6 @@ export function AmericanVisa() {
       columns={columns}
       data={data?.clients ?? []}
       category="american_visa"
-      enableGroupAdd
     />
   );
 }

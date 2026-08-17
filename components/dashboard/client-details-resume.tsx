@@ -934,7 +934,7 @@ export function ClientDetailsResume({ handleClose }: Props) {
 
               <div className="w-full flex items-center justify-between gap-2">
                 <div className="flex flex-col">
-                  <span className="text-xs font-medium text-foreground/50">Processo</span>
+                  <span className="text-xs font-medium text-foreground/50">Classificação</span>
 
                   <span className="text-base font-medium text-foreground">{client.process}</span>
                 </div>

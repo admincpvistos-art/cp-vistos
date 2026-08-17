@@ -40,5 +40,5 @@ export function AmericanVisaProspects() {
     );
   }
 
-  return <DataTable columns={columns} data={data?.clients ?? []} category="american_visa" />;
+  return <DataTable columns={columns} data={data?.clients ?? []} category="american_visa" listStatus="prospect" />;
 }

@@ -224,7 +224,7 @@ export const columns: ColumnDef<UserTable>[] = [
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           className="flex items-center justify-center w-full"
         >
-          Processo
+          Classificação
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       );
