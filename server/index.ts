@@ -8,6 +8,7 @@ import { websiteRouter } from "./routers/website";
 import { financeRouter } from "./routers/finance";
 import { serviceCostRouter } from "./routers/service-cost";
 import { ds160Router } from "./routers/ds160";
+import { acompanhamentoRouter } from "./routers/acompanhamento";
 
 export const appRouter = router({
   userRouter,
@@ -19,6 +20,7 @@ export const appRouter = router({
   financeRouter,
   serviceCostRouter,
   ds160Router,
+  acompanhamentoRouter,
 });
 
 export type AppRouter = typeof appRouter;

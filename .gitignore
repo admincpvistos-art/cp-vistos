@@ -26,6 +26,7 @@ yarn-debug.log*
 yarn-error.log*
 
 # local env files
+scripts/clientes-2026.xlsx
 .env*.local
 .env
 

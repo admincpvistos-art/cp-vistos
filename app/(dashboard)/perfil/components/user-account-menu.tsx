@@ -22,6 +22,7 @@ import {
   ClipboardCheck,
   ClipboardList,
   FileInput,
+  Table2,
   Wallet,
 } from "lucide-react";
 
@@ -284,6 +285,18 @@ export function UserAccountMenu() {
                   ))
                 : collaboratorTools.map(({ href, label, icon: Icon }) => (
                     <div key={href} className="contents">
+                      {href === "/perfil/clientes" && isAdmin ? (
+                        <DropdownMenuItem asChild>
+                          <Link
+                            href="/perfil/acompanhamento-clientes"
+                            className="cursor-pointer"
+                          >
+                            <Table2 className="mr-2 h-4 w-4" />
+                            Acompanhamento Clientes
+                          </Link>
+                        </DropdownMenuItem>
+                      ) : null}
+
                       <DropdownMenuItem asChild>
                         <Link href={href} className="cursor-pointer">
                           <Icon className="mr-2 h-4 w-4" />
