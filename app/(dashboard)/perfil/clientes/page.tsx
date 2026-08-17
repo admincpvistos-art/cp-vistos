@@ -8,6 +8,7 @@ import { Suspense, useEffect, useState } from "react";
 import { E_TA } from "./components/e-ta";
 import { Passport } from "./components/passport";
 import { AmericanVisa } from "./components/american-visa";
+import { AmericanVisaRenewal } from "./components/american-visa-renewal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ClientDetailsModal } from "@/components/dashboard/client-details-modal";
 
@@ -25,7 +26,10 @@ function ClientsComponent() {
 
     if (
       !queryCategory ||
-      (queryCategory !== "american_visa" && queryCategory !== "passport" && queryCategory !== "e_ta")
+      (queryCategory !== "american_visa" &&
+        queryCategory !== "renovacao" &&
+        queryCategory !== "passport" &&
+        queryCategory !== "e_ta")
     ) {
       queryCategory = "american_visa";
 
@@ -58,6 +62,9 @@ function ClientsComponent() {
             <TabsTrigger value="american_visa" className="w-full h-10 rounded-lg sm:text-base sm:font-semibold">
               Visto Americano
             </TabsTrigger>
+            <TabsTrigger value="renovacao" className="w-full h-10 rounded-lg sm:text-base sm:font-semibold">
+              Renovação
+            </TabsTrigger>
             <TabsTrigger value="passport" className="w-full h-10 rounded-lg sm:text-base sm:font-semibold">
               Passaporte
             </TabsTrigger>
@@ -68,6 +75,10 @@ function ClientsComponent() {
 
           <TabsContent value="american_visa">
             <AmericanVisa />
+          </TabsContent>
+
+          <TabsContent value="renovacao">
+            <AmericanVisaRenewal />
           </TabsContent>
 
           <TabsContent value="passport">

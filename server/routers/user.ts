@@ -1407,15 +1407,21 @@ export const userRouter = router({
     .input(
       z.object({
         category: z.enum(["american_visa", "passport", "e_ta"]),
+        visaType: z.enum(["primeiro_visto", "renovacao"]).optional(),
       })
     )
     .query(async (opts) => {
-      const { category } = opts.input;
+      const { category, visaType } = opts.input;
 
       const profiles = await prisma.profile.findMany({
         where: {
           category,
           status: Status.active,
+          ...(visaType === "renovacao"
+            ? { visaType: VisaType.renovacao }
+            : visaType === "primeiro_visto"
+              ? { visaType: { not: VisaType.renovacao } }
+              : {}),
         },
         include: {
           user: {
@@ -1477,15 +1483,21 @@ export const userRouter = router({
     .input(
       z.object({
         category: z.enum(["american_visa", "passport", "e_ta"]),
+        visaType: z.enum(["primeiro_visto", "renovacao"]).optional(),
       })
     )
     .query(async (opts) => {
-      const { category } = opts.input;
+      const { category, visaType } = opts.input;
 
       const profiles = await prisma.profile.findMany({
         where: {
           category,
           status: Status.archived,
+          ...(visaType === "renovacao"
+            ? { visaType: VisaType.renovacao }
+            : visaType === "primeiro_visto"
+              ? { visaType: { not: VisaType.renovacao } }
+              : {}),
         },
         include: {
           user: {

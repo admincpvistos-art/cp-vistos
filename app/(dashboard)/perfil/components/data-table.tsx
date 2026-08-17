@@ -46,6 +46,7 @@ interface DataTableProps<TData, TValue> {
   data: TData[];
   category: "american_visa" | "passport" | "e_ta";
   listStatus?: "active" | "prospect" | "archived";
+  visaType?: "primeiro_visto" | "renovacao";
 }
 
 function formatCpf(value: string) {
@@ -59,9 +60,11 @@ function formatCpf(value: string) {
 function AddGroupMemberForm({
   category,
   listStatus,
+  visaType,
 }: {
   category: "american_visa" | "passport" | "e_ta";
   listStatus: "active" | "prospect" | "archived";
+  visaType?: "primeiro_visto" | "renovacao";
 }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -114,6 +117,7 @@ function AddGroupMemberForm({
       category,
       status: listStatus,
       ...values,
+      ...(visaType ? { visaType } : {}),
     });
   }
 
@@ -183,7 +187,9 @@ function AddGroupMemberForm({
               {field("interviewDate", "Data da entrevista", "date")}
               {field("interviewTime", "Horário da entrevista", "time")}
               {field("meetingDate", "Data da reunião", "date")}
-              {select("visaType", "Tipo de visto", [["primeiro_visto", "Primeiro visto"], ["renovacao", "Renovação"]])}
+              {!visaType
+                ? select("visaType", "Tipo de visto", [["primeiro_visto", "Primeiro visto"], ["renovacao", "Renovação"]])
+                : null}
               {select("visaStatus", "Andamento", [["awaiting", "Aguardando"], ["in_progress", "Em andamento"], ["approved", "Aprovado"], ["disapproved", "Reprovado"], ["finished", "Finalizado"]])}
               {select("scheduleAccount", "Conta de agendamento", [["active", "Ativa"], ["inactive", "Inativa"]])}
               {select("shipping", "Envio", [["verifying", "A verificar"], ["pickup", "Retirada"], ["sedex", "SEDEX"], ["c_pickup", "C-Retirada"], ["c_sedex", "C-SEDEX"]])}
@@ -224,7 +230,13 @@ function AddGroupMemberForm({
   );
 }
 
-export function DataTable<TData, TValue>({ columns, data, category, listStatus = "active" }: DataTableProps<TData, TValue>) {
+export function DataTable<TData, TValue>({
+  columns,
+  data,
+  category,
+  listStatus = "active",
+  visaType,
+}: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
@@ -387,7 +399,7 @@ export function DataTable<TData, TValue>({ columns, data, category, listStatus =
           />
         </div>
 
-        <AddGroupMemberForm category={category} listStatus={listStatus} />
+        <AddGroupMemberForm category={category} listStatus={listStatus} visaType={visaType} />
       </div>
 
       <div className="border rounded-xl overflow-hidden bg-white">

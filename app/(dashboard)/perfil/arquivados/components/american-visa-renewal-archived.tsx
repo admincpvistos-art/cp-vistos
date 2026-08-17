@@ -1,13 +1,15 @@
-import { trpc } from "@/lib/trpc-client";
+import { UserRoundX } from "lucide-react";
 
 import { columns } from "../../components/columns";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DataTable } from "../../components/data-table";
 
-export function AmericanVisa() {
-  const { data, isFetching } = trpc.userRouter.getActiveClients.useQuery({
+import { trpc } from "@/lib/trpc-client";
+
+export function AmericanVisaRenewalArchived() {
+  const { data, isFetching } = trpc.userRouter.getArchivedClients.useQuery({
     category: "american_visa",
-    visaType: "primeiro_visto",
+    visaType: "renovacao",
   });
 
   if (isFetching) {
@@ -29,12 +31,23 @@ export function AmericanVisa() {
     );
   }
 
+  if (data?.clients.length === 0) {
+    return (
+      <div className="mt-10 w-full flex flex-col items-center justify-center gap-2 text-muted-foreground">
+        <UserRoundX className="size-8" />
+
+        <span className="text-base font-medium">Nenhum cliente encontrado</span>
+      </div>
+    );
+  }
+
   return (
     <DataTable
       columns={columns}
       data={data?.clients ?? []}
       category="american_visa"
-      visaType="primeiro_visto"
+      listStatus="archived"
+      visaType="renovacao"
     />
   );
 }

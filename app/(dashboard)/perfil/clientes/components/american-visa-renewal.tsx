@@ -4,10 +4,10 @@ import { columns } from "../../components/columns";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DataTable } from "../../components/data-table";
 
-export function AmericanVisa() {
+export function AmericanVisaRenewal() {
   const { data, isFetching } = trpc.userRouter.getActiveClients.useQuery({
     category: "american_visa",
-    visaType: "primeiro_visto",
+    visaType: "renovacao",
   });
 
   if (isFetching) {
@@ -34,7 +34,7 @@ export function AmericanVisa() {
       columns={columns}
       data={data?.clients ?? []}
       category="american_visa"
-      visaType="primeiro_visto"
+      visaType="renovacao"
     />
   );
 }

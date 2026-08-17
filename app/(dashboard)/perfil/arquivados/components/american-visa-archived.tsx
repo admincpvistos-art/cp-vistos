@@ -9,6 +9,7 @@ import { trpc } from "@/lib/trpc-client";
 export function AmericanVisaArchived() {
   const { data, isFetching } = trpc.userRouter.getArchivedClients.useQuery({
     category: "american_visa",
+    visaType: "primeiro_visto",
   });
 
   if (isFetching) {
@@ -40,5 +41,13 @@ export function AmericanVisaArchived() {
     );
   }
 
-  return <DataTable columns={columns} data={data?.clients ?? []} category="american_visa" listStatus="archived" />;
+  return (
+    <DataTable
+      columns={columns}
+      data={data?.clients ?? []}
+      category="american_visa"
+      listStatus="archived"
+      visaType="primeiro_visto"
+    />
+  );
 }
