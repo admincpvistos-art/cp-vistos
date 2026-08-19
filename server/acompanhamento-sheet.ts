@@ -486,7 +486,7 @@ export async function linkImportedFamilyGroups() {
     byGroup.set(key, list);
   }
 
-  for (const members of byGroup.values()) {
+  for (const members of Array.from(byGroup.values())) {
     if (members.length === 1 && members[0].user?.payerUserId) {
       await prisma.user.update({
         where: { id: members[0].user.id },
