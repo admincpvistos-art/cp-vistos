@@ -25,12 +25,19 @@ const poppins = localFont({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.cpvistos.com.br"),
   title: "CP Vistos",
   description:
     "CP Vistos - Facilitamos o processo de obtenção do visto americano para você. Oferecemos assistência completa, desde a preparação da documentação até a entrevista no consulado.",
   icons: {
-    icon: [{ url: "/favicon.png", type: "image/png" }],
-    apple: [{ url: "/apple-icon.png", type: "image/png" }],
+    icon: [
+      { url: "/favicon.ico", sizes: "48x48" },
+      { url: "/favicon-48x48.png", type: "image/png", sizes: "48x48" },
+      { url: "/favicon-96x96.png", type: "image/png", sizes: "96x96" },
+      { url: "/favicon-192x192.png", type: "image/png", sizes: "192x192" },
+    ],
+    apple: [{ url: "/apple-icon.png", type: "image/png", sizes: "180x180" }],
+    shortcut: "/favicon.ico",
   },
 };
 
