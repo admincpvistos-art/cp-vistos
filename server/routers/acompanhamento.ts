@@ -32,6 +32,7 @@ const updateSchema = z.object({
   group: z.string(),
   pagto: z.string(),
   status: z.string(),
+  barcodeDone: z.boolean(),
 });
 
 export const acompanhamentoRouter = router({

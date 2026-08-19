@@ -7,6 +7,7 @@ export type AcompanhamentoRecord = {
   barcode: string;
   barcodeIssued: string;
   barcodeExpire: string;
+  barcodeDone: boolean;
   casv: string;
   interview: string;
   meeting: string;

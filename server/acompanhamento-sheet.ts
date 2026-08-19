@@ -558,6 +558,7 @@ function buildRecord(
     obs?: string | null;
     pagto?: string | null;
     statusLabel?: string | null;
+    extraDate?: string | null;
     userId: string | null;
     user: (User & { profiles: Profile[]; payerEmail?: string }) | null;
   },
@@ -582,6 +583,7 @@ function buildRecord(
     barcode: profile?.DSNumber || cell(cells, COL.barcode),
     barcodeIssued: formatDate(issued) || cell(cells, COL.barcodeDate),
     barcodeExpire: formatDate(expire),
+    barcodeDone: record.extraDate === "done",
     casv: formatDate(profile?.CASVDate) || cell(cells, COL.casv),
     interview: formatDate(profile?.interviewDate) || cell(cells, COL.interview),
     meeting: formatDate(profile?.meetingDate) || cell(cells, COL.meeting),
@@ -733,6 +735,7 @@ export type AcompanhamentoUpdateInput = {
   group: string;
   pagto: string;
   status: string;
+  barcodeDone: boolean;
 };
 
 export async function updateAcompanhamentoRecord(input: AcompanhamentoUpdateInput) {
@@ -867,6 +870,7 @@ export async function updateAcompanhamentoRecord(input: AcompanhamentoUpdateInpu
       obs: input.obs || null,
       pagto: input.pagto || null,
       statusLabel: input.status || null,
+      extraDate: input.barcodeDone ? "done" : null,
     },
   });
 

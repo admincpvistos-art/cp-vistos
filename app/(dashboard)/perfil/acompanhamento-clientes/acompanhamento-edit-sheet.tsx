@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -43,6 +44,7 @@ const EMPTY: Omit<AcompanhamentoRecord, "id" | "userId" | "profileId" | "formSte
   group: "",
   pagto: "",
   status: "",
+  barcodeDone: false,
 };
 
 function Field({
@@ -82,6 +84,7 @@ export function AcompanhamentoEditSheet({
   const { mutate, isPending } = trpc.acompanhamentoRouter.updateRow.useMutation({
     onSuccess: () => {
       utils.acompanhamentoRouter.getClientesSheet.invalidate();
+      utils.acompanhamentoRouter.getRow.invalidate({ id: rowId ?? "" });
       toast.success("Acompanhamento atualizado");
       onClose();
     },
@@ -99,7 +102,7 @@ export function AcompanhamentoEditSheet({
     setForm(rest);
   }, [data?.row]);
 
-  function set<K extends keyof typeof EMPTY>(key: K, value: string) {
+  function set<K extends Exclude<keyof typeof EMPTY, "barcodeDone">>(key: K, value: string) {
     setForm((current) => {
       const next = { ...current, [key]: value };
       if (key === "barcodeIssued") {
@@ -142,6 +145,23 @@ export function AcompanhamentoEditSheet({
               onChange={(value) => set("barcodeIssued", value)}
             />
             <Field label="Validade do barcode" value={form.barcodeExpire} disabled />
+            <div className="sm:col-span-2 flex items-start gap-3 rounded-lg border border-muted p-3">
+              <Checkbox
+                id="barcode-done"
+                checked={Boolean(form.barcodeDone)}
+                onCheckedChange={(checked) =>
+                  setForm((current) => ({ ...current, barcodeDone: checked === true }))
+                }
+              />
+              <div className="space-y-1">
+                <Label htmlFor="barcode-done" className="cursor-pointer leading-none">
+                  Marcar barcode como feito
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Ao salvar, a data do barcode na planilha mostra um check no lugar dos alertas de prazo.
+                </p>
+              </div>
+            </div>
             <Field label="CASV" value={form.casv} onChange={(value) => set("casv", value)} />
             <Field label="DT. ENTREV." value={form.interview} onChange={(value) => set("interview", value)} />
             <Field label="REUNIÃO" value={form.meeting} onChange={(value) => set("meeting", value)} />

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { AlertTriangle, ArrowDownAZ, ArrowUpAZ, CircleAlert, Loader2, Search } from "lucide-react";
+import { AlertTriangle, ArrowDownAZ, ArrowUpAZ, CheckCircle2, CircleAlert, Loader2, Search } from "lucide-react";
 import { isValid, parse } from "date-fns";
 
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import {
   barcodeValidityStatus,
   expireDateFromIssued,
+  parseIssuedDate,
 } from "@/lib/barcode-validity";
 import { AcompanhamentoEditSheet } from "./acompanhamento-edit-sheet";
 import type { AcompanhamentoRecord } from "@/lib/acompanhamento-types";
@@ -36,13 +37,31 @@ const VISIBLE: { key: keyof AcompanhamentoRecord; label: string }[] = [
   { key: "status", label: "STATUS" },
 ];
 
-function BarcodeDateCell({ issued }: { issued: string }) {
+function BarcodeDateCell({ issued, done }: { issued: string; done: boolean }) {
   if (!issued) {
     return <span>—</span>;
   }
 
-  const parsed = parse(issued, "dd/MM/yyyy", new Date());
-  const status = isValid(parsed) ? barcodeValidityStatus(expireDateFromIssued(parsed)) : "none";
+  if (done) {
+    return (
+      <span className="inline-flex items-center justify-center gap-2">
+        {issued}
+        <TooltipProvider delayDuration={0}>
+          <Tooltip>
+            <TooltipTrigger>
+              <CheckCircle2 className="text-emerald-500" />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Barcode feito</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </span>
+    );
+  }
+
+  const parsed = parseIssuedDate(issued);
+  const status = parsed ? barcodeValidityStatus(expireDateFromIssued(parsed)) : "none";
 
   return (
     <span className="inline-flex items-center justify-center gap-2">
@@ -51,7 +70,7 @@ function BarcodeDateCell({ issued }: { issued: string }) {
         <TooltipProvider delayDuration={0}>
           <Tooltip>
             <TooltipTrigger>
-              <AlertTriangle className="h-4 w-4 text-rose-400" />
+              <AlertTriangle className="text-rose-400" />
             </TooltipTrigger>
             <TooltipContent>
               <p>Barcode vencido</p>
@@ -62,7 +81,7 @@ function BarcodeDateCell({ issued }: { issued: string }) {
         <TooltipProvider delayDuration={0}>
           <Tooltip>
             <TooltipTrigger>
-              <CircleAlert className="h-4 w-4 text-amber-400" />
+              <CircleAlert className="text-amber-400" />
             </TooltipTrigger>
             <TooltipContent>
               <p>Barcode vence em 15 dias ou menos</p>
@@ -257,6 +276,7 @@ export default function AcompanhamentoClientesPage() {
                           key={`${row.id}-${column.key}`}
                           className={cn(
                             "text-center text-foreground whitespace-nowrap",
+                            column.key === "barcodeIssued" && "min-w-[10.5rem]",
                             index === 0 &&
                               "sticky left-0 z-10 min-w-64 text-left font-medium bg-white group-hover:bg-muted/50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.12)]",
                             index === statusIndex &&
@@ -266,7 +286,7 @@ export default function AcompanhamentoClientesPage() {
                           {column.key === "name" ? (
                             <span className="text-primary hover:underline">{row.name || "—"}</span>
                           ) : column.key === "barcodeIssued" ? (
-                            <BarcodeDateCell issued={row.barcodeIssued} />
+                            <BarcodeDateCell issued={row.barcodeIssued} done={row.barcodeDone} />
                           ) : (
                             row[column.key] || "—"
                           )}

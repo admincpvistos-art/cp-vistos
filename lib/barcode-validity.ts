@@ -1,4 +1,4 @@
-import { addDays, differenceInDays, format, isValid, parse } from "date-fns";
+import { addDays, differenceInDays, format, isValid, parse, startOfDay } from "date-fns";
 
 export const BARCODE_VALIDITY_DAYS = 30;
 export const BARCODE_WARNING_DAYS = 15;
@@ -7,13 +7,19 @@ export function expireDateFromIssued(issued: Date) {
   return addDays(issued, BARCODE_VALIDITY_DAYS);
 }
 
-export function expireDateStringFromIssued(issuedStr: string) {
-  if (issuedStr.length !== 10) {
+export function parseIssuedDate(issuedStr: string) {
+  const value = issuedStr.trim();
+  if (value.length < 8 || value.includes("--")) {
     return null;
   }
 
-  const issued = parse(issuedStr, "dd/MM/yyyy", new Date());
-  if (!isValid(issued)) {
+  const parsed = parse(value, "dd/MM/yyyy", new Date());
+  return isValid(parsed) ? parsed : null;
+}
+
+export function expireDateStringFromIssued(issuedStr: string) {
+  const issued = parseIssuedDate(issuedStr);
+  if (!issued) {
     return null;
   }
 
@@ -21,7 +27,7 @@ export function expireDateStringFromIssued(issuedStr: string) {
 }
 
 export function barcodeDaysRemaining(expireAt: Date) {
-  return differenceInDays(expireAt, new Date());
+  return differenceInDays(startOfDay(expireAt), startOfDay(new Date()));
 }
 
 export function barcodeValidityStatus(expireAt: Date | null | undefined) {
