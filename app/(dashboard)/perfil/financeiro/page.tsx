@@ -19,6 +19,8 @@ import { DeleteChecklistRowButton } from "@/components/dashboard/delete-checklis
 import { trpc } from "@/lib/trpc-client";
 import { cn } from "@/lib/utils";
 import { canAccessFinance } from "@/lib/staff-access";
+import { ClientDetailsModal } from "@/components/dashboard/client-details-modal";
+import { useOpenClientDetails } from "../use-open-client-details";
 
 function formatBRL(value: number) {
   return value.toLocaleString("pt-BR", {
@@ -82,6 +84,7 @@ export default function FinanceiroPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [sort, setSort] = useState<"asc" | "desc">("desc");
+  const { openByUserId, isPending: isOpeningClient } = useOpenClientDetails();
 
   const { data: me, isLoading: loadingMe } = trpc.userRouter.getMe.useQuery(
     undefined,
@@ -165,6 +168,7 @@ export default function FinanceiroPage() {
   }
 
   return (
+    <>
     <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-10 max-w-[1920px] mx-auto pb-16">
       <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold mb-6 mt-6 lg:mt-12">
         Financeiro
@@ -436,15 +440,24 @@ export default function FinanceiroPage() {
                   checklistQuery.data.entries.map((entry) => (
                     <tr
                       key={entry.id}
-                      className="border-b group hover:bg-muted/40"
+                      className={cn(
+                        "border-b group hover:bg-muted/40",
+                        isOpeningClient && "pointer-events-none opacity-70",
+                      )}
                     >
                       <td className="p-4 font-medium sticky left-0 z-10 bg-white group-hover:bg-muted/40 min-w-[220px]">
-                        <div>{entry.name}</div>
-                        {entry.groupName && (
-                          <div className="text-xs text-muted-foreground font-normal">
-                            Grupo: {entry.groupName}
-                          </div>
-                        )}
+                        <button
+                          type="button"
+                          className="text-left hover:underline"
+                          onClick={() => openByUserId(entry.userId)}
+                        >
+                          <div>{entry.name}</div>
+                          {entry.groupName && (
+                            <div className="text-xs text-muted-foreground font-normal">
+                              Grupo: {entry.groupName}
+                            </div>
+                          )}
+                        </button>
                       </td>
                       <td className="p-4 text-center whitespace-nowrap">
                         {format(new Date(entry.registeredAt), "dd/MM/yyyy", {
@@ -506,5 +519,7 @@ export default function FinanceiroPage() {
         </div>
       </div>
     </div>
+    <ClientDetailsModal />
+    </>
   );
 }

@@ -10,6 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { trpc } from "@/lib/trpc-client";
 import { isFullAdmin } from "@/lib/staff-access";
 import { cn } from "@/lib/utils";
+import { ClientDetailsModal } from "@/components/dashboard/client-details-modal";
+import { useOpenClientDetails } from "../use-open-client-details";
 
 export default function AcompanhamentoClientesPage() {
   const router = useRouter();
@@ -19,6 +21,7 @@ export default function AcompanhamentoClientesPage() {
     retry: false,
   });
   const isAdmin = isFullAdmin(me?.user.role, me?.user.email);
+  const { openByUserId, openByProfileId, openBySheetRow, isPending: isOpeningClient } = useOpenClientDetails();
 
   const { data, isLoading, isError, error } = trpc.acompanhamentoRouter.getClientesSheet.useQuery(undefined, {
     enabled: isAdmin,
@@ -46,10 +49,13 @@ export default function AcompanhamentoClientesPage() {
       return data.rows;
     }
 
-    return data.rows.filter((row) => row.some((cell) => cell.toLowerCase().includes(term)));
+    return data.rows.filter((row) =>
+      row.cells.some((cell) => cell.toLowerCase().includes(term)),
+    );
   }, [data?.rows, search]);
 
   const statusIndex = data?.headers.findIndex((header) => header === "STATUS") ?? -1;
+  const barcodeIndex = data?.headers.findIndex((header) => header === "BARCODE") ?? -1;
 
   if (!me || isMeLoading || !isAdmin) {
     return (
@@ -60,6 +66,7 @@ export default function AcompanhamentoClientesPage() {
   }
 
   return (
+    <>
     <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-10 max-w-[1920px] mx-auto">
       <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold mb-6 mt-6 lg:mt-12">
         Acompanhamento Clientes
@@ -104,11 +111,25 @@ export default function AcompanhamentoClientesPage() {
             </TableHeader>
             <TableBody>
               {filteredRows.length ? (
-                filteredRows.map((row, rowIndex) => (
-                  <TableRow key={`${row[0]}-${rowIndex}`} className="group">
-                    {row.map((cell, cellIndex) => (
+                filteredRows.map((row) => (
+                  <TableRow
+                    key={row.id}
+                    className={cn("group cursor-pointer", isOpeningClient && "pointer-events-none opacity-70")}
+                    onClick={() => {
+                      if (row.userId) {
+                        openByUserId(row.userId);
+                        return;
+                      }
+                      if (row.profileId) {
+                        openByProfileId(row.profileId);
+                        return;
+                      }
+                      openBySheetRow(row.cells[0] ?? "", barcodeIndex >= 0 ? row.cells[barcodeIndex] : undefined);
+                    }}
+                  >
+                    {row.cells.map((cell, cellIndex) => (
                       <TableCell
-                        key={`${rowIndex}-${cellIndex}`}
+                        key={`${row.id}-${cellIndex}`}
                         className={cn(
                           "text-center text-foreground whitespace-nowrap",
                           cellIndex === 0 &&
@@ -117,7 +138,24 @@ export default function AcompanhamentoClientesPage() {
                             "sticky right-0 z-10 min-w-36 bg-white group-hover:bg-muted/50 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.12)]",
                         )}
                       >
-                        {cell || "—"}
+                        {cellIndex === 0 && row.profileId ? (
+                          <div className="flex flex-col items-start gap-1">
+                            <span>{cell || "—"}</span>
+                            <a
+                              href={
+                                row.category === "passport"
+                                  ? `/formulario-passaporte/${row.profileId}`
+                                  : `/formulario/${row.profileId}?formStep=${row.formStep}`
+                              }
+                              onClick={(event) => event.stopPropagation()}
+                              className="text-xs font-medium text-primary hover:underline"
+                            >
+                              Ajuda no formulário
+                            </a>
+                          </div>
+                        ) : (
+                          cell || "—"
+                        )}
                       </TableCell>
                     ))}
                   </TableRow>
@@ -138,5 +176,7 @@ export default function AcompanhamentoClientesPage() {
         {filteredRows.length} cliente{filteredRows.length === 1 ? "" : "s"} na aba CLIENTES
       </p>
     </div>
+    <ClientDetailsModal />
+    </>
   );
 }

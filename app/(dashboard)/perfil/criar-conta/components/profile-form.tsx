@@ -1,6 +1,7 @@
 import { ptBR } from "date-fns/locale";
 import { CalendarIcon, Trash2 } from "lucide-react";
 import { format, getYear, isValid, parse } from "date-fns";
+import { expireDateFromIssued } from "@/lib/barcode-validity";
 import { ChangeEvent, Dispatch, SetStateAction, useEffect, useState } from "react";
 
 import { cn } from "@/lib/utils";
@@ -60,6 +61,7 @@ export function ProfileForm({
       const dateFormatted = format(issuanceDateCalendar, "dd/MM/yyyy");
 
       form.setValue(`profiles.${currentProfile}.issuanceDate`, dateFormatted);
+      setExpireDateCalendar(expireDateFromIssued(issuanceDateCalendar));
     }
   }, [issuanceDateCalendar]);
 
@@ -578,7 +580,7 @@ export function ProfileForm({
             name={`profiles.${currentProfile}.issuanceDate`}
             render={({ field }) => (
               <FormItem className="flex flex-col gap-1">
-                <FormLabel className="truncate">Data de Emissão</FormLabel>
+                <FormLabel className="truncate">Data de geração do barcode</FormLabel>
 
                 <FormControl>
                   <div className="w-full relative">
@@ -643,7 +645,7 @@ export function ProfileForm({
             name={`profiles.${currentProfile}.expireDate`}
             render={({ field }) => (
               <FormItem className="flex flex-col gap-1 sm:order-2 xl:order-3">
-                <FormLabel className="truncate">Data de Expiração</FormLabel>
+                <FormLabel className="truncate">Validade do barcode</FormLabel>
 
                 <FormControl>
                   <div className="w-full relative">

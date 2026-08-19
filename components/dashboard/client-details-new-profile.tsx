@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { ptBR } from "date-fns/locale";
 import { useForm } from "react-hook-form";
 import { format, getYear, isValid, parse } from "date-fns";
+import { expireDateFromIssued } from "@/lib/barcode-validity";
 import { CalendarIcon, Loader2 } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -215,6 +216,7 @@ export function ClientDetailsNewProfile({ handleClose }: Props) {
       const dateFormatted = format(issuanceDateCalendar, "dd/MM/yyyy");
 
       form.setValue("issuanceDate", dateFormatted);
+      setExpireDateCalendar(expireDateFromIssued(issuanceDateCalendar));
     }
   }, [issuanceDateCalendar]);
 
@@ -737,7 +739,7 @@ export function ClientDetailsNewProfile({ handleClose }: Props) {
                 name="issuanceDate"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2 sm:order-1 xl:order-2">
-                    <FormLabel className="truncate">Data de Emissão</FormLabel>
+                    <FormLabel className="truncate">Data de geração do barcode</FormLabel>
 
                     <FormControl>
                       <div className="w-full relative">
@@ -802,7 +804,7 @@ export function ClientDetailsNewProfile({ handleClose }: Props) {
                 name="expireDate"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2 sm:order-2 xl:order-3">
-                    <FormLabel className="truncate">Data de Expiração</FormLabel>
+                    <FormLabel className="truncate">Validade do barcode</FormLabel>
 
                     <FormControl>
                       <div className="w-full relative">

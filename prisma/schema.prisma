@@ -135,6 +135,25 @@ model User {
   comments       Comments[]
   financeEntry   FinanceEntry?
   serviceCost    ServiceCost?
+  acompanhamento AcompanhamentoClient[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AcompanhamentoClient {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  source      String   @default("cadastro")
+  cells       String[]
+  resp        String?
+  alimto      String?
+  obs         String?
+  pagto       String?
+  statusLabel String?
+  extraDate   String?
+
+  userId String? @unique @db.ObjectId
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

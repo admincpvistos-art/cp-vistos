@@ -57,7 +57,7 @@ export default function PreencherDs160Page({
         </a>
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-2">
+      <div className="grid min-h-0 flex-1 grid-cols-1 min-[1600px]:grid-cols-2">
         <div className="min-h-0 border-r border-black/20">
           <CeacFormPanel
             packet={data}
@@ -68,7 +68,7 @@ export default function PreencherDs160Page({
           />
         </div>
 
-        <div className="min-h-0">
+        <div className="hidden min-h-0 min-[1600px]:block">
           <CeacOfficialPane />
         </div>
       </div>

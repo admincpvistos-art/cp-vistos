@@ -1,8 +1,8 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { differenceInDays, format } from "date-fns";
-import { AlertTriangle, ArrowUpDown } from "lucide-react";
+import { format } from "date-fns";
+import { AlertTriangle, ArrowUpDown, CircleAlert } from "lucide-react";
 import { ETAStatus, ScheduleAccount, Shipping, StatusDS, VisaStatus, VisaType } from "@prisma/client";
 
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import {
   type TripPriority,
 } from "@/lib/trip-priority";
 import { cn } from "@/lib/utils";
+import { barcodeValidityStatus } from "@/lib/barcode-validity";
 
 export type UserTable = {
   id: string;
@@ -316,29 +317,30 @@ export const columns: ColumnDef<UserTable>[] = [
       }
 
       const dateFormatted = format(row.getValue("DSValid"), "dd/MM/yyyy");
+      const status = barcodeValidityStatus(row.getValue("DSValid"));
 
       return (
         <span className="w-full flex items-center justify-center gap-2">
           {dateFormatted}
-          {differenceInDays(row.getValue("DSValid"), new Date()) <= -30 ? (
+          {status === "expired" ? (
             <TooltipProvider delayDuration={0}>
               <Tooltip>
                 <TooltipTrigger>
                   <AlertTriangle className="text-rose-400" />
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Vencido</p>
+                  <p>Barcode vencido</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-          ) : differenceInDays(row.getValue("DSValid"), new Date()) <= -20 ? (
+          ) : status === "warning" ? (
             <TooltipProvider delayDuration={0}>
               <Tooltip>
                 <TooltipTrigger>
-                  <AlertTriangle className="text-amber-400" />
+                  <CircleAlert className="text-amber-400" />
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Proximo do vencimento</p>
+                  <p>Barcode vence em 15 dias ou menos</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>

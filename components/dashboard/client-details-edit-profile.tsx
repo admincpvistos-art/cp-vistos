@@ -10,6 +10,7 @@ import { CalendarIcon, Loader2 } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ChangeEvent, useEffect, useState } from "react";
 import { format, getYear, isValid, parse } from "date-fns";
+import { expireDateFromIssued } from "@/lib/barcode-validity";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -315,6 +316,7 @@ export function ClientDetailsEditProfile({ handleClose }: Props) {
       const dateFormatted = format(issuanceDateCalendar, "dd/MM/yyyy");
 
       form.setValue("issuanceDate", dateFormatted);
+      setExpireDateCalendar(expireDateFromIssued(issuanceDateCalendar));
     }
   }, [issuanceDateCalendar]);
 
@@ -816,7 +818,7 @@ export function ClientDetailsEditProfile({ handleClose }: Props) {
                 name="issuanceDate"
                 render={({ field }) => (
                   <FormItem className="sm:order-1 xl:order-2">
-                    <FormLabel>Data de Emissão</FormLabel>
+                    <FormLabel>Data de geração do barcode</FormLabel>
 
                     <FormControl>
                       <div className="w-full relative">
@@ -881,7 +883,10 @@ export function ClientDetailsEditProfile({ handleClose }: Props) {
                 name={`expireDate`}
                 render={({ field }) => (
                   <FormItem className="sm:order-2 xl:order-3">
-                    <FormLabel>Data de Expiração</FormLabel>
+                    <FormLabel>Validade do barcode</FormLabel>
+                    <p className="text-xs text-muted-foreground font-normal">
+                      Preenchida automaticamente com 30 dias corridos após a geração do barcode
+                    </p>
 
                     <FormControl>
                       <div className="w-full relative">

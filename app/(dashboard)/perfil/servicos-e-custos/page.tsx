@@ -24,6 +24,8 @@ import {
 import { trpc } from "@/lib/trpc-client";
 import { cn } from "@/lib/utils";
 import { canAccessFinance } from "@/lib/staff-access";
+import { ClientDetailsModal } from "@/components/dashboard/client-details-modal";
+import { useOpenClientDetails } from "../use-open-client-details";
 
 function formatBRL(value: number) {
   return value.toLocaleString("pt-BR", {
@@ -370,6 +372,7 @@ export default function ServicosECustosPage() {
   const [expenseName, setExpenseName] = useState("");
   const [expenseDescription, setExpenseDescription] = useState("");
   const [expenseAmount, setExpenseAmount] = useState("");
+  const { openByUserId, isPending: isOpeningClient } = useOpenClientDetails();
 
   const { data: me, isLoading: loadingMe } = trpc.userRouter.getMe.useQuery(
     undefined,
@@ -458,6 +461,7 @@ export default function ServicosECustosPage() {
   }
 
   return (
+    <>
     <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-10 max-w-[1920px] mx-auto pb-16">
       <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold mb-6 mt-6 lg:mt-12">
         Serviços e Custos
@@ -581,15 +585,24 @@ export default function ServicosECustosPage() {
                   rowsQuery.data.rows.map((row) => (
                     <tr
                       key={row.id}
-                      className="border-b group hover:bg-muted/40"
+                      className={cn(
+                        "border-b group hover:bg-muted/40",
+                        isOpeningClient && "pointer-events-none opacity-70",
+                      )}
                     >
                       <td className="p-3 font-medium sticky left-0 z-10 bg-white group-hover:bg-muted/40 min-w-[200px]">
-                        <div>{row.clientName}</div>
-                        <div className="text-xs text-muted-foreground font-normal">
-                          {row.isDependent
-                            ? `Grupo: ${row.groupName ?? "—"}`
-                            : `Total: ${formatBRL(row.total)}`}
-                        </div>
+                        <button
+                          type="button"
+                          className="text-left hover:underline"
+                          onClick={() => openByUserId(row.userId)}
+                        >
+                          <div>{row.clientName}</div>
+                          <div className="text-xs text-muted-foreground font-normal">
+                            {row.isDependent
+                              ? `Grupo: ${row.groupName ?? "—"}`
+                              : `Total: ${formatBRL(row.total)}`}
+                          </div>
+                        </button>
                       </td>
                       <td className="p-2 text-center">
                         {row.isDependent ? (
@@ -728,5 +741,7 @@ export default function ServicosECustosPage() {
         </div>
       </div>
     </div>
+    <ClientDetailsModal />
+    </>
   );
 }

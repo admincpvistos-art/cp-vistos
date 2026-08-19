@@ -3,7 +3,7 @@ import { z } from "zod";
 import { isUserAuthedProcedure, router } from "../trpc";
 import prisma from "@/lib/prisma";
 import { TRPCError } from "@trpc/server";
-import { NotificationStatusForm, StatusForm } from "@prisma/client";
+import { NotificationStatusForm, Role, Status, StatusForm } from "@prisma/client";
 import isEmail from "validator/lib/isEmail";
 import { differenceInYears, parse } from "date-fns";
 import { fromZonedTime } from "date-fns-tz";
@@ -200,11 +200,24 @@ export const formsRouter = router({
       }
 
       if (isFormLocked(form.profile.statusForm, form.profile.formLocked)) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message:
-            "Formulário enviado e bloqueado. Aguarde o desbloqueio do administrador.",
-        });
+        const email = opts.ctx.user.user?.email;
+        const staff = email
+          ? await prisma.user.findFirst({
+              where: {
+                email,
+                role: { in: [Role.ADMIN, Role.COLLABORATOR] },
+              },
+              select: { id: true },
+            })
+          : null;
+
+        if (!staff) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message:
+              "Formulário enviado e bloqueado. Aguarde o desbloqueio do administrador.",
+          });
+        }
       }
 
       return form.profile.formStep;
@@ -4244,6 +4257,7 @@ export const formsRouter = router({
             formStep: step,
             statusForm: StatusForm.filled,
             formLocked: true,
+            status: Status.active,
           },
           include: {
             form: true,

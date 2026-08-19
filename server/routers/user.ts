@@ -28,6 +28,8 @@ import {
 import prisma from "@/lib/prisma";
 import { canCreateClientAccounts } from "@/lib/staff-access";
 import { tripPriorityFromDate } from "@/lib/trip-priority";
+import { expireDateFromIssued } from "@/lib/barcode-validity";
+import { upsertAcompanhamentoForUser } from "@/server/acompanhamento-sheet";
 
 function mapProfileToClientTableRow(profile: {
   id: string;
@@ -192,7 +194,7 @@ async function createClientWithFinanceAndProfile(params: {
   });
 
   // Passaporte entra imediatamente em Clientes Ativos.
-  // Visto americano só após o formulário da área do cliente.
+  // Visto americano entra como prospect até o cliente enviar o formulário.
   if (params.wantsPassport) {
     await createActiveProfile({
       userId: account.id,
@@ -201,6 +203,18 @@ async function createClientWithFinanceAndProfile(params: {
       category: Category.passport,
     });
   }
+
+  if (params.wantsAmericanVisa) {
+    await createActiveProfile({
+      userId: account.id,
+      name: params.name,
+      cpf: params.cpf,
+      category: Category.american_visa,
+      status: Status.prospect,
+    });
+  }
+
+  await upsertAcompanhamentoForUser(account.id);
 
   return account;
 }
@@ -564,6 +578,8 @@ export const userRouter = router({
           },
         });
 
+        await upsertAcompanhamentoForUser(existingUser.id);
+
         return { message: "Cliente adicionado ao grupo" };
       }
 
@@ -579,20 +595,10 @@ export const userRouter = router({
         wantsPassport: category === Category.passport,
       });
 
-      if (category === Category.passport) {
-        await prisma.profile.updateMany({
-          where: { userId: member.id, category },
-          data: profileData,
-        });
-      } else {
-        await createActiveProfile({
-          userId: member.id,
-          name: input.name,
-          cpf: input.cpf,
-          category,
-          ...profileData,
-        });
-      }
+      await prisma.profile.updateMany({
+        where: { userId: member.id, category },
+        data: profileData,
+      });
 
       if (input.scheduleAccount) {
         await prisma.user.update({
@@ -1048,7 +1054,7 @@ export const userRouter = router({
 
         const newProfile = await prisma.profile.create({
           data: {
-            DSValid: addDays(new Date(), 30),
+            DSValid: profileExpireDate ?? (profileIssuanceDate ? expireDateFromIssued(profileIssuanceDate) : addDays(new Date(), 30)),
             DSNumber: profile.DSNumber ?? "",
             name: profile.profileName,
             address: profile.profileAddress,
@@ -1093,6 +1099,8 @@ export const userRouter = router({
       });
 
       await Promise.all(profilesPromises);
+
+      await upsertAcompanhamentoForUser(account.id);
 
       return { message: "Conta criada com sucesso" };
     }),
@@ -1348,7 +1356,7 @@ export const userRouter = router({
 
       const profileUpdated = await prisma.profile.create({
         data: {
-          DSValid: addDays(new Date(), 30),
+          DSValid: profileExpireDate ?? (profileIssuanceDate ? expireDateFromIssued(profileIssuanceDate) : addDays(new Date(), 30)),
           DSNumber: DSNumber ?? "",
           name: profileName,
           address: profileAddress,
@@ -1612,6 +1620,67 @@ export const userRouter = router({
         client,
       };
     }),
+  findClientDetails: collaboratorProcedure
+    .input(
+      z.object({
+        userId: z.string().min(1).optional(),
+        name: z.string().min(1).optional(),
+        barcode: z.string().min(1).optional(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const include = {
+        user: {
+          include: {
+            profiles: true,
+          },
+        },
+        comments: true,
+        form: true,
+      } as const;
+
+      let client = null;
+
+      if (input.userId) {
+        client =
+          (await prisma.profile.findFirst({
+            where: { userId: input.userId, category: Category.american_visa },
+            include,
+            orderBy: { updatedAt: "desc" },
+          })) ??
+          (await prisma.profile.findFirst({
+            where: { userId: input.userId },
+            include,
+            orderBy: { updatedAt: "desc" },
+          }));
+      }
+
+      const barcode = input.barcode?.trim();
+      if (!client && barcode && barcode !== "—" && barcode !== "-") {
+        client = await prisma.profile.findFirst({
+          where: { DSNumber: barcode },
+          include,
+        });
+      }
+
+      const name = input.name?.trim();
+      if (!client && name) {
+        client = await prisma.profile.findFirst({
+          where: { name },
+          include,
+          orderBy: { updatedAt: "desc" },
+        });
+      }
+
+      if (!client) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Cliente não encontrado no cadastro",
+        });
+      }
+
+      return { client };
+    }),
   updateDSValidationDate: collaboratorProcedure
     .input(
       z.object({
@@ -1621,12 +1690,15 @@ export const userRouter = router({
     .mutation(async (opts) => {
       const profileId = opts.input.profileId;
 
+      const issuedAt = fromZonedTime(new Date(), "America/Sao_Paulo");
       const updatedClient = await prisma.profile.update({
         where: {
           id: profileId,
         },
         data: {
-          DSValid: fromZonedTime(new Date(), "America/Sao_Paulo"),
+          issuanceDate: issuedAt,
+          expireDate: expireDateFromIssued(issuedAt),
+          DSValid: expireDateFromIssued(issuedAt),
         },
         include: {
           user: {
@@ -2367,6 +2439,7 @@ export const userRouter = router({
           passport,
           issuanceDate: profileIssuanceDate,
           expireDate: profileExpireDate,
+          DSValid: profileExpireDate ?? (profileIssuanceDate ? expireDateFromIssued(profileIssuanceDate) : undefined),
           CASVDate: profileCASVDate,
           taxDate: profileTaxDate,
           shipping,
