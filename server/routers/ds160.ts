@@ -6,6 +6,7 @@ import prisma from "@/lib/prisma";
 import { CEAC_PAGES } from "@/lib/ds160-ceac";
 import { ds160StaffProcedure, router } from "../trpc";
 import { syncExcelClientsForOperations } from "@/server/acompanhamento-sheet";
+import { isCadastroBefore2026 } from "@/server/client-year-ops";
 
 const pageIdSchema = z.enum([
   "personal1",
@@ -74,6 +75,7 @@ export const ds160Router = router({
               name: true,
               email: true,
               group: true,
+              createdAt: true,
             },
           },
           form: {
@@ -89,7 +91,9 @@ export const ds160Router = router({
         },
       });
 
-      const rows = profiles.map((profile) => {
+      const rows = profiles
+        .filter((profile) => !isCadastroBefore2026(profile.entryDate, profile.user.createdAt))
+        .map((profile) => {
         const formName = [profile.form?.firstName, profile.form?.lastName]
           .filter(Boolean)
           .join(" ")

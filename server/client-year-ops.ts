@@ -13,6 +13,10 @@ export function isCadastroFrom2025(entryDate: Date | null | undefined, createdAt
   return cadastroYear(entryDate, createdAt) === 2025;
 }
 
+export function isCadastroBefore2026(entryDate: Date | null | undefined, createdAt: Date) {
+  return cadastroYear(entryDate, createdAt) < 2026;
+}
+
 async function deleteClientAccount(userId: string) {
   await prisma.user.updateMany({
     where: { payerUserId: userId },
