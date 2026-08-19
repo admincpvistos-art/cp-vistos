@@ -135,7 +135,7 @@ model User {
   comments       Comments[]
   financeEntry   FinanceEntry?
   serviceCost    ServiceCost?
-  acompanhamento AcompanhamentoClient[]
+  acompanhamento AcompanhamentoClient?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
