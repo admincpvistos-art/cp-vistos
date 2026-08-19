@@ -75,6 +75,16 @@ export default function ConferirFormularioPage({
     },
   });
 
+  const { mutate: openAdminEdit, isPending: isOpeningEdit } =
+    trpc.ds160Router.openAdminEdit.useMutation({
+      onSuccess() {
+        router.push(`/formulario/${profileId}?formStep=0`);
+      },
+      onError(error) {
+        toast.error(error.message);
+      },
+    });
+
   if (isPending || !data) {
     return (
       <div className="h-[calc(100vh-9rem)] px-4">
@@ -118,6 +128,13 @@ export default function ConferirFormularioPage({
           onClick={() => markReviewed({ profileId, pageId })}
         >
           Conferido
+        </Button>
+        <Button
+          variant="outline"
+          disabled={isOpeningEdit}
+          onClick={() => openAdminEdit({ profileId })}
+        >
+          Editar formulário
         </Button>
         <Button disabled={isStarting} onClick={() => startFill({ profileId })}>
           Preencher DS-160

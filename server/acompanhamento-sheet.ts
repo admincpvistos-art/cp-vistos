@@ -534,11 +534,57 @@ export async function syncExcelClientsForOperations() {
     pending = await ensureImportedClientsRegistered(20);
   }
 
-  if (pending === 0) {
-    await linkImportedFamilyGroups();
+  await linkImportedFamilyGroups();
+  await ensureImportedFinanceAndServiceRows();
+  return pending;
+}
+
+async function ensureImportedFinanceAndServiceRows() {
+  const imported = await prisma.acompanhamentoClient.findMany({
+    where: { source: "imported", userId: { not: null } },
+    select: { userId: true },
+  });
+  const ids = imported
+    .map((row) => row.userId)
+    .filter((id): id is string => Boolean(id));
+
+  if (!ids.length) {
+    return;
   }
 
-  return pending;
+  const [finances, costs] = await Promise.all([
+    prisma.financeEntry.findMany({
+      where: { userId: { in: ids } },
+      select: { userId: true },
+    }),
+    prisma.serviceCost.findMany({
+      where: { userId: { in: ids } },
+      select: { userId: true },
+    }),
+  ]);
+
+  const hasFinance = new Set(finances.map((row) => row.userId));
+  const hasCost = new Set(costs.map((row) => row.userId));
+  let created = 0;
+
+  for (const userId of ids) {
+    if (created >= 30) {
+      break;
+    }
+
+    if (!hasFinance.has(userId)) {
+      await prisma.financeEntry.create({
+        data: { userId, status: BudgetPaid.pending },
+      });
+      created += 1;
+    }
+    if (!hasCost.has(userId)) {
+      await prisma.serviceCost.create({
+        data: { userId },
+      });
+      created += 1;
+    }
+  }
 }
 
 function pickProfile(profiles: Profile[]) {

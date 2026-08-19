@@ -165,26 +165,42 @@ function DesktopTable({ mode, rows }: { mode: Props["mode"]; rows: ListRow[] }) 
 }
 
 export function Ds160FormList({ mode }: Props) {
-  const { data, isPending } = trpc.ds160Router.list.useQuery({ mode });
+  const { data, isPending, isFetching } = trpc.ds160Router.list.useQuery(
+    { mode },
+    {
+      refetchInterval: (query) =>
+        query.state.data?.pendingSync ? 1500 : false,
+    },
+  );
+
+  const rows = data?.rows ?? [];
+  const pendingSync = data?.pendingSync ?? 0;
 
   if (isPending) {
     return <p className="py-10 text-sm text-muted-foreground">Carregando formulários…</p>;
   }
 
-  if (!data?.length) {
-    return (
-      <p className="py-10 text-sm text-muted-foreground">
-        {mode === "fill"
-          ? "Nenhum formulário enviado para preencher no CEAC ainda."
-          : "Nenhum formulário enviado para conferência ainda."}
-      </p>
-    );
-  }
-
   return (
     <>
-      <MobileCards mode={mode} rows={data} />
-      <DesktopTable mode={mode} rows={data} />
+      {pendingSync ? (
+        <p className="mb-4 text-sm text-muted-foreground">
+          Incluindo clientes do acompanhamento… {pendingSync} restante
+          {pendingSync === 1 ? "" : "s"}
+          {isFetching ? " ·" : ""}
+        </p>
+      ) : null}
+      {!rows.length ? (
+        <p className="py-10 text-sm text-muted-foreground">
+          {mode === "fill"
+            ? "Nenhum cliente do acompanhamento para preencher no CEAC ainda."
+            : "Nenhum cliente do acompanhamento para conferência ainda."}
+        </p>
+      ) : (
+        <>
+          <MobileCards mode={mode} rows={rows} />
+          <DesktopTable mode={mode} rows={rows} />
+        </>
+      )}
     </>
   );
 }

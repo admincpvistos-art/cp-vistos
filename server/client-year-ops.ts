@@ -88,7 +88,10 @@ async function runPurge() {
     }
 
     const listed = user.profiles.filter(
-      (profile) => profile.status === Status.active || profile.status === Status.archived,
+      (profile) =>
+        profile.status === Status.active ||
+        profile.status === Status.archived ||
+        profile.status === Status.prospect,
     );
 
     if (!listed.length) {

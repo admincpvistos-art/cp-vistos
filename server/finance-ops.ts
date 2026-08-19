@@ -6,6 +6,14 @@ import { isKeptPre2026Client } from "@/server/acompanhamento-sheet";
 const YEAR_2026 = new Date(Date.UTC(2026, 0, 1));
 
 export async function purgePre2026FinanceExceptIsadora() {
+  const imported = await prisma.acompanhamentoClient.findMany({
+    where: { source: "imported", userId: { not: null } },
+    select: { userId: true },
+  });
+  const importedIds = new Set(
+    imported.map((row) => row.userId).filter((id): id is string => Boolean(id)),
+  );
+
   const oldClients = await prisma.user.findMany({
     where: {
       role: Role.CLIENT,
@@ -15,7 +23,10 @@ export async function purgePre2026FinanceExceptIsadora() {
   });
 
   const ids = oldClients
-    .filter((user) => !isKeptPre2026Client(user.name))
+    .filter(
+      (user) =>
+        !isKeptPre2026Client(user.name) && !importedIds.has(user.id),
+    )
     .map((user) => user.id);
 
   if (!ids.length) {

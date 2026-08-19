@@ -13,7 +13,7 @@ function isFormLocked(statusForm: StatusForm, formLocked: boolean | null) {
   return statusForm === StatusForm.filled && formLocked !== false;
 }
 
-async function assertFormNotLocked(profileId: string) {
+async function assertFormNotLocked(profileId: string, staffEmail?: string | null) {
   const profile = await prisma.profile.findUnique({
     where: {
       id: profileId,
@@ -25,6 +25,20 @@ async function assertFormNotLocked(profileId: string) {
   });
 
   if (profile && isFormLocked(profile.statusForm, profile.formLocked)) {
+    if (staffEmail) {
+      const staff = await prisma.user.findFirst({
+        where: {
+          email: staffEmail,
+          role: { in: [Role.ADMIN, Role.COLLABORATOR] },
+        },
+        select: { id: true },
+      });
+
+      if (staff) {
+        return;
+      }
+    }
+
     throw new TRPCError({
       code: "FORBIDDEN",
       message:
@@ -117,8 +131,8 @@ async function syncFormPersonName(
   }
 }
 
-async function markProfileFilling(profileId: string) {
-  await assertFormNotLocked(profileId);
+async function markProfileFilling(profileId: string, staffEmail?: string | null) {
+  await assertFormNotLocked(profileId, staffEmail);
 
   const profile = await prisma.profile.findUnique({
     where: {
@@ -662,7 +676,7 @@ export const formsRouter = router({
         },
       });
 
-      await markProfileFilling(profileId);
+      await markProfileFilling(profileId, opts.ctx.user.user?.email);
 
       return { message: "Informações salvas", redirectStep };
     }),
@@ -964,7 +978,7 @@ export const formsRouter = router({
         },
       });
 
-      await markProfileFilling(profileId);
+      await markProfileFilling(profileId, opts.ctx.user.user?.email);
 
       return { message: "Informações salvas", redirectStep };
     }),
@@ -1189,7 +1203,7 @@ export const formsRouter = router({
         },
       });
 
-      await markProfileFilling(profileId);
+      await markProfileFilling(profileId, opts.ctx.user.user?.email);
 
       return { message: "Informações salvas", redirectStep };
     }),
@@ -1615,7 +1629,7 @@ export const formsRouter = router({
         },
       });
 
-      await markProfileFilling(profileId);
+      await markProfileFilling(profileId, opts.ctx.user.user?.email);
 
       return { message: "Informações salvas", redirectStep };
     }),
@@ -1844,7 +1858,7 @@ export const formsRouter = router({
         },
       });
 
-      await markProfileFilling(profileId);
+      await markProfileFilling(profileId, opts.ctx.user.user?.email);
 
       return { message: "Informações salvas", redirectStep };
     }),
@@ -2276,7 +2290,7 @@ export const formsRouter = router({
         },
       });
 
-      await markProfileFilling(profileId);
+      await markProfileFilling(profileId, opts.ctx.user.user?.email);
 
       return { message: "Informações salvas", redirectStep };
     }),
@@ -2494,7 +2508,7 @@ export const formsRouter = router({
         },
       });
 
-      await markProfileFilling(profileId);
+      await markProfileFilling(profileId, opts.ctx.user.user?.email);
 
       return { message: "Informações salvas", redirectStep };
     }),
@@ -2788,7 +2802,7 @@ export const formsRouter = router({
         },
       });
 
-      await markProfileFilling(profileId);
+      await markProfileFilling(profileId, opts.ctx.user.user?.email);
 
       return { message: "Informações salvas", redirectStep };
     }),
@@ -3109,7 +3123,7 @@ export const formsRouter = router({
         },
       });
 
-      await markProfileFilling(profileId);
+      await markProfileFilling(profileId, opts.ctx.user.user?.email);
 
       return { message: "Informações salvas", redirectStep };
     }),
@@ -3479,7 +3493,7 @@ export const formsRouter = router({
         },
       });
 
-      await markProfileFilling(profileId);
+      await markProfileFilling(profileId, opts.ctx.user.user?.email);
 
       return { message: "Informações salvas", redirectStep };
     }),
@@ -4120,7 +4134,7 @@ export const formsRouter = router({
         ),
     )
     .mutation(async (opts) => {
-      await assertFormNotLocked(opts.input.profileId);
+      await assertFormNotLocked(opts.input.profileId, opts.ctx.user.user?.email);
 
       const {
         profileId,
@@ -4583,7 +4597,7 @@ export const formsRouter = router({
         },
       });
 
-      await markProfileFilling(profileId);
+      await markProfileFilling(profileId, opts.ctx.user.user?.email);
 
       return { message: "Informações salvas", redirectStep };
     }),

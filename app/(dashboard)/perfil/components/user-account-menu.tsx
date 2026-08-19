@@ -51,13 +51,13 @@ const collaboratorTools = [
 ] as const;
 
 const officeCollaboratorTools = [
-  { href: "/perfil/clientes", label: "Clientes", icon: Users },
   {
     href: "/perfil/conferir-formularios",
     label: "Conferir Formulários",
     icon: ClipboardCheck,
   },
   { href: "/perfil/preencher-ds160", label: "Preencher DS-160", icon: FileInput },
+  { href: "/perfil/clientes", label: "Clientes", icon: Users },
   { href: "/perfil/prospects", label: "Prospects", icon: Contact },
   { href: "/perfil/arquivados", label: "Arquivados", icon: Archive },
 ] as const;
@@ -106,7 +106,24 @@ const developmentExternalTools = [
   },
 ] as const;
 
-function getInitials(name?: string | null) {
+function ToolItem({
+  href,
+  label,
+  icon: Icon,
+}: {
+  href: string;
+  label: string;
+  icon: typeof Users;
+}) {
+  return (
+    <DropdownMenuItem asChild>
+      <Link href={href} className="cursor-pointer">
+        <Icon className="mr-2 h-4 w-4" />
+        {label}
+      </Link>
+    </DropdownMenuItem>
+  );
+}
   if (!name) return "U";
   return name
     .split(" ")
@@ -274,83 +291,49 @@ export function UserAccountMenu() {
                 })
               }
             >
-              {isOfficeCollab
-                ? officeCollaboratorTools.map(({ href, label, icon: Icon }) => (
-                    <DropdownMenuItem key={href} asChild>
-                      <Link href={href} className="cursor-pointer">
-                        <Icon className="mr-2 h-4 w-4" />
-                        {label}
-                      </Link>
-                    </DropdownMenuItem>
-                  ))
-                : collaboratorTools.map(({ href, label, icon: Icon }) => (
-                    <div key={href} className="contents">
-                      {href === "/perfil/clientes" && isAdmin ? (
-                        <DropdownMenuItem asChild>
-                          <Link
-                            href="/perfil/acompanhamento-clientes"
-                            className="cursor-pointer"
-                          >
-                            <Table2 className="mr-2 h-4 w-4" />
-                            Acompanhamento Clientes
-                          </Link>
-                        </DropdownMenuItem>
-                      ) : null}
-
-                      <DropdownMenuItem asChild>
-                        <Link href={href} className="cursor-pointer">
-                          <Icon className="mr-2 h-4 w-4" />
-                          {label}
-                        </Link>
-                      </DropdownMenuItem>
-
-                      {href === "/perfil/clientes" && isAdmin ? (
-                        <>
-                          <DropdownMenuItem asChild>
-                            <Link
-                              href="/perfil/conferir-formularios"
-                              className="cursor-pointer"
-                            >
-                              <ClipboardCheck className="mr-2 h-4 w-4" />
-                              Conferir Formulários
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild>
-                            <Link
-                              href="/perfil/preencher-ds160"
-                              className="cursor-pointer"
-                            >
-                              <FileInput className="mr-2 h-4 w-4" />
-                              Preencher DS-160
-                            </Link>
-                          </DropdownMenuItem>
-                        </>
-                      ) : null}
-
-                      {href === "/perfil/clientes" && canAccessFinance && (
-                        <>
-                          <DropdownMenuItem asChild>
-                            <Link
-                              href="/perfil/servicos-e-custos"
-                              className="cursor-pointer"
-                            >
-                              <ClipboardList className="mr-2 h-4 w-4" />
-                              Serviços e Custos
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild>
-                            <Link
-                              href="/perfil/financeiro"
-                              className="cursor-pointer"
-                            >
-                              <Wallet className="mr-2 h-4 w-4" />
-                              Financeiro
-                            </Link>
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                    </div>
-                  ))}
+              {isOfficeCollab ? (
+                officeCollaboratorTools.map((tool) => (
+                  <ToolItem key={tool.href} {...tool} />
+                ))
+              ) : isAdmin ? (
+                <>
+                  <ToolItem
+                    href="/perfil/acompanhamento-clientes"
+                    label="Acompanhamento Clientes"
+                    icon={Table2}
+                  />
+                  <ToolItem
+                    href="/perfil/conferir-formularios"
+                    label="Conferir Formulários"
+                    icon={ClipboardCheck}
+                  />
+                  <ToolItem
+                    href="/perfil/preencher-ds160"
+                    label="Preencher DS-160"
+                    icon={FileInput}
+                  />
+                  {canAccessFinance ? (
+                    <>
+                      <ToolItem
+                        href="/perfil/servicos-e-custos"
+                        label="Serviços e Custos"
+                        icon={ClipboardList}
+                      />
+                      <ToolItem
+                        href="/perfil/financeiro"
+                        label="Financeiro"
+                        icon={Wallet}
+                      />
+                    </>
+                  ) : null}
+                  <ToolItem href="/perfil/clientes" label="Clientes" icon={Users} />
+                  <ToolItem href="/perfil/prospects" label="Prospects" icon={Contact} />
+                  <ToolItem href="/perfil/arquivados" label="Arquivados" icon={Archive} />
+                  <ToolItem href="/perfil/criar-conta" label="Criar Conta" icon={UserPlus} />
+                </>
+              ) : (
+                collaboratorTools.map((tool) => <ToolItem key={tool.href} {...tool} />)
+              )}
 
               {isAdmin &&
                 adminOnlyTools.map(({ href, label, icon: Icon }) => (

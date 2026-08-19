@@ -5,6 +5,7 @@ import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { CEAC_PAGES } from "@/lib/ds160-ceac";
 import { ds160StaffProcedure, router } from "../trpc";
+import { syncExcelClientsForOperations } from "@/server/acompanhamento-sheet";
 
 const pageIdSchema = z.enum([
   "personal1",
@@ -45,7 +46,15 @@ export const ds160Router = router({
         .optional(),
     )
     .query(async (opts) => {
-      const mode = opts.input?.mode ?? "review";
+      const pendingSync = await syncExcelClientsForOperations();
+
+      const imported = await prisma.acompanhamentoClient.findMany({
+        where: { source: "imported", userId: { not: null } },
+        select: { userId: true },
+      });
+      const importedUserIds = imported
+        .map((row) => row.userId)
+        .filter((id): id is string => Boolean(id));
 
       const profiles = await prisma.profile.findMany({
         where: {
@@ -54,6 +63,7 @@ export const ds160Router = router({
             isNot: null,
           },
           OR: [
+            ...(importedUserIds.length ? [{ userId: { in: importedUserIds } }] : []),
             { statusForm: StatusForm.filled },
             { ds160ReviewStatus: { in: ["returned", "ready", "filling"] } },
           ],
@@ -100,16 +110,7 @@ export const ds160Router = router({
         };
       });
 
-      if (mode === "fill") {
-        return rows.filter(
-          (row) =>
-            row.statusForm === StatusForm.filled ||
-            row.ds160ReviewStatus === "ready" ||
-            row.ds160ReviewStatus === "filling",
-        );
-      }
-
-      return rows;
+      return { rows, pendingSync };
     }),
   getPacket: ds160StaffProcedure
     .input(
@@ -245,6 +246,39 @@ export const ds160Router = router({
         reviewedPages: pages,
         ready,
       };
+    }),
+  openAdminEdit: ds160StaffProcedure
+    .input(
+      z.object({
+        profileId: z.string().min(1),
+      }),
+    )
+    .mutation(async (opts) => {
+      const profile = await prisma.profile.findUnique({
+        where: { id: opts.input.profileId },
+        select: { id: true, category: true, statusForm: true },
+      });
+
+      if (!profile || profile.category !== Category.american_visa) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Formulário de visto não encontrado",
+        });
+      }
+
+      await prisma.profile.update({
+        where: { id: profile.id },
+        data: {
+          formLocked: false,
+          formStep: 10,
+          statusForm:
+            profile.statusForm === StatusForm.awaiting
+              ? StatusForm.filling
+              : profile.statusForm,
+        },
+      });
+
+      return { profileId: profile.id };
     }),
   startFill: ds160StaffProcedure
     .input(

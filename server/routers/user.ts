@@ -1455,6 +1455,8 @@ export const userRouter = router({
     .query(async (opts) => {
       const { category } = opts.input;
 
+      await purgeCadastroClientsFrom2025();
+
       const profiles = await prisma.profile.findMany({
         where: {
           category,
@@ -1473,11 +1475,9 @@ export const userRouter = router({
         },
       });
 
-      if (profiles.length === 0) {
-        return { clients: [] };
-      }
-
-      const clients = profiles.map(mapProfileToClientTableRow);
+      const clients = profiles
+        .filter((profile) => !isCadastroFrom2025(profile.entryDate, profile.user.createdAt))
+        .map(mapProfileToClientTableRow);
 
       return { clients };
     }),
