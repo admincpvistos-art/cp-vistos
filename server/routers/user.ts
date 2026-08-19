@@ -29,6 +29,7 @@ import prisma from "@/lib/prisma";
 import { canCreateClientAccounts } from "@/lib/staff-access";
 import { tripPriorityFromDate } from "@/lib/trip-priority";
 import { expireDateFromIssued } from "@/lib/barcode-validity";
+import { isCadastroFrom2025, purgeCadastroClientsFrom2025 } from "@/server/client-year-ops";
 
 function mapProfileToClientTableRow(profile: {
   id: string;
@@ -1414,6 +1415,8 @@ export const userRouter = router({
     .query(async (opts) => {
       const { category, visaType } = opts.input;
 
+      await purgeCadastroClientsFrom2025();
+
       const profiles = await prisma.profile.findMany({
         where: {
           category,
@@ -1437,11 +1440,9 @@ export const userRouter = router({
         },
       });
 
-      if (profiles.length === 0) {
-        return { clients: [] };
-      }
-
-      const clients = profiles.map(mapProfileToClientTableRow);
+      const clients = profiles
+        .filter((profile) => !isCadastroFrom2025(profile.entryDate, profile.user.createdAt))
+        .map(mapProfileToClientTableRow);
 
       return { clients };
     }),
@@ -1490,6 +1491,8 @@ export const userRouter = router({
     .query(async (opts) => {
       const { category, visaType } = opts.input;
 
+      await purgeCadastroClientsFrom2025();
+
       const profiles = await prisma.profile.findMany({
         where: {
           category,
@@ -1513,11 +1516,9 @@ export const userRouter = router({
         },
       });
 
-      if (profiles.length === 0) {
-        return { clients: [] };
-      }
-
-      const clients = profiles.map(mapProfileToClientTableRow);
+      const clients = profiles
+        .filter((profile) => !isCadastroFrom2025(profile.entryDate, profile.user.createdAt))
+        .map(mapProfileToClientTableRow);
 
       return { clients };
     }),
