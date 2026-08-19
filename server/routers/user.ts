@@ -29,7 +29,6 @@ import prisma from "@/lib/prisma";
 import { canCreateClientAccounts } from "@/lib/staff-access";
 import { tripPriorityFromDate } from "@/lib/trip-priority";
 import { expireDateFromIssued } from "@/lib/barcode-validity";
-import { upsertAcompanhamentoForUser } from "@/server/acompanhamento-sheet";
 
 function mapProfileToClientTableRow(profile: {
   id: string;
@@ -213,8 +212,6 @@ async function createClientWithFinanceAndProfile(params: {
       status: Status.prospect,
     });
   }
-
-  await upsertAcompanhamentoForUser(account.id);
 
   return account;
 }
@@ -577,8 +574,6 @@ export const userRouter = router({
               existingUser.wantsPassport || category === Category.passport,
           },
         });
-
-        await upsertAcompanhamentoForUser(existingUser.id);
 
         return { message: "Cliente adicionado ao grupo" };
       }
@@ -1099,8 +1094,6 @@ export const userRouter = router({
       });
 
       await Promise.all(profilesPromises);
-
-      await upsertAcompanhamentoForUser(account.id);
 
       return { message: "Conta criada com sucesso" };
     }),

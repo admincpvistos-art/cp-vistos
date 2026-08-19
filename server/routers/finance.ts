@@ -5,6 +5,11 @@ import { TRPCError } from "@trpc/server";
 import prisma from "@/lib/prisma";
 import { financeAdminProcedure, router } from "../trpc";
 import { removeClientFromFinance } from "./service-cost";
+import { syncExcelClientsForOperations } from "@/server/acompanhamento-sheet";
+import {
+  purgePre2026FinanceExceptIsadora,
+  sortGroupedByRecency,
+} from "@/server/finance-ops";
 
 function startOfDay(date: Date) {
   const d = new Date(date);
@@ -136,6 +141,9 @@ export const financeRouter = router({
       }),
     )
     .query(async ({ input }) => {
+      await syncExcelClientsForOperations();
+      await purgePre2026FinanceExceptIsadora();
+
       const search = input.search?.trim();
       const dateFilter = input.yearMonth
         ? (() => {
@@ -175,20 +183,7 @@ export const financeRouter = router({
           )
         : entries;
 
-      const sorted = [...filtered].sort((a, b) => {
-        const groupA = (a.user.group || a.user.name).toLowerCase();
-        const groupB = (b.user.group || b.user.name).toLowerCase();
-        if (groupA !== groupB) {
-          return input.sort === "asc"
-            ? groupA.localeCompare(groupB, "pt-BR")
-            : groupB.localeCompare(groupA, "pt-BR");
-        }
-        const depA = a.user.payerUserId ? 1 : 0;
-        const depB = b.user.payerUserId ? 1 : 0;
-        if (depA !== depB) return depA - depB;
-        const diff = a.user.createdAt.getTime() - b.user.createdAt.getTime();
-        return input.sort === "asc" ? diff : -diff;
-      });
+      const sorted = sortGroupedByRecency(filtered, (entry) => entry.user, input.sort);
 
       return {
         entries: sorted.map((entry) => {

@@ -5,6 +5,11 @@ import { TRPCError } from "@trpc/server";
 import prisma from "@/lib/prisma";
 import { tripPriorityFromDate } from "@/lib/trip-priority";
 import { financeAdminProcedure, router } from "../trpc";
+import { syncExcelClientsForOperations } from "@/server/acompanhamento-sheet";
+import {
+  purgePre2026FinanceExceptIsadora,
+  sortGroupedByRecency,
+} from "@/server/finance-ops";
 
 function sumServiceValues(row: {
   renovacao: number | null;
@@ -175,6 +180,9 @@ export const serviceCostRouter = router({
       }),
     )
     .query(async ({ input }) => {
+      await syncExcelClientsForOperations();
+      await purgePre2026FinanceExceptIsadora();
+
       const rows = await prisma.serviceCost.findMany({
         include: {
           user: {
@@ -199,15 +207,7 @@ export const serviceCostRouter = router({
           )
         : rows;
 
-      const sorted = [...filtered].sort((a, b) => {
-        const groupA = (a.user.group || a.user.name).toLowerCase();
-        const groupB = (b.user.group || b.user.name).toLowerCase();
-        if (groupA !== groupB) return groupA.localeCompare(groupB, "pt-BR");
-        const depA = a.user.payerUserId ? 1 : 0;
-        const depB = b.user.payerUserId ? 1 : 0;
-        if (depA !== depB) return depA - depB;
-        return b.user.createdAt.getTime() - a.user.createdAt.getTime();
-      });
+      const sorted = sortGroupedByRecency(filtered, (row) => row.user, "desc");
 
       return {
         rows: sorted.map((row) => {
