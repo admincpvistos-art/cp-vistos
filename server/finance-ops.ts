@@ -3,42 +3,71 @@ import { Role } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { isKeptPre2026Client } from "@/server/acompanhamento-sheet";
 
-const YEAR_2026 = new Date(Date.UTC(2026, 0, 1));
-
-export async function purgePre2026FinanceExceptIsadora() {
+/** User ids that should appear in Financeiro / Serviços e Custos. */
+export async function getOperationsClientIds() {
   const imported = await prisma.acompanhamentoClient.findMany({
     where: { source: "imported", userId: { not: null } },
     select: { userId: true },
   });
-  const importedIds = new Set(
+
+  const ids = new Set(
     imported.map((row) => row.userId).filter((id): id is string => Boolean(id)),
   );
 
-  const oldClients = await prisma.user.findMany({
-    where: {
-      role: Role.CLIENT,
-      createdAt: { lt: YEAR_2026 },
-    },
+  const kept = await prisma.user.findMany({
+    where: { role: Role.CLIENT },
     select: { id: true, name: true },
   });
 
-  const ids = oldClients
-    .filter(
-      (user) =>
-        !isKeptPre2026Client(user.name) && !importedIds.has(user.id),
-    )
-    .map((user) => user.id);
-
-  if (!ids.length) {
-    return;
+  for (const user of kept) {
+    if (isKeptPre2026Client(user.name)) {
+      ids.add(user.id);
+    }
   }
 
-  await prisma.financeEntry.deleteMany({
-    where: { userId: { in: ids } },
+  return ids;
+}
+
+/**
+ * Remove finance/service-cost rows that are not from the Acompanhamento Excel
+ * list (keeps Isadora). This replaces the old checklist with the sheet clients.
+ */
+export async function purgeFinanceOutsideAcompanhamento() {
+  const keepIds = await getOperationsClientIds();
+
+  const financeRows = await prisma.financeEntry.findMany({
+    select: { id: true, userId: true },
   });
-  await prisma.serviceCost.deleteMany({
-    where: { userId: { in: ids } },
+  const serviceRows = await prisma.serviceCost.findMany({
+    select: { id: true, userId: true },
   });
+
+  const financeToDelete = financeRows
+    .filter((row) => !keepIds.has(row.userId))
+    .map((row) => row.id);
+  const serviceToDelete = serviceRows
+    .filter((row) => !keepIds.has(row.userId))
+    .map((row) => row.id);
+
+  if (financeToDelete.length) {
+    for (let i = 0; i < financeToDelete.length; i += 100) {
+      await prisma.financeEntry.deleteMany({
+        where: { id: { in: financeToDelete.slice(i, i + 100) } },
+      });
+    }
+  }
+  if (serviceToDelete.length) {
+    for (let i = 0; i < serviceToDelete.length; i += 100) {
+      await prisma.serviceCost.deleteMany({
+        where: { id: { in: serviceToDelete.slice(i, i + 100) } },
+      });
+    }
+  }
+}
+
+/** @deprecated use purgeFinanceOutsideAcompanhamento */
+export async function purgePre2026FinanceExceptIsadora() {
+  await purgeFinanceOutsideAcompanhamento();
 }
 
 export function sortGroupedByRecency<T>(

@@ -7,7 +7,8 @@ import { tripPriorityFromDate } from "@/lib/trip-priority";
 import { financeAdminProcedure, router } from "../trpc";
 import { syncExcelClientsForOperations } from "@/server/acompanhamento-sheet";
 import {
-  purgePre2026FinanceExceptIsadora,
+  getOperationsClientIds,
+  purgeFinanceOutsideAcompanhamento,
   sortGroupedByRecency,
 } from "@/server/finance-ops";
 
@@ -181,22 +182,27 @@ export const serviceCostRouter = router({
     )
     .query(async ({ input }) => {
       const pendingSync = await syncExcelClientsForOperations();
-      await purgePre2026FinanceExceptIsadora();
+      await purgeFinanceOutsideAcompanhamento();
+      const keepIds = await getOperationsClientIds();
+      const keepList = Array.from(keepIds);
 
-      const rows = await prisma.serviceCost.findMany({
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              createdAt: true,
-              group: true,
-              payerUserId: true,
+      const rows = keepList.length
+        ? await prisma.serviceCost.findMany({
+            where: { userId: { in: keepList } },
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  createdAt: true,
+                  group: true,
+                  payerUserId: true,
+                },
+              },
             },
-          },
-        },
-      });
+          })
+        : [];
 
       const searchLower = input.search?.trim().toLowerCase();
       const filtered = searchLower

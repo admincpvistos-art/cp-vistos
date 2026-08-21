@@ -261,12 +261,47 @@ export async function seedImportedAcompanhamentoRows() {
   const importedCount = await prisma.acompanhamentoClient.count({
     where: { source: "imported" },
   });
+  const expected = payload.rows?.length ?? 0;
 
-  if (importedCount > 0 || !payload.rows?.length) {
+  if (!expected) {
     return;
   }
 
+  if (importedCount >= expected) {
+    return;
+  }
+
+  if (importedCount === 0) {
+    for (const cells of payload.rows) {
+      await prisma.acompanhamentoClient.create({
+        data: {
+          source: "imported",
+          cells: cells.slice(0, ACOMPANHAMENTO_HEADERS.length),
+          resp: cells[COL.resp] || null,
+          alimto: cells[COL.alimto] || null,
+          obs: cells[COL.obs] || null,
+          pagto: cells[COL.pagto] || null,
+          statusLabel: cells[COL.status] || null,
+        },
+      });
+    }
+    return;
+  }
+
+  // Partial seed: add missing rows by name+barcode fingerprint
+  const existing = await prisma.acompanhamentoClient.findMany({
+    where: { source: "imported" },
+    select: { cells: true },
+  });
+  const fingerprints = new Set(
+    existing.map((row) => `${cell(row.cells, COL.name)}|${cell(row.cells, COL.barcode)}`.toLowerCase()),
+  );
+
   for (const cells of payload.rows) {
+    const key = `${(cells[COL.name] ?? "").trim()}|${(cells[COL.barcode] ?? "").trim()}`.toLowerCase();
+    if (fingerprints.has(key)) {
+      continue;
+    }
     await prisma.acompanhamentoClient.create({
       data: {
         source: "imported",
@@ -278,6 +313,7 @@ export async function seedImportedAcompanhamentoRows() {
         statusLabel: cells[COL.status] || null,
       },
     });
+    fingerprints.add(key);
   }
 }
 
@@ -569,7 +605,7 @@ async function ensureImportedFinanceAndServiceRows() {
 
   let created = 0;
   for (const userId of missing) {
-    if (created >= 40) {
+    if (created >= 80) {
       break;
     }
 
@@ -587,7 +623,7 @@ async function ensureImportedFinanceAndServiceRows() {
     }
   }
 
-  return Math.max(0, missing.length - 40);
+  return Math.max(0, missing.length - 80);
 }
 
 function pickProfile(profiles: Profile[]) {

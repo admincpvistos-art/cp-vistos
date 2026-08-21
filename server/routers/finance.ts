@@ -7,7 +7,8 @@ import { financeAdminProcedure, router } from "../trpc";
 import { removeClientFromFinance } from "./service-cost";
 import { syncExcelClientsForOperations } from "@/server/acompanhamento-sheet";
 import {
-  purgePre2026FinanceExceptIsadora,
+  getOperationsClientIds,
+  purgeFinanceOutsideAcompanhamento,
   sortGroupedByRecency,
 } from "@/server/finance-ops";
 
@@ -142,7 +143,9 @@ export const financeRouter = router({
     )
     .query(async ({ input }) => {
       const pendingSync = await syncExcelClientsForOperations();
-      await purgePre2026FinanceExceptIsadora();
+      await purgeFinanceOutsideAcompanhamento();
+      const keepIds = await getOperationsClientIds();
+      const keepList = Array.from(keepIds);
 
       const search = input.search?.trim();
       const dateFilter = input.yearMonth
@@ -152,26 +155,29 @@ export const financeRouter = router({
           })()
         : undefined;
 
-      const entries = await prisma.financeEntry.findMany({
-        where: {
-          user: {
-            role: Role.CLIENT,
-            ...(dateFilter ? { createdAt: dateFilter } : {}),
-          },
-        },
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              createdAt: true,
-              group: true,
-              payerUserId: true,
+      const entries = keepList.length
+        ? await prisma.financeEntry.findMany({
+            where: {
+              userId: { in: keepList },
+              user: {
+                role: Role.CLIENT,
+                ...(dateFilter ? { createdAt: dateFilter } : {}),
+              },
             },
-          },
-        },
-      });
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  createdAt: true,
+                  group: true,
+                  payerUserId: true,
+                },
+              },
+            },
+          })
+        : [];
 
       const searchLower = search?.toLowerCase();
 
