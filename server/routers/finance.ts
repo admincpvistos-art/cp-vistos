@@ -5,7 +5,10 @@ import { TRPCError } from "@trpc/server";
 import prisma from "@/lib/prisma";
 import { financeAdminProcedure, router } from "../trpc";
 import { removeClientFromFinance } from "./service-cost";
-import { syncExcelClientsForOperations } from "@/server/acompanhamento-sheet";
+import {
+  getOperationsSyncStatus,
+  runOperationsSyncBatch,
+} from "@/server/acompanhamento-sheet";
 import {
   getOperationsClientIds,
   purgeFinanceOutsideAcompanhamento,
@@ -67,6 +70,13 @@ async function sumExpensesBetween(start?: Date, end?: Date) {
 }
 
 export const financeRouter = router({
+  /** Cadastra um lote de clientes do Acompanhamento (chamar em loop no front). */
+  syncBatch: financeAdminProcedure.mutation(async () => {
+    return runOperationsSyncBatch();
+  }),
+  getSyncStatus: financeAdminProcedure.query(async () => {
+    return getOperationsSyncStatus();
+  }),
   getSummary: financeAdminProcedure
     .input(
       z.object({
@@ -142,9 +152,8 @@ export const financeRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      const sync = await syncExcelClientsForOperations();
-      // Só limpa linhas fora do Acompanhamento quando o sync já terminou,
-      // para não apagar entradas enquanto ainda estamos cadastrando clientes.
+      // Listagem rápida: não bloqueia no cadastro em massa.
+      const sync = await getOperationsSyncStatus();
       if (sync.pendingSync === 0) {
         await purgeFinanceOutsideAcompanhamento();
       }

@@ -5,7 +5,10 @@ import { TRPCError } from "@trpc/server";
 import prisma from "@/lib/prisma";
 import { tripPriorityFromDate } from "@/lib/trip-priority";
 import { financeAdminProcedure, router } from "../trpc";
-import { syncExcelClientsForOperations } from "@/server/acompanhamento-sheet";
+import {
+  getOperationsSyncStatus,
+  runOperationsSyncBatch,
+} from "@/server/acompanhamento-sheet";
 import {
   getOperationsClientIds,
   purgeFinanceOutsideAcompanhamento,
@@ -181,7 +184,7 @@ export const serviceCostRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      const sync = await syncExcelClientsForOperations();
+      const sync = await getOperationsSyncStatus();
       if (sync.pendingSync === 0) {
         await purgeFinanceOutsideAcompanhamento();
       }

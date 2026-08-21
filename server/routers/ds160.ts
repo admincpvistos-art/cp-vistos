@@ -5,7 +5,7 @@ import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { CEAC_PAGES } from "@/lib/ds160-ceac";
 import { ds160StaffProcedure, router } from "../trpc";
-import { syncExcelClientsForOperations } from "@/server/acompanhamento-sheet";
+import { getOperationsSyncStatus } from "@/server/acompanhamento-sheet";
 import { isCadastroBefore2026 } from "@/server/client-year-ops";
 
 const pageIdSchema = z.enum([
@@ -47,7 +47,7 @@ export const ds160Router = router({
         .optional(),
     )
     .query(async (opts) => {
-      const sync = await syncExcelClientsForOperations();
+      const sync = await getOperationsSyncStatus();
 
       const imported = await prisma.acompanhamentoClient.findMany({
         where: { source: "imported", userId: { not: null } },

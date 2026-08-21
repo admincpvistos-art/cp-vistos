@@ -10,6 +10,7 @@ import { SheetClientsTable, type SheetClientRow } from "@/components/dashboard/s
 import { trpc } from "@/lib/trpc-client";
 import { isFullAdmin } from "@/lib/staff-access";
 import { AcompanhamentoEditSheet } from "./acompanhamento-edit-sheet";
+import { useAcompanhamentoOperationsSync } from "@/hooks/use-acompanhamento-operations-sync";
 
 export default function AcompanhamentoClientesPage() {
   const router = useRouter();
@@ -20,11 +21,13 @@ export default function AcompanhamentoClientesPage() {
     retry: false,
   });
   const isAdmin = isFullAdmin(me?.user.role, me?.user.email);
+  useAcompanhamentoOperationsSync(isAdmin);
 
   const { data, isLoading, isError, error, isFetching, refetch } =
     trpc.acompanhamentoRouter.getClientesSheet.useQuery(undefined, {
       enabled: isAdmin,
       retry: false,
+      refetchInterval: (query) => (query.state.data?.pendingSync ? 2000 : false),
     });
 
   const { mutateAsync: updateComment, isPending: commentPending } =
@@ -37,18 +40,6 @@ export default function AcompanhamentoClientesPage() {
         toast.error(mutationError.message || "Não foi possível salvar o comentário");
       },
     });
-
-  useEffect(() => {
-    if (!data?.pendingSync) {
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      refetch();
-    }, 1500);
-
-    return () => window.clearTimeout(timer);
-  }, [data?.pendingSync, refetch]);
 
   useEffect(() => {
     if (!me || isMeLoading) {

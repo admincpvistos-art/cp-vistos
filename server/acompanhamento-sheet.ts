@@ -31,14 +31,12 @@ import {
 } from "@/lib/arquivados-categories";
 
 /**
- * No MongoDB/Prisma, documentos sem o campo `archivedAt` NÃO batem com
- * `archivedAt: null`. Incluir `isSet: false` para clientes ainda ativos.
+ * No MongoDB, documentos sem `archivedAt` não entram em `archivedAt: null`.
+ * `NOT { archivedAt: { not: null } }` cobre campo ausente e null.
  */
-export function whereNotArchived(): {
-  OR: Array<{ archivedAt: null } | { archivedAt: { isSet: boolean } }>;
-} {
+export function whereNotArchived() {
   return {
-    OR: [{ archivedAt: null }, { archivedAt: { isSet: false } }],
+    NOT: { archivedAt: { not: null } },
   };
 }
 
@@ -617,32 +615,8 @@ export async function linkImportedFamilyGroups() {
   }
 }
 
-export async function syncExcelClientsForOperations(options?: {
-  linkFamilies?: boolean;
-}) {
-  await seedImportedAcompanhamentoRows();
-  await purgeCadastroAcompanhamentoRows();
-
-  const started = Date.now();
-  // Lotes curtos: evita timeout da Vercel que travava o progresso em ~4 clientes.
-  const REGISTER_BUDGET_MS = 8000;
-  let pendingUsers = await ensureImportedClientsRegistered(24);
-
-  while (pendingUsers > 0 && Date.now() - started < REGISTER_BUDGET_MS) {
-    pendingUsers = await ensureImportedClientsRegistered(24);
-  }
-
-  const pendingFinance = await ensureImportedFinanceAndServiceRows();
-
-  if (
-    options?.linkFamilies &&
-    pendingUsers === 0 &&
-    Date.now() - started < 20000
-  ) {
-    await linkImportedFamilyGroups();
-  }
-
-  const [totalImported, linkedUsers] = await Promise.all([
+export async function getOperationsSyncStatus() {
+  const [totalImported, linkedUsers, pendingUsers] = await Promise.all([
     prisma.acompanhamentoClient.count({
       where: { AND: [{ source: "imported" }, whereNotArchived()] },
     }),
@@ -651,13 +625,46 @@ export async function syncExcelClientsForOperations(options?: {
         AND: [{ source: "imported", userId: { not: null } }, whereNotArchived()],
       },
     }),
+    prisma.acompanhamentoClient.count({
+      where: {
+        AND: [{ source: "imported", userId: null }, whereNotArchived()],
+      },
+    }),
   ]);
 
   return {
-    pendingSync: pendingUsers + pendingFinance,
+    pendingSync: pendingUsers,
     totalImported,
     linkedUsers,
   };
+}
+
+/** Um lote rápido de cadastro — para ser chamado em loop pelo front. */
+export async function runOperationsSyncBatch() {
+  await seedImportedAcompanhamentoRows();
+  await purgeCadastroAcompanhamentoRows();
+
+  const pendingUsers = await ensureImportedClientsRegistered(30);
+  const pendingFinance = await ensureImportedFinanceAndServiceRows();
+  const status = await getOperationsSyncStatus();
+
+  return {
+    ...status,
+    pendingSync: pendingUsers + pendingFinance,
+  };
+}
+
+export async function syncExcelClientsForOperations(options?: {
+  linkFamilies?: boolean;
+}) {
+  // Compat: um lote curto (listagens não devem depender disso para carregar).
+  const batch = await runOperationsSyncBatch();
+
+  if (options?.linkFamilies && batch.pendingSync === 0) {
+    await linkImportedFamilyGroups();
+  }
+
+  return batch;
 }
 
 /**
@@ -702,7 +709,7 @@ async function ensureImportedFinanceAndServiceRows() {
   const needCost = ids.filter((userId) => !hasCost.has(userId));
 
   const BATCH = 40;
-  const budgetMs = 15000;
+  const budgetMs = 6000;
   const started = Date.now();
 
   for (let i = 0; i < needFinance.length && Date.now() - started < budgetMs; i += BATCH) {
@@ -880,7 +887,9 @@ export function visibleCells(row: AcompanhamentoRecord) {
 }
 
 export async function listAcompanhamentoSheet() {
-  const sync = await syncExcelClientsForOperations({ linkFamilies: true });
+  await seedImportedAcompanhamentoRows();
+  await purgeCadastroAcompanhamentoRows();
+  const sync = await getOperationsSyncStatus();
 
   const records = await prisma.acompanhamentoClient.findMany({
     where: { AND: [{ source: "imported" }, whereNotArchived()] },

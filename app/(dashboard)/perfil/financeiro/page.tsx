@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { canAccessFinance } from "@/lib/staff-access";
 import { ClientDetailsModal } from "@/components/dashboard/client-details-modal";
 import { useOpenClientDetails } from "../use-open-client-details";
+import { useAcompanhamentoOperationsSync } from "@/hooks/use-acompanhamento-operations-sync";
 
 function formatBRL(value: number) {
   return value.toLocaleString("pt-BR", {
@@ -95,6 +96,8 @@ export default function FinanceiroPage() {
     return canAccessFinance(me?.user.role, me?.user.email);
   }, [me]);
 
+  useAcompanhamentoOperationsSync(canAccess);
+
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(timer);
@@ -129,10 +132,8 @@ export default function FinanceiroPage() {
               data.linkedUsers != null &&
               data.linkedUsers < data.totalImported,
           );
-        if (incomplete || query.state.error) return 1000;
-        return false;
+        return incomplete ? 2000 : false;
       },
-      retry: 2,
     },
   );
 
