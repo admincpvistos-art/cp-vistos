@@ -180,7 +180,7 @@ export const serviceCostRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      await syncExcelClientsForOperations();
+      const pendingSync = await syncExcelClientsForOperations();
       await purgePre2026FinanceExceptIsadora();
 
       const rows = await prisma.serviceCost.findMany({
@@ -210,6 +210,7 @@ export const serviceCostRouter = router({
       const sorted = sortGroupedByRecency(filtered, (row) => row.user, "desc");
 
       return {
+        pendingSync,
         rows: sorted.map((row) => {
           const isDependent = Boolean(row.user.payerUserId);
           const total = isDependent ? 0 : sumServiceValues(row);

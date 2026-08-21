@@ -118,7 +118,11 @@ export default function FinanceiroPage() {
       yearMonth: checklistMonth || null,
       sort,
     },
-    { enabled: canAccess },
+    {
+      enabled: canAccess,
+      refetchInterval: (query) =>
+        query.state.data?.pendingSync ? 1500 : false,
+    },
   );
 
   const expensesQuery = trpc.financeRouter.getExpenses.useQuery(
@@ -351,6 +355,12 @@ export default function FinanceiroPage() {
               </Link>
               .
             </p>
+            {checklistQuery.data?.pendingSync ? (
+              <p className="text-sm text-muted-foreground mt-2">
+                Incluindo clientes do acompanhamento… {checklistQuery.data.pendingSync}{" "}
+                restante{checklistQuery.data.pendingSync === 1 ? "" : "s"}
+              </p>
+            ) : null}
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 sm:items-center">

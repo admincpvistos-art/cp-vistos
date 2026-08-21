@@ -1450,10 +1450,11 @@ export const userRouter = router({
     .input(
       z.object({
         category: z.enum(["american_visa", "passport", "e_ta"]),
+        visaType: z.enum(["primeiro_visto", "renovacao"]).optional(),
       })
     )
     .query(async (opts) => {
-      const { category } = opts.input;
+      const { category, visaType } = opts.input;
 
       await purgeCadastroClientsFrom2025();
 
@@ -1461,6 +1462,11 @@ export const userRouter = router({
         where: {
           category,
           status: Status.prospect,
+          ...(visaType === "renovacao"
+            ? { visaType: VisaType.renovacao }
+            : visaType === "primeiro_visto"
+              ? { visaType: { not: VisaType.renovacao } }
+              : {}),
         },
         include: {
           user: {

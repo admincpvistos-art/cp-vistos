@@ -8,6 +8,7 @@ import { Suspense, useEffect, useState } from "react";
 import { E_TA_Prospects } from "./components/e-ta-prospects";
 import { PassportProspects } from "./components/passport-prospects";
 import { AmericanVisaProspects } from "./components/american-visa-prospects";
+import { AmericanVisaRenewalProspects } from "./components/american-visa-renewal-prospects";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ClientDetailsModal } from "@/components/dashboard/client-details-modal";
 
@@ -25,7 +26,10 @@ function ProspectsComponent() {
 
     if (
       !queryCategory ||
-      (queryCategory !== "american_visa" && queryCategory !== "passport" && queryCategory !== "e_ta")
+      (queryCategory !== "american_visa" &&
+        queryCategory !== "renovacao" &&
+        queryCategory !== "passport" &&
+        queryCategory !== "e_ta")
     ) {
       queryCategory = "american_visa";
 
@@ -58,6 +62,9 @@ function ProspectsComponent() {
             <TabsTrigger value="american_visa" className="w-full h-10 rounded-lg sm:text-base sm:font-semibold">
               Visto Americano
             </TabsTrigger>
+            <TabsTrigger value="renovacao" className="w-full h-10 rounded-lg sm:text-base sm:font-semibold">
+              Renovação
+            </TabsTrigger>
             <TabsTrigger value="passport" className="w-full h-10 rounded-lg sm:text-base sm:font-semibold">
               Passaporte
             </TabsTrigger>
@@ -68,6 +75,10 @@ function ProspectsComponent() {
 
           <TabsContent value="american_visa">
             <AmericanVisaProspects />
+          </TabsContent>
+
+          <TabsContent value="renovacao">
+            <AmericanVisaRenewalProspects />
           </TabsContent>
 
           <TabsContent value="passport">

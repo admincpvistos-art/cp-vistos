@@ -535,8 +535,8 @@ export async function syncExcelClientsForOperations() {
   }
 
   await linkImportedFamilyGroups();
-  await ensureImportedFinanceAndServiceRows();
-  return pending;
+  const pendingFinance = await ensureImportedFinanceAndServiceRows();
+  return pending + pendingFinance;
 }
 
 async function ensureImportedFinanceAndServiceRows() {
@@ -549,7 +549,7 @@ async function ensureImportedFinanceAndServiceRows() {
     .filter((id): id is string => Boolean(id));
 
   if (!ids.length) {
-    return;
+    return 0;
   }
 
   const [finances, costs] = await Promise.all([
@@ -565,10 +565,11 @@ async function ensureImportedFinanceAndServiceRows() {
 
   const hasFinance = new Set(finances.map((row) => row.userId));
   const hasCost = new Set(costs.map((row) => row.userId));
-  let created = 0;
+  const missing = ids.filter((userId) => !hasFinance.has(userId) || !hasCost.has(userId));
 
-  for (const userId of ids) {
-    if (created >= 30) {
+  let created = 0;
+  for (const userId of missing) {
+    if (created >= 40) {
       break;
     }
 
@@ -585,6 +586,8 @@ async function ensureImportedFinanceAndServiceRows() {
       created += 1;
     }
   }
+
+  return Math.max(0, missing.length - 40);
 }
 
 function pickProfile(profiles: Profile[]) {

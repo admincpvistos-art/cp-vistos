@@ -399,7 +399,11 @@ export default function ServicosECustosPage() {
 
   const rowsQuery = trpc.serviceCostRouter.getRows.useQuery(
     { search: debouncedSearch || undefined },
-    { enabled: canAccess },
+    {
+      enabled: canAccess,
+      refetchInterval: (query) =>
+        query.state.data?.pendingSync ? 1500 : false,
+    },
   );
 
   const { mutate: createExpense, isPending: creatingExpense } =
@@ -519,8 +523,15 @@ export default function ServicosECustosPage() {
             <h2 className="text-xl font-semibold">Planilha de serviços</h2>
             <p className="text-sm text-foreground/60 mt-1">
               A soma dos valores atualiza automaticamente o recebimento do
-              cliente no Financeiro.
+              cliente no Financeiro. No grupo, só o titular edita os valores;
+              dependentes mostram hífen.
             </p>
+            {rowsQuery.data?.pendingSync ? (
+              <p className="text-sm text-muted-foreground mt-2">
+                Incluindo clientes do acompanhamento… {rowsQuery.data.pendingSync}{" "}
+                restante{rowsQuery.data.pendingSync === 1 ? "" : "s"}
+              </p>
+            ) : null}
           </div>
 
           <div className="h-11 flex items-center gap-2 border border-muted/70 rounded-xl bg-background px-3 py-2 w-full sm:w-72">

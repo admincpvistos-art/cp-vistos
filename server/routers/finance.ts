@@ -141,7 +141,7 @@ export const financeRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      await syncExcelClientsForOperations();
+      const pendingSync = await syncExcelClientsForOperations();
       await purgePre2026FinanceExceptIsadora();
 
       const search = input.search?.trim();
@@ -186,6 +186,7 @@ export const financeRouter = router({
       const sorted = sortGroupedByRecency(filtered, (entry) => entry.user, input.sort);
 
       return {
+        pendingSync,
         entries: sorted.map((entry) => {
           const isDependent = Boolean(entry.user.payerUserId);
           return {

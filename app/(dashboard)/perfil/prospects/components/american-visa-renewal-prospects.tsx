@@ -6,10 +6,10 @@ import { DataTable } from "../../components/data-table";
 
 import { trpc } from "@/lib/trpc-client";
 
-export function AmericanVisaProspects() {
+export function AmericanVisaRenewalProspects() {
   const { data, isFetching } = trpc.userRouter.getProspectsClients.useQuery({
     category: "american_visa",
-    visaType: "primeiro_visto",
+    visaType: "renovacao",
   });
 
   if (isFetching) {
@@ -47,7 +47,7 @@ export function AmericanVisaProspects() {
       data={data?.clients ?? []}
       category="american_visa"
       listStatus="prospect"
-      visaType="primeiro_visto"
+      visaType="renovacao"
     />
   );
 }
