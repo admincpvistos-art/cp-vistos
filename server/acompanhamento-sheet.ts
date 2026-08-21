@@ -258,10 +258,11 @@ function isPlaceholderEmail(email: string) {
 }
 
 export async function seedImportedAcompanhamentoRows() {
+  const rows = payload.rows ?? [];
   const importedCount = await prisma.acompanhamentoClient.count({
     where: { source: "imported" },
   });
-  const expected = payload.rows?.length ?? 0;
+  const expected = rows.length;
 
   if (!expected) {
     return;
@@ -272,7 +273,7 @@ export async function seedImportedAcompanhamentoRows() {
   }
 
   if (importedCount === 0) {
-    for (const cells of payload.rows) {
+    for (const cells of rows) {
       await prisma.acompanhamentoClient.create({
         data: {
           source: "imported",
@@ -297,7 +298,7 @@ export async function seedImportedAcompanhamentoRows() {
     existing.map((row) => `${cell(row.cells, COL.name)}|${cell(row.cells, COL.barcode)}`.toLowerCase()),
   );
 
-  for (const cells of payload.rows) {
+  for (const cells of rows) {
     const key = `${(cells[COL.name] ?? "").trim()}|${(cells[COL.barcode] ?? "").trim()}`.toLowerCase();
     if (fingerprints.has(key)) {
       continue;

@@ -14,9 +14,29 @@ import {
   parseIssuedDate,
 } from "@/lib/barcode-validity";
 import { cn } from "@/lib/utils";
-import type { AcompanhamentoRecord } from "@/lib/acompanhamento-types";
 
-export const SHEET_VISIBLE_COLUMNS: { key: keyof AcompanhamentoRecord; label: string }[] = [
+export type SheetClientRow = {
+  id: string;
+  name: string;
+  barcode: string;
+  barcodeIssued: string;
+  barcodeDone: boolean;
+  casv: string;
+  interview: string;
+  meeting: string;
+  tax: string;
+  dob: string;
+  passport: string;
+  email: string;
+  entryDate: string;
+  group: string;
+  status: string;
+};
+
+export const SHEET_VISIBLE_COLUMNS: {
+  key: Exclude<keyof SheetClientRow, "barcodeDone">;
+  label: string;
+}[] = [
   { key: "name", label: "NOME" },
   { key: "barcode", label: "BARCODE" },
   { key: "barcodeIssued", label: "DATA BARCODE" },
@@ -31,25 +51,6 @@ export const SHEET_VISIBLE_COLUMNS: { key: keyof AcompanhamentoRecord; label: st
   { key: "group", label: "GRUPO" },
   { key: "status", label: "STATUS" },
 ];
-
-export type SheetClientRow = Pick<
-  AcompanhamentoRecord,
-  | "id"
-  | "name"
-  | "barcode"
-  | "barcodeIssued"
-  | "barcodeDone"
-  | "casv"
-  | "interview"
-  | "meeting"
-  | "tax"
-  | "dob"
-  | "passport"
-  | "email"
-  | "entryDate"
-  | "group"
-  | "status"
->;
 
 function BarcodeDateCell({ issued, done }: { issued: string; done: boolean }) {
   if (!issued) {
@@ -242,7 +243,7 @@ export function SheetClientsTable({
                       ) : column.key === "barcodeIssued" ? (
                         <BarcodeDateCell issued={row.barcodeIssued} done={row.barcodeDone} />
                       ) : (
-                        row[column.key] || "—"
+                        String(row[column.key] || "—")
                       )}
                     </TableCell>
                   ))}
