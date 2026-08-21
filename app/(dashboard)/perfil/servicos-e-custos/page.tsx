@@ -316,8 +316,19 @@ export default function ServicosECustosPage() {
     { search: debouncedSearch || undefined },
     {
       enabled: canAccess,
-      refetchInterval: (query) =>
-        query.state.data?.pendingSync ? 1500 : false,
+      refetchInterval: (query) => {
+        const data = query.state.data;
+        if (!data) return query.state.error ? 2000 : false;
+        if (data.pendingSync) return 1500;
+        if (
+          data.totalImported &&
+          data.linkedUsers != null &&
+          data.linkedUsers < data.totalImported
+        ) {
+          return 1500;
+        }
+        return false;
+      },
     },
   );
 
@@ -441,10 +452,25 @@ export default function ServicosECustosPage() {
               cliente no Financeiro. No grupo, só o titular edita os valores;
               dependentes mostram hífen.
             </p>
-            {rowsQuery.data?.pendingSync ? (
+            {rowsQuery.data?.pendingSync ||
+            (rowsQuery.data?.totalImported &&
+              rowsQuery.data.linkedUsers < rowsQuery.data.totalImported) ? (
               <p className="text-sm text-muted-foreground mt-2">
-                Incluindo clientes do acompanhamento… {rowsQuery.data.pendingSync}{" "}
-                restante{rowsQuery.data.pendingSync === 1 ? "" : "s"}
+                Incluindo clientes do acompanhamento… {rowsQuery.data.linkedUsers ?? 0}/
+                {rowsQuery.data.totalImported ?? "?"} na lista
+                {rowsQuery.data.pendingSync
+                  ? ` (${rowsQuery.data.pendingSync} restante${rowsQuery.data.pendingSync === 1 ? "" : "s"})`
+                  : ""}
+                . Mantenha esta página aberta até completar.
+              </p>
+            ) : rowsQuery.data?.totalImported ? (
+              <p className="text-sm text-muted-foreground mt-2">
+                {rowsQuery.data.rows.length} cliente
+                {rowsQuery.data.rows.length === 1 ? "" : "s"} do acompanhamento
+                {rowsQuery.data.totalImported !== rowsQuery.data.rows.length
+                  ? ` (${rowsQuery.data.totalImported} na planilha)`
+                  : ""}
+                .
               </p>
             ) : null}
           </div>

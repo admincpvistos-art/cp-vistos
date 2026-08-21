@@ -12,3 +12,7 @@ const handler = (req: Request) =>
   });
 
 export { handler as GET, handler as POST };
+
+/** Permite completar o sync em lote dos clientes do Acompanhamento. */
+export const maxDuration = 60;
+

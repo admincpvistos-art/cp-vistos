@@ -181,28 +181,37 @@ export const serviceCostRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      const pendingSync = await syncExcelClientsForOperations();
-      await purgeFinanceOutsideAcompanhamento();
+      const sync = await syncExcelClientsForOperations();
+      if (sync.pendingSync === 0) {
+        await purgeFinanceOutsideAcompanhamento();
+      }
       const keepIds = await getOperationsClientIds();
       const keepList = Array.from(keepIds);
 
-      const rows = keepList.length
-        ? await prisma.serviceCost.findMany({
-            where: { userId: { in: keepList } },
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
-                  createdAt: true,
-                  group: true,
-                  payerUserId: true,
-                },
-              },
-            },
-          })
-        : [];
+      const rowChunks =
+        keepList.length === 0
+          ? []
+          : await Promise.all(
+              Array.from({ length: Math.ceil(keepList.length / 80) }, (_, index) => {
+                const slice = keepList.slice(index * 80, index * 80 + 80);
+                return prisma.serviceCost.findMany({
+                  where: { userId: { in: slice } },
+                  include: {
+                    user: {
+                      select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        createdAt: true,
+                        group: true,
+                        payerUserId: true,
+                      },
+                    },
+                  },
+                });
+              }),
+            );
+      const rows = rowChunks.flat();
 
       const searchLower = input.search?.trim().toLowerCase();
       const filtered = searchLower
@@ -216,7 +225,9 @@ export const serviceCostRouter = router({
       const sorted = sortGroupedByRecency(filtered, (row) => row.user, "desc");
 
       return {
-        pendingSync,
+        pendingSync: sync.pendingSync,
+        totalImported: sync.totalImported,
+        linkedUsers: sync.linkedUsers,
         rows: sorted.map((row) => {
           const isDependent = Boolean(row.user.payerUserId);
           const total = isDependent ? 0 : sumServiceValues(row);

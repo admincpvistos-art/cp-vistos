@@ -47,7 +47,7 @@ export const ds160Router = router({
         .optional(),
     )
     .query(async (opts) => {
-      const pendingSync = await syncExcelClientsForOperations();
+      const sync = await syncExcelClientsForOperations();
 
       const imported = await prisma.acompanhamentoClient.findMany({
         where: { source: "imported", userId: { not: null } },
@@ -114,7 +114,7 @@ export const ds160Router = router({
         };
       });
 
-      return { rows, pendingSync };
+      return { rows, pendingSync: sync.pendingSync };
     }),
   getPacket: ds160StaffProcedure
     .input(

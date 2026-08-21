@@ -142,8 +142,12 @@ export const financeRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      const pendingSync = await syncExcelClientsForOperations();
-      await purgeFinanceOutsideAcompanhamento();
+      const sync = await syncExcelClientsForOperations();
+      // Só limpa linhas fora do Acompanhamento quando o sync já terminou,
+      // para não apagar entradas enquanto ainda estamos cadastrando clientes.
+      if (sync.pendingSync === 0) {
+        await purgeFinanceOutsideAcompanhamento();
+      }
       const keepIds = await getOperationsClientIds();
       const keepList = Array.from(keepIds);
 
@@ -155,29 +159,36 @@ export const financeRouter = router({
           })()
         : undefined;
 
-      const entries = keepList.length
-        ? await prisma.financeEntry.findMany({
-            where: {
-              userId: { in: keepList },
-              user: {
-                role: Role.CLIENT,
-                ...(dateFilter ? { createdAt: dateFilter } : {}),
-              },
-            },
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
-                  createdAt: true,
-                  group: true,
-                  payerUserId: true,
-                },
-              },
-            },
-          })
-        : [];
+      const entryChunks =
+        keepList.length === 0
+          ? []
+          : await Promise.all(
+              Array.from({ length: Math.ceil(keepList.length / 80) }, (_, index) => {
+                const slice = keepList.slice(index * 80, index * 80 + 80);
+                return prisma.financeEntry.findMany({
+                  where: {
+                    userId: { in: slice },
+                    user: {
+                      role: Role.CLIENT,
+                      ...(dateFilter ? { createdAt: dateFilter } : {}),
+                    },
+                  },
+                  include: {
+                    user: {
+                      select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        createdAt: true,
+                        group: true,
+                        payerUserId: true,
+                      },
+                    },
+                  },
+                });
+              }),
+            );
+      const entries = entryChunks.flat();
 
       const searchLower = search?.toLowerCase();
 
@@ -192,7 +203,9 @@ export const financeRouter = router({
       const sorted = sortGroupedByRecency(filtered, (entry) => entry.user, input.sort);
 
       return {
-        pendingSync,
+        pendingSync: sync.pendingSync,
+        totalImported: sync.totalImported,
+        linkedUsers: sync.linkedUsers,
         entries: sorted.map((entry) => {
           const isDependent = Boolean(entry.user.payerUserId);
           return {

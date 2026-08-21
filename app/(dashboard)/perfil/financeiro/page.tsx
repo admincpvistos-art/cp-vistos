@@ -120,8 +120,19 @@ export default function FinanceiroPage() {
     },
     {
       enabled: canAccess,
-      refetchInterval: (query) =>
-        query.state.data?.pendingSync ? 1500 : false,
+      refetchInterval: (query) => {
+        const data = query.state.data;
+        if (!data) return query.state.error ? 2000 : false;
+        if (data.pendingSync) return 1500;
+        if (
+          data.totalImported &&
+          data.linkedUsers != null &&
+          data.linkedUsers < data.totalImported
+        ) {
+          return 1500;
+        }
+        return false;
+      },
     },
   );
 
@@ -355,10 +366,26 @@ export default function FinanceiroPage() {
               </Link>
               .
             </p>
-            {checklistQuery.data?.pendingSync ? (
+            {checklistQuery.data?.pendingSync ||
+            (checklistQuery.data?.totalImported &&
+              checklistQuery.data.linkedUsers < checklistQuery.data.totalImported) ? (
               <p className="text-sm text-muted-foreground mt-2">
-                Incluindo clientes do acompanhamento… {checklistQuery.data.pendingSync}{" "}
-                restante{checklistQuery.data.pendingSync === 1 ? "" : "s"}
+                Incluindo clientes do acompanhamento…{" "}
+                {checklistQuery.data.linkedUsers ?? 0}/
+                {checklistQuery.data.totalImported ?? "?"} na lista
+                {checklistQuery.data.pendingSync
+                  ? ` (${checklistQuery.data.pendingSync} restante${checklistQuery.data.pendingSync === 1 ? "" : "s"})`
+                  : ""}
+                . Mantenha esta página aberta até completar.
+              </p>
+            ) : checklistQuery.data?.totalImported ? (
+              <p className="text-sm text-muted-foreground mt-2">
+                {checklistQuery.data.entries.length} cliente
+                {checklistQuery.data.entries.length === 1 ? "" : "s"} do acompanhamento
+                {checklistQuery.data.totalImported !== checklistQuery.data.entries.length
+                  ? ` (${checklistQuery.data.totalImported} na planilha)`
+                  : ""}
+                .
               </p>
             ) : null}
           </div>

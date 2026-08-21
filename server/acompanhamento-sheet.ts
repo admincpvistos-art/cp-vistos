@@ -492,9 +492,28 @@ export async function ensureImportedClientsRegistered(limit = 25) {
   }
 
   const passwordHash = await bcrypt.hash("cp-vistos-import", 8);
+  const CONCURRENCY = 6;
 
-  for (const record of pending) {
-    await registerImportedRow(record, passwordHash);
+  for (let i = 0; i < pending.length; i += CONCURRENCY) {
+    const chunk = pending.slice(i, i + CONCURRENCY);
+    await Promise.all(
+      chunk.map(async (record) => {
+        try {
+          await registerImportedRow(record, passwordHash);
+        } catch (error) {
+          console.error("[acompanhamento] falha ao registrar", record.id, error);
+          // Empurra a linha problemática para o fim da fila para não travar o lote.
+          try {
+            await prisma.acompanhamentoClient.update({
+              where: { id: record.id },
+              data: { createdAt: new Date() },
+            });
+          } catch {
+            // ignore
+          }
+        }
+      }),
+    );
   }
 
   return prisma.acompanhamentoClient.count({
@@ -593,19 +612,46 @@ export async function linkImportedFamilyGroups() {
   }
 }
 
-export async function syncExcelClientsForOperations() {
+export async function syncExcelClientsForOperations(options?: {
+  linkFamilies?: boolean;
+}) {
   await seedImportedAcompanhamentoRows();
   await purgeCadastroAcompanhamentoRows();
-  const started = Date.now();
-  let pending = await ensureImportedClientsRegistered(40);
 
-  while (pending > 0 && Date.now() - started < 12000) {
-    pending = await ensureImportedClientsRegistered(40);
+  const started = Date.now();
+  // Prioriza cadastrar usuários (sem o link de famílias, que é caro).
+  const REGISTER_BUDGET_MS = 25000;
+  let pendingUsers = await ensureImportedClientsRegistered(48);
+
+  while (pendingUsers > 0 && Date.now() - started < REGISTER_BUDGET_MS) {
+    pendingUsers = await ensureImportedClientsRegistered(48);
   }
 
-  await linkImportedFamilyGroups();
   const pendingFinance = await ensureImportedFinanceAndServiceRows();
-  return pending + pendingFinance;
+
+  // Amarração titular/dependente só quando pedida (ex.: Acompanhamento) e cadastro ok.
+  if (
+    options?.linkFamilies &&
+    pendingUsers === 0 &&
+    Date.now() - started < 50000
+  ) {
+    await linkImportedFamilyGroups();
+  }
+
+  const [totalImported, linkedUsers] = await Promise.all([
+    prisma.acompanhamentoClient.count({
+      where: { source: "imported", archivedAt: null },
+    }),
+    prisma.acompanhamentoClient.count({
+      where: { source: "imported", archivedAt: null, userId: { not: null } },
+    }),
+  ]);
+
+  return {
+    pendingSync: pendingUsers + pendingFinance,
+    totalImported,
+    linkedUsers,
+  };
 }
 
 /**
@@ -615,7 +661,7 @@ export async function syncExcelClientsForOperations() {
  */
 async function ensureImportedFinanceAndServiceRows() {
   const imported = await prisma.acompanhamentoClient.findMany({
-    where: { source: "imported", userId: { not: null } },
+    where: { source: "imported", userId: { not: null }, archivedAt: null },
     select: { userId: true },
   });
   const ids = Array.from(
@@ -626,24 +672,31 @@ async function ensureImportedFinanceAndServiceRows() {
     return 0;
   }
 
-  const [finances, costs] = await Promise.all([
-    prisma.financeEntry.findMany({
-      where: { userId: { in: ids } },
-      select: { userId: true },
-    }),
-    prisma.serviceCost.findMany({
-      where: { userId: { in: ids } },
-      select: { userId: true },
-    }),
-  ]);
+  const hasFinance = new Set<string>();
+  const hasCost = new Set<string>();
 
-  const hasFinance = new Set(finances.map((row) => row.userId));
-  const hasCost = new Set(costs.map((row) => row.userId));
+  // MongoDB/$in: busca em fatias para não estourar o payload.
+  for (let i = 0; i < ids.length; i += 100) {
+    const slice = ids.slice(i, i + 100);
+    const [finances, costs] = await Promise.all([
+      prisma.financeEntry.findMany({
+        where: { userId: { in: slice } },
+        select: { userId: true },
+      }),
+      prisma.serviceCost.findMany({
+        where: { userId: { in: slice } },
+        select: { userId: true },
+      }),
+    ]);
+    for (const row of finances) hasFinance.add(row.userId);
+    for (const row of costs) hasCost.add(row.userId);
+  }
+
   const needFinance = ids.filter((userId) => !hasFinance.has(userId));
   const needCost = ids.filter((userId) => !hasCost.has(userId));
 
-  const BATCH = 50;
-  const budgetMs = 10000;
+  const BATCH = 40;
+  const budgetMs = 15000;
   const started = Date.now();
 
   for (let i = 0; i < needFinance.length && Date.now() - started < budgetMs; i += BATCH) {
@@ -656,7 +709,6 @@ async function ensureImportedFinanceAndServiceRows() {
           });
           hasFinance.add(userId);
         } catch {
-          // unique race / already exists
           hasFinance.add(userId);
         }
       }),
@@ -822,7 +874,7 @@ export function visibleCells(row: AcompanhamentoRecord) {
 }
 
 export async function listAcompanhamentoSheet() {
-  const pendingSync = await syncExcelClientsForOperations();
+  const sync = await syncExcelClientsForOperations({ linkFamilies: true });
 
   const records = await prisma.acompanhamentoClient.findMany({
     where: { source: "imported", archivedAt: null },
@@ -868,7 +920,9 @@ export async function listAcompanhamentoSheet() {
   return {
     headers: [...ACOMPANHAMENTO_VISIBLE_HEADERS],
     rows,
-    pendingSync,
+    pendingSync: sync.pendingSync,
+    totalImported: sync.totalImported,
+    linkedUsers: sync.linkedUsers,
   };
 }
 
