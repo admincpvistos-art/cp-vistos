@@ -7,6 +7,7 @@ import { adminProcedure, financeAdminProcedure, router } from "../trpc";
 import { removeClientFromFinance } from "./service-cost";
 import {
   getOperationsSyncStatus,
+  rebuildFinanceFromExcel,
   runOperationsSyncBatch,
 } from "@/server/acompanhamento-sheet";
 import {
@@ -72,7 +73,15 @@ async function sumExpensesBetween(start?: Date, end?: Date) {
 export const financeRouter = router({
   /** Cadastra um lote de clientes do Acompanhamento (front logado + cron). */
   syncBatch: adminProcedure.mutation(async () => {
-    return runOperationsSyncBatch({ budgetMs: 12000, batchSize: 30 });
+    return runOperationsSyncBatch({
+      budgetMs: 20000,
+      batchSize: 35,
+      rebuildIfEmpty: true,
+    });
+  }),
+  /** Apaga Financeiro/Serviços (exceto Isadora) e recria a partir do Excel CLIENTES. */
+  rebuildFromExcel: adminProcedure.mutation(async () => {
+    return rebuildFinanceFromExcel({ budgetMs: 50000, batchSize: 40 });
   }),
   getSyncStatus: adminProcedure.query(async () => {
     return getOperationsSyncStatus();

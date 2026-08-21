@@ -8,7 +8,10 @@ import { isKeptPre2026Client } from "@/server/acompanhamento-sheet";
  */
 export async function getOperationsClientIds() {
   const imported = await prisma.acompanhamentoClient.findMany({
-    where: { source: "imported", userId: { not: null } },
+    where: {
+      source: { in: ["imported", "archived"] },
+      userId: { not: null },
+    },
     select: { userId: true },
   });
 

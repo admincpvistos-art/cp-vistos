@@ -31,13 +31,14 @@ import {
 } from "@/lib/arquivados-categories";
 
 /**
- * No MongoDB, documentos sem `archivedAt` não entram em `archivedAt: null`.
- * `NOT { archivedAt: { not: null } }` cobre campo ausente e null.
+ * Clientes ativos no Acompanhamento usam source "imported".
+ * Arquivados passam a source "archived" (evita filtro MongoDB em archivedAt).
  */
-export function whereNotArchived() {
-  return {
-    NOT: { archivedAt: { not: null } },
-  };
+export const ACOMPANHAMENTO_ACTIVE_SOURCE = "imported";
+export const ACOMPANHAMENTO_ARCHIVED_SOURCE = "archived";
+
+export function whereActiveAcompanhamento() {
+  return { source: ACOMPANHAMENTO_ACTIVE_SOURCE };
 }
 
 export const ACOMPANHAMENTO_HEADERS = [
@@ -480,9 +481,7 @@ async function registerImportedRow(
 
 export async function ensureImportedClientsRegistered(limit = 25) {
   const pending = await prisma.acompanhamentoClient.findMany({
-    where: {
-      AND: [{ source: "imported", userId: null }, whereNotArchived()],
-    },
+    where: { source: ACOMPANHAMENTO_ACTIVE_SOURCE, userId: null },
     orderBy: { createdAt: "asc" },
     take: limit,
     select: { id: true, cells: true },
@@ -518,15 +517,13 @@ export async function ensureImportedClientsRegistered(limit = 25) {
   }
 
   return prisma.acompanhamentoClient.count({
-    where: {
-      AND: [{ source: "imported", userId: null }, whereNotArchived()],
-    },
+    where: { source: ACOMPANHAMENTO_ACTIVE_SOURCE, userId: null },
   });
 }
 
 export async function linkImportedFamilyGroups() {
   const records = await prisma.acompanhamentoClient.findMany({
-    where: { source: "imported", userId: { not: null } },
+    where: { source: ACOMPANHAMENTO_ACTIVE_SOURCE, userId: { not: null } },
     include: {
       user: {
         select: {
@@ -618,17 +615,13 @@ export async function linkImportedFamilyGroups() {
 export async function getOperationsSyncStatus() {
   const [totalImported, linkedUsers, pendingUsers] = await Promise.all([
     prisma.acompanhamentoClient.count({
-      where: { AND: [{ source: "imported" }, whereNotArchived()] },
+      where: { source: ACOMPANHAMENTO_ACTIVE_SOURCE },
     }),
     prisma.acompanhamentoClient.count({
-      where: {
-        AND: [{ source: "imported", userId: { not: null } }, whereNotArchived()],
-      },
+      where: { source: ACOMPANHAMENTO_ACTIVE_SOURCE, userId: { not: null } },
     }),
     prisma.acompanhamentoClient.count({
-      where: {
-        AND: [{ source: "imported", userId: null }, whereNotArchived()],
-      },
+      where: { source: ACOMPANHAMENTO_ACTIVE_SOURCE, userId: null },
     }),
   ]);
 
@@ -639,16 +632,148 @@ export async function getOperationsSyncStatus() {
   };
 }
 
+/**
+ * Garante que a planilha Excel volte a aparecer no Acompanhamento.
+ * Só restaura em massa se a lista ativa estiver suspeitamente vazia.
+ */
+export async function restoreAcompanhamentoFromExcel() {
+  await seedImportedAcompanhamentoRows();
+  await purgeCadastroAcompanhamentoRows();
+
+  const expected = payload.rows?.length ?? 0;
+  const active = await prisma.acompanhamentoClient.count({
+    where: { source: ACOMPANHAMENTO_ACTIVE_SOURCE },
+  });
+
+  // Lista ok — não desarquiva quem foi arquivado de propósito.
+  if (expected > 0 && active >= Math.max(20, Math.floor(expected * 0.5))) {
+    return getOperationsSyncStatus();
+  }
+
+  // Lista sumiu: devolve linhas importadas/arquivadas para a planilha ativa.
+  await prisma.acompanhamentoClient.updateMany({
+    where: {
+      OR: [
+        { source: ACOMPANHAMENTO_ACTIVE_SOURCE },
+        { source: ACOMPANHAMENTO_ARCHIVED_SOURCE },
+        { source: "imported" },
+        { source: "archived" },
+      ],
+    },
+    data: {
+      source: ACOMPANHAMENTO_ACTIVE_SOURCE,
+      archivedAt: null,
+    },
+  });
+
+  return getOperationsSyncStatus();
+}
+
+/**
+ * Apaga Financeiro / Serviços e Custos (mantém Isadora) e reconstitui
+ * a partir da aba CLIENTES do Excel + regras de titular/dependente.
+ */
+export async function rebuildFinanceFromExcel(options?: {
+  budgetMs?: number;
+  batchSize?: number;
+}) {
+  const budgetMs = options?.budgetMs ?? 45000;
+  const batchSize = options?.batchSize ?? 40;
+  const started = Date.now();
+
+  const restored = await restoreAcompanhamentoFromExcel();
+
+  // Apaga checklist atual (exceto Isadora).
+  const clients = await prisma.user.findMany({
+    where: { role: Role.CLIENT },
+    select: { id: true, name: true },
+  });
+  const keepIds = new Set(
+    clients.filter((user) => isKeptPre2026Client(user.name)).map((user) => user.id),
+  );
+
+  const [financeRows, serviceRows] = await Promise.all([
+    prisma.financeEntry.findMany({ select: { id: true, userId: true } }),
+    prisma.serviceCost.findMany({ select: { id: true, userId: true } }),
+  ]);
+
+  const financeToDelete = financeRows
+    .filter((row) => !keepIds.has(row.userId))
+    .map((row) => row.id);
+  const serviceToDelete = serviceRows
+    .filter((row) => !keepIds.has(row.userId))
+    .map((row) => row.id);
+
+  for (let i = 0; i < financeToDelete.length; i += 100) {
+    await prisma.financeEntry.deleteMany({
+      where: { id: { in: financeToDelete.slice(i, i + 100) } },
+    });
+  }
+  for (let i = 0; i < serviceToDelete.length; i += 100) {
+    await prisma.serviceCost.deleteMany({
+      where: { id: { in: serviceToDelete.slice(i, i + 100) } },
+    });
+  }
+
+  let pendingUsers = await ensureImportedClientsRegistered(batchSize);
+  while (pendingUsers > 0 && Date.now() - started < budgetMs) {
+    pendingUsers = await ensureImportedClientsRegistered(batchSize);
+  }
+
+  const pendingFinance = await ensureImportedFinanceAndServiceRows();
+
+  if (pendingUsers === 0) {
+    await linkImportedFamilyGroups();
+  }
+
+  // Garante linha da Isadora
+  for (const userId of Array.from(keepIds)) {
+    try {
+      await prisma.financeEntry.upsert({
+        where: { userId },
+        create: { userId, status: BudgetPaid.pending },
+        update: {},
+      });
+      await prisma.serviceCost.upsert({
+        where: { userId },
+        create: { userId },
+        update: {},
+      });
+    } catch {
+      // ignore
+    }
+  }
+
+  const status = await getOperationsSyncStatus();
+  return {
+    ...status,
+    pendingSync: pendingUsers + pendingFinance,
+    restoredTotal: restored.totalImported,
+    wipedFinance: financeToDelete.length,
+    wipedService: serviceToDelete.length,
+  };
+}
+
 /** Um lote de cadastro — front e cron. */
 export async function runOperationsSyncBatch(options?: {
   budgetMs?: number;
   batchSize?: number;
+  rebuildIfEmpty?: boolean;
 }) {
   const budgetMs = options?.budgetMs ?? 10000;
   const batchSize = options?.batchSize ?? 30;
 
-  await seedImportedAcompanhamentoRows();
-  await purgeCadastroAcompanhamentoRows();
+  const statusBefore = await restoreAcompanhamentoFromExcel();
+  const financeCount = await prisma.financeEntry.count();
+
+  // Se a planilha ativa sumiu ou o financeiro está vazio, reconstrói.
+  if (
+    options?.rebuildIfEmpty !== false &&
+    ((statusBefore.totalImported < 50 && (payload.rows?.length ?? 0) > 50) ||
+      (statusBefore.totalImported > 50 && financeCount < 15))
+  ) {
+    return rebuildFinanceFromExcel({ budgetMs, batchSize });
+  }
 
   const started = Date.now();
   let pendingUsers = await ensureImportedClientsRegistered(batchSize);
@@ -669,7 +794,6 @@ export async function runOperationsSyncBatch(options?: {
 export async function syncExcelClientsForOperations(options?: {
   linkFamilies?: boolean;
 }) {
-  // Compat: um lote curto (listagens não devem depender disso para carregar).
   const batch = await runOperationsSyncBatch();
 
   if (options?.linkFamilies && batch.pendingSync === 0) {
@@ -686,7 +810,10 @@ export async function syncExcelClientsForOperations(options?: {
  */
 async function ensureImportedFinanceAndServiceRows() {
   const imported = await prisma.acompanhamentoClient.findMany({
-    where: { source: "imported", userId: { not: null } },
+    where: {
+      source: { in: [ACOMPANHAMENTO_ACTIVE_SOURCE, ACOMPANHAMENTO_ARCHIVED_SOURCE] },
+      userId: { not: null },
+    },
     select: { userId: true },
   });
   const ids = Array.from(
@@ -899,12 +1026,11 @@ export function visibleCells(row: AcompanhamentoRecord) {
 }
 
 export async function listAcompanhamentoSheet() {
-  await seedImportedAcompanhamentoRows();
-  await purgeCadastroAcompanhamentoRows();
+  await restoreAcompanhamentoFromExcel();
   const sync = await getOperationsSyncStatus();
 
   const records = await prisma.acompanhamentoClient.findMany({
-    where: { AND: [{ source: "imported" }, whereNotArchived()] },
+    where: { source: ACOMPANHAMENTO_ACTIVE_SOURCE },
     include: {
       user: {
         include: {
@@ -1144,7 +1270,7 @@ export async function updateAcompanhamentoRecord(input: AcompanhamentoUpdateInpu
     return null;
   }
 
-  if (current.archivedAt) {
+  if (current.source === ACOMPANHAMENTO_ARCHIVED_SOURCE || current.archivedAt) {
     throw new Error("Cliente arquivado — edição indisponível no Acompanhamento");
   }
 
@@ -1278,7 +1404,7 @@ export async function archiveAcompanhamentoClient(
     return null;
   }
 
-  if (existing.archivedAt) {
+  if (existing.source === ACOMPANHAMENTO_ARCHIVED_SOURCE || existing.archivedAt) {
     throw new Error("Este cliente já foi arquivado");
   }
 
@@ -1322,6 +1448,7 @@ export async function archiveAcompanhamentoClient(
     data: {
       services,
       archivedAt: new Date(),
+      source: ACOMPANHAMENTO_ARCHIVED_SOURCE,
     },
   });
 
