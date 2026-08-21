@@ -4,7 +4,7 @@ export function PassportProspects() {
   return (
     <SheetClientsTable
       rows={[]}
-      emptyMessage="Estrutura pronta. Os prospects de passaporte serão carregados em breve."
+      emptyMessage="Prospects da planilha Excel foram concentrados na aba Visto Americano."
       footerLabel="prospect"
     />
   );
