@@ -362,12 +362,13 @@ async function uniqueEmail(preferred: string, fallbackKey: string) {
 async function registerImportedRow(
   record: { id: string; cells: string[] },
   passwordHash: string,
+  options?: { skipBarcodeLink?: boolean },
 ) {
   const cells = record.cells;
   const name = cell(cells, COL.name) || "Cliente importado";
   const barcode = cell(cells, COL.barcode);
 
-  if (barcode) {
+  if (barcode && !options?.skipBarcodeLink) {
     const existingProfile = await prisma.profile.findFirst({
       where: { DSNumber: barcode },
       select: { userId: true },
@@ -479,7 +480,10 @@ async function registerImportedRow(
   ]);
 }
 
-export async function ensureImportedClientsRegistered(limit = 25) {
+export async function ensureImportedClientsRegistered(
+  limit = 25,
+  options?: { skipBarcodeLink?: boolean },
+) {
   const pending = await prisma.acompanhamentoClient.findMany({
     where: { source: ACOMPANHAMENTO_ACTIVE_SOURCE, userId: null },
     orderBy: { createdAt: "asc" },
@@ -493,14 +497,16 @@ export async function ensureImportedClientsRegistered(limit = 25) {
 
   // Hash leve: senha só de importação em lote.
   const passwordHash = await bcrypt.hash("cp-vistos-import", 4);
-  const CONCURRENCY = 10;
+  const CONCURRENCY = 12;
 
   for (let i = 0; i < pending.length; i += CONCURRENCY) {
     const chunk = pending.slice(i, i + CONCURRENCY);
     await Promise.all(
       chunk.map(async (record) => {
         try {
-          await registerImportedRow(record, passwordHash);
+          await registerImportedRow(record, passwordHash, {
+            skipBarcodeLink: options?.skipBarcodeLink ?? true,
+          });
         } catch (error) {
           console.error("[acompanhamento] falha ao registrar", record.id, error);
           try {
@@ -754,23 +760,24 @@ export async function rebuildFinanceFromExcel(options?: {
   };
 }
 
-/** Um lote de cadastro — front e cron. */
+/** Um lote de cadastro — front e cron. Nunca apaga o progresso já feito. */
 export async function runOperationsSyncBatch(options?: {
   budgetMs?: number;
   batchSize?: number;
   rebuildIfEmpty?: boolean;
 }) {
-  const budgetMs = options?.budgetMs ?? 10000;
-  const batchSize = options?.batchSize ?? 30;
+  const budgetMs = options?.budgetMs ?? 20000;
+  const batchSize = options?.batchSize ?? 40;
 
   const statusBefore = await restoreAcompanhamentoFromExcel();
   const financeCount = await prisma.financeEntry.count();
 
-  // Se a planilha ativa sumiu ou o financeiro está vazio, reconstrói.
+  // Rebuild completo SÓ se realmente não houver nada (senão apaga o progresso e trava em ~4).
   if (
     options?.rebuildIfEmpty !== false &&
-    ((statusBefore.totalImported < 50 && (payload.rows?.length ?? 0) > 50) ||
-      (statusBefore.totalImported > 50 && financeCount < 15))
+    statusBefore.totalImported > 50 &&
+    financeCount === 0 &&
+    statusBefore.linkedUsers === 0
   ) {
     return rebuildFinanceFromExcel({ budgetMs, batchSize });
   }
@@ -783,6 +790,11 @@ export async function runOperationsSyncBatch(options?: {
   }
 
   const pendingFinance = await ensureImportedFinanceAndServiceRows();
+
+  if (pendingUsers === 0) {
+    await linkImportedFamilyGroups();
+  }
+
   const status = await getOperationsSyncStatus();
 
   return {

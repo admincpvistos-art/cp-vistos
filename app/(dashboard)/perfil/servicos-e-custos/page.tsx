@@ -459,7 +459,7 @@ export default function ServicosECustosPage() {
                 {rowsQuery.data.pendingSync
                   ? ` (${rowsQuery.data.pendingSync} restante${rowsQuery.data.pendingSync === 1 ? "" : "s"})`
                   : ""}
-                . Mantenha esta página aberta até completar.
+                . Deixe o computador ligado e esta aba aberta — hibernar pausa o carregamento.
               </p>
             ) : rowsQuery.data?.totalImported ? (
               <p className="text-sm text-muted-foreground mt-2">

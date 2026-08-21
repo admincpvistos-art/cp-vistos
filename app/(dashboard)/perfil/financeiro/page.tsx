@@ -374,7 +374,7 @@ export default function FinanceiroPage() {
                 {checklistQuery.data.pendingSync
                   ? ` (${checklistQuery.data.pendingSync} restante${checklistQuery.data.pendingSync === 1 ? "" : "s"})`
                   : ""}
-                . Mantenha esta página aberta até completar.
+                . Deixe o computador ligado e esta aba aberta — hibernar pausa o carregamento.
               </p>
             ) : checklistQuery.data?.totalImported ? (
               <p className="text-sm text-muted-foreground mt-2">
