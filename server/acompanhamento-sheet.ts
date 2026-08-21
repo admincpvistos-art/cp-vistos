@@ -359,6 +359,40 @@ async function uniqueEmail(preferred: string, fallbackKey: string) {
   return email;
 }
 
+async function ensureFinanceAndServiceForUser(userId: string) {
+  await Promise.all([
+    prisma.financeEntry.upsert({
+      where: { userId },
+      create: { userId, status: BudgetPaid.pending },
+      update: {},
+    }),
+    prisma.serviceCost.upsert({
+      where: { userId },
+      create: { userId },
+      update: {},
+    }),
+  ]);
+}
+
+async function linkAcompanhamentoToUser(
+  record: { id: string; cells: string[] },
+  userId: string,
+) {
+  const cells = record.cells;
+  await prisma.acompanhamentoClient.update({
+    where: { id: record.id },
+    data: {
+      userId,
+      resp: cell(cells, COL.resp) || null,
+      alimto: cell(cells, COL.alimto) || null,
+      obs: cell(cells, COL.obs) || null,
+      pagto: cell(cells, COL.pagto) || null,
+      statusLabel: cell(cells, COL.status) || null,
+    },
+  });
+  await ensureFinanceAndServiceForUser(userId);
+}
+
 async function registerImportedRow(
   record: { id: string; cells: string[] },
   passwordHash: string,
@@ -367,6 +401,17 @@ async function registerImportedRow(
   const cells = record.cells;
   const name = cell(cells, COL.name) || "Cliente importado";
   const barcode = cell(cells, COL.barcode);
+
+  // Reaproveita usuário órfão de tentativas anteriores (mesmo e-mail import.{id}).
+  const importEmail = `import.${record.id}@acompanhamento.cpvistos`;
+  const orphan = await prisma.user.findUnique({
+    where: { email: importEmail },
+    select: { id: true },
+  });
+  if (orphan) {
+    await linkAcompanhamentoToUser(record, orphan.id);
+    return;
+  }
 
   if (barcode && !options?.skipBarcodeLink) {
     const existingProfile = await prisma.profile.findFirst({
@@ -381,103 +426,123 @@ async function registerImportedRow(
       });
 
       if (!taken) {
-        await prisma.acompanhamentoClient.update({
-          where: { id: record.id },
-          data: {
-            userId: existingProfile.userId,
-            resp: cell(cells, COL.resp) || null,
-            alimto: cell(cells, COL.alimto) || null,
-            obs: cell(cells, COL.obs) || null,
-            pagto: cell(cells, COL.pagto) || null,
-            statusLabel: cell(cells, COL.status) || null,
-          },
-        });
-
-        await Promise.all([
-          prisma.financeEntry.upsert({
-            where: { userId: existingProfile.userId },
-            create: { userId: existingProfile.userId, status: BudgetPaid.pending },
-            update: {},
-          }),
-          prisma.serviceCost.upsert({
-            where: { userId: existingProfile.userId },
-            create: { userId: existingProfile.userId },
-            update: {},
-          }),
-        ]);
+        await linkAcompanhamentoToUser(record, existingProfile.userId);
         return;
       }
     }
   }
 
-  // E-mail sempre único pelo id do registro — evita loop lento e corrida entre lotes.
-  const email = `import.${record.id}@acompanhamento.cpvistos`;
   const issued = parseSheetDate(cell(cells, COL.barcodeDate));
   const expire = issued ? expireDateFromIssued(issued) : expireDateFromIssued(new Date());
   const taxPaid = cell(cells, COL.tax).toUpperCase().includes("PAGO");
   const entryDate = parseSheetDate(cell(cells, COL.entry));
 
-  const account = await prisma.user.create({
-    data: {
-      name,
-      email,
-      password: passwordHash,
-      role: Role.CLIENT,
-      group: cell(cells, COL.group) || null,
-      cel: cell(cells, COL.phone) || null,
-      emailScheduleAccount: cell(cells, COL.account) || null,
-      wantsAmericanVisa: true,
-      createdAt: entryDate ?? new Date(),
-    },
-  });
-
-  const profile = await prisma.profile.create({
-    data: {
-      name,
-      DSNumber: barcode || `IMP-${record.id.slice(-10)}`,
-      DSValid: expire,
-      issuanceDate: issued,
-      expireDate: expire,
-      visaClass: VisaClass.B2_B1,
-      visaType: parseVisaType(cell(cells, COL.tipo)),
-      category: Category.american_visa,
-      status: parseStatus(cell(cells, COL.status)),
-      statusDS: parseStatusDs(cell(cells, COL.ds160)),
-      shipping: parseShipping(cell(cells, COL.shipping)),
-      paymentStatus: taxPaid ? PaymentStatus.paid : PaymentStatus.pending,
-      taxDate: taxPaid ? issued ?? new Date() : null,
-      CASVDate: parseSheetDate(cell(cells, COL.casv)),
-      interviewDate: parseSheetDate(cell(cells, COL.interview)),
-      meetingDate: parseSheetDate(cell(cells, COL.meeting)),
-      birthDate: parseSheetDate(cell(cells, COL.dob)),
-      passport: cell(cells, COL.passport) || null,
-      entryDate,
-      user: { connect: { id: account.id } },
-    },
-  });
-
-  await Promise.all([
-    prisma.financeEntry.create({
-      data: { userId: account.id, status: BudgetPaid.pending },
-    }),
-    prisma.serviceCost.create({
-      data: { userId: account.id },
-    }),
-    prisma.form.create({
-      data: { profile: { connect: { id: profile.id } } },
-    }),
-    prisma.acompanhamentoClient.update({
-      where: { id: record.id },
+  let accountId: string;
+  try {
+    const account = await prisma.user.create({
       data: {
-        userId: account.id,
-        resp: cell(cells, COL.resp) || null,
-        alimto: cell(cells, COL.alimto) || null,
-        obs: cell(cells, COL.obs) || null,
-        pagto: cell(cells, COL.pagto) || null,
-        statusLabel: cell(cells, COL.status) || null,
+        name,
+        email: importEmail,
+        password: passwordHash,
+        role: Role.CLIENT,
+        group: cell(cells, COL.group) || null,
+        cel: cell(cells, COL.phone) || null,
+        emailScheduleAccount: cell(cells, COL.account) || null,
+        wantsAmericanVisa: true,
+        createdAt: entryDate ?? new Date(),
       },
-    }),
-  ]);
+    });
+    accountId = account.id;
+  } catch {
+    // Corrida / e-mail já existe: vincula o usuário existente.
+    const existing = await prisma.user.findUnique({
+      where: { email: importEmail },
+      select: { id: true },
+    });
+    if (!existing) {
+      throw new Error(`Não foi possível criar usuário para ${record.id}`);
+    }
+    await linkAcompanhamentoToUser(record, existing.id);
+    return;
+  }
+
+  try {
+    const profile = await prisma.profile.create({
+      data: {
+        name,
+        DSNumber: barcode || `IMP-${record.id.slice(-10)}`,
+        DSValid: expire,
+        issuanceDate: issued,
+        expireDate: expire,
+        visaClass: VisaClass.B2_B1,
+        visaType: parseVisaType(cell(cells, COL.tipo)),
+        category: Category.american_visa,
+        status: parseStatus(cell(cells, COL.status)),
+        statusDS: parseStatusDs(cell(cells, COL.ds160)),
+        shipping: parseShipping(cell(cells, COL.shipping)),
+        paymentStatus: taxPaid ? PaymentStatus.paid : PaymentStatus.pending,
+        taxDate: taxPaid ? issued ?? new Date() : null,
+        CASVDate: parseSheetDate(cell(cells, COL.casv)),
+        interviewDate: parseSheetDate(cell(cells, COL.interview)),
+        meetingDate: parseSheetDate(cell(cells, COL.meeting)),
+        birthDate: parseSheetDate(cell(cells, COL.dob)),
+        passport: cell(cells, COL.passport) || null,
+        entryDate,
+        user: { connect: { id: accountId } },
+      },
+    });
+
+    await Promise.all([
+      ensureFinanceAndServiceForUser(accountId),
+      prisma.form.create({
+        data: { profile: { connect: { id: profile.id } } },
+      }),
+      prisma.acompanhamentoClient.update({
+        where: { id: record.id },
+        data: {
+          userId: accountId,
+          resp: cell(cells, COL.resp) || null,
+          alimto: cell(cells, COL.alimto) || null,
+          obs: cell(cells, COL.obs) || null,
+          pagto: cell(cells, COL.pagto) || null,
+          statusLabel: cell(cells, COL.status) || null,
+        },
+      }),
+    ]);
+  } catch (error) {
+    // Se o perfil/form falhar mas o user existe, ainda vincula o acompanhamento.
+    await linkAcompanhamentoToUser(record, accountId);
+    throw error;
+  }
+}
+
+/** Religa linhas travadas cujo User já existe (falha parcial em lote anterior). */
+export async function relinkOrphanImportUsers(limit = 80) {
+  const pending = await prisma.acompanhamentoClient.findMany({
+    where: { source: ACOMPANHAMENTO_ACTIVE_SOURCE, userId: null },
+    orderBy: { createdAt: "asc" },
+    take: limit,
+    select: { id: true, cells: true },
+  });
+
+  let linked = 0;
+  for (const record of pending) {
+    const email = `import.${record.id}@acompanhamento.cpvistos`;
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true },
+    });
+    if (!user) {
+      continue;
+    }
+    try {
+      await linkAcompanhamentoToUser(record, user.id);
+      linked += 1;
+    } catch (error) {
+      console.error("[acompanhamento] relink órfão falhou", record.id, error);
+    }
+  }
+  return linked;
 }
 
 export async function ensureImportedClientsRegistered(
@@ -766,8 +831,8 @@ export async function runOperationsSyncBatch(options?: {
   batchSize?: number;
   rebuildIfEmpty?: boolean;
 }) {
-  const budgetMs = options?.budgetMs ?? 20000;
-  const batchSize = options?.batchSize ?? 40;
+  const budgetMs = options?.budgetMs ?? 25000;
+  const batchSize = options?.batchSize ?? 50;
 
   const statusBefore = await restoreAcompanhamentoFromExcel();
   const financeCount = await prisma.financeEntry.count();
@@ -782,11 +847,19 @@ export async function runOperationsSyncBatch(options?: {
     return rebuildFinanceFromExcel({ budgetMs, batchSize });
   }
 
+  // Destrava fila: usuários já criados mas não ligados ao Acompanhamento.
+  await relinkOrphanImportUsers(100);
+
   const started = Date.now();
-  let pendingUsers = await ensureImportedClientsRegistered(batchSize);
+  let pendingUsers = await ensureImportedClientsRegistered(batchSize, {
+    skipBarcodeLink: true,
+  });
 
   while (pendingUsers > 0 && Date.now() - started < budgetMs) {
-    pendingUsers = await ensureImportedClientsRegistered(batchSize);
+    await relinkOrphanImportUsers(60);
+    pendingUsers = await ensureImportedClientsRegistered(batchSize, {
+      skipBarcodeLink: true,
+    });
   }
 
   const pendingFinance = await ensureImportedFinanceAndServiceRows();

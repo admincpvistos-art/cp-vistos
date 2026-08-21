@@ -74,8 +74,8 @@ export const financeRouter = router({
   /** Cadastra um lote de clientes do Acompanhamento (front logado + cron). */
   syncBatch: adminProcedure.mutation(async () => {
     return runOperationsSyncBatch({
-      budgetMs: 20000,
-      batchSize: 35,
+      budgetMs: 45000,
+      batchSize: 50,
       rebuildIfEmpty: true,
     });
   }),
