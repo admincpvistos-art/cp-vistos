@@ -25,6 +25,10 @@ import type {
   AcompanhamentoService,
 } from "@/lib/acompanhamento-types";
 import { emptyAccountFields, isAcompanhamentoService } from "@/lib/acompanhamento-types";
+import {
+  ARQUIVADOS_CATEGORY_LABEL,
+  SERVICE_TO_ARQUIVADOS_CATEGORY,
+} from "@/lib/arquivados-categories";
 
 export const ACOMPANHAMENTO_HEADERS = [
   "NOME",
@@ -477,7 +481,7 @@ async function registerImportedRow(
 
 export async function ensureImportedClientsRegistered(limit = 25) {
   const pending = await prisma.acompanhamentoClient.findMany({
-    where: { source: "imported", userId: null },
+    where: { source: "imported", userId: null, archivedAt: null },
     orderBy: { createdAt: "asc" },
     take: limit,
     select: { id: true, cells: true },
@@ -494,7 +498,7 @@ export async function ensureImportedClientsRegistered(limit = 25) {
   }
 
   return prisma.acompanhamentoClient.count({
-    where: { source: "imported", userId: null },
+    where: { source: "imported", userId: null, archivedAt: null },
   });
 }
 
@@ -821,7 +825,7 @@ export async function listAcompanhamentoSheet() {
   const pendingSync = await syncExcelClientsForOperations();
 
   const records = await prisma.acompanhamentoClient.findMany({
-    where: { source: "imported" },
+    where: { source: "imported", archivedAt: null },
     include: {
       user: {
         include: {
@@ -1059,6 +1063,10 @@ export async function updateAcompanhamentoRecord(input: AcompanhamentoUpdateInpu
     return null;
   }
 
+  if (current.archivedAt) {
+    throw new Error("Cliente arquivado — edição indisponível no Acompanhamento");
+  }
+
   await ensureImportedClientsRegistered(1);
 
   const linked =
@@ -1166,4 +1174,78 @@ export async function updateAcompanhamentoRecord(input: AcompanhamentoUpdateInpu
   }
 
   return getAcompanhamentoRecord(input.id);
+}
+
+/**
+ * Move client out of Acompanhamento and copy into Arquivados tabs
+ * matching each selected service (one row per service / intentional duplicates).
+ */
+export async function archiveAcompanhamentoClient(
+  id: string,
+  servicesInput: AcompanhamentoService[],
+) {
+  const services = normalizeServices(servicesInput);
+  if (!services.length) {
+    throw new Error("Marque ao menos um serviço para definir as abas de Arquivados");
+  }
+
+  const existing = await prisma.acompanhamentoClient.findUnique({
+    where: { id },
+  });
+
+  if (!existing) {
+    return null;
+  }
+
+  if (existing.archivedAt) {
+    throw new Error("Este cliente já foi arquivado");
+  }
+
+  const row = await getAcompanhamentoRecord(id);
+  if (!row) {
+    return null;
+  }
+
+  const categories: string[] = [];
+
+  for (const service of services) {
+    const category = SERVICE_TO_ARQUIVADOS_CATEGORY[service];
+    await prisma.arquivadoClient.create({
+      data: {
+        category,
+        name: row.name,
+        barcode: row.barcode,
+        barcodeIssued: row.barcodeIssued,
+        barcodeDone: row.barcodeDone,
+        casv: row.casv,
+        interview: row.interview,
+        meeting: row.meeting || row.shipping,
+        tax: row.tax,
+        dob: row.dob,
+        passport: row.passport,
+        email: row.email,
+        entryDate: row.entryDate,
+        group: row.group,
+        status: row.status,
+        sheetComment: row.sheetComment,
+        services: [service],
+        sourceAcompanhamentoId: id,
+        sourceUserId: row.userId,
+      },
+    });
+    categories.push(category);
+  }
+
+  await prisma.acompanhamentoClient.update({
+    where: { id },
+    data: {
+      services,
+      archivedAt: new Date(),
+    },
+  });
+
+  return {
+    categories,
+    labels: categories.map((category) => ARQUIVADOS_CATEGORY_LABEL[category as keyof typeof ARQUIVADOS_CATEGORY_LABEL] ?? category),
+  };
 }

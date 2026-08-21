@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 
 import { adminProcedure, router } from "../trpc";
 import {
+  archiveAcompanhamentoClient,
   createAcompanhamentoRecord,
   getAcompanhamentoRecord,
   listAcompanhamentoSheet,
@@ -156,6 +157,34 @@ export const acompanhamentoRouter = router({
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: error instanceof Error ? error.message : "Não foi possível salvar o comentário",
+        });
+      }
+    }),
+  archiveRow: adminProcedure.input(updateSchema).mutation(async ({ input }) => {
+      try {
+        const updated = await updateAcompanhamentoRecord(input);
+        if (!updated) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Cliente não encontrado no cadastro",
+          });
+        }
+
+        const result = await archiveAcompanhamentoClient(input.id, input.services);
+        if (!result) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Cliente não encontrado no cadastro",
+          });
+        }
+        return result;
+      } catch (error) {
+        if (error instanceof TRPCError) {
+          throw error;
+        }
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: error instanceof Error ? error.message : "Não foi possível arquivar o cliente",
         });
       }
     }),

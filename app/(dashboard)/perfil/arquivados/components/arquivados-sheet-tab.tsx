@@ -53,7 +53,7 @@ export function ArquivadosSheetTab({ category }: { category: Category }) {
       rows={data?.rows ?? []}
       emptyMessage={LABELS[category].empty}
       footerLabel={LABELS[category].footer}
-      footerSuffix="da planilha Excel"
+      footerSuffix="em Arquivados"
     />
   );
 }

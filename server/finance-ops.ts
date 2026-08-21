@@ -6,7 +6,7 @@ import { isKeptPre2026Client } from "@/server/acompanhamento-sheet";
 /** User ids that should appear in Financeiro / Serviços e Custos. */
 export async function getOperationsClientIds() {
   const imported = await prisma.acompanhamentoClient.findMany({
-    where: { source: "imported", userId: { not: null } },
+    where: { source: "imported", userId: { not: null }, archivedAt: null },
     select: { userId: true },
   });
 

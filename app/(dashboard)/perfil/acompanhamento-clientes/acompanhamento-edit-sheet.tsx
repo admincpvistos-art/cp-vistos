@@ -1,9 +1,19 @@
 "use client";
 
 import { ChangeEvent, useEffect, useState, type ReactNode } from "react";
-import { Loader2 } from "lucide-react";
+import { Archive, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -24,8 +34,10 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { expireDateStringFromIssued } from "@/lib/barcode-validity";
+import { ARQUIVADOS_CATEGORY_LABEL, SERVICE_TO_ARQUIVADOS_CATEGORY } from "@/lib/arquivados-categories";
 import { trpc } from "@/lib/trpc-client";
 import {
+  ACOMPANHAMENTO_SERVICE_LABEL,
   ACOMPANHAMENTO_SERVICE_OPTIONS,
   emptyAccountFields,
   type AcompanhamentoAccountFields,
@@ -110,6 +122,7 @@ export function AcompanhamentoEditSheet({
 }) {
   const utils = trpc.useUtils();
   const [form, setForm] = useState<SheetForm>(EMPTY);
+  const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
   const open = creating || Boolean(rowId);
 
   const { data, isFetching } = trpc.acompanhamentoRouter.getRow.useQuery(
@@ -139,6 +152,25 @@ export function AcompanhamentoEditSheet({
       },
       onError: (error) => {
         toast.error(error.message || "Não foi possível salvar");
+      },
+    });
+
+  const { mutate: archiveRow, isPending: isArchiving } =
+    trpc.acompanhamentoRouter.archiveRow.useMutation({
+      onSuccess: (result) => {
+        utils.acompanhamentoRouter.getClientesSheet.invalidate();
+        utils.arquivadosRouter.getSheet.invalidate();
+        const tabs = result.labels.join(", ");
+        toast.success(
+          result.labels.length > 1
+            ? `Cliente arquivado em: ${tabs}`
+            : `Cliente arquivado em Arquivados — ${tabs}`,
+        );
+        setArchiveConfirmOpen(false);
+        onClose();
+      },
+      onError: (error) => {
+        toast.error(error.message || "Não foi possível arquivar");
       },
     });
 
@@ -241,13 +273,41 @@ export function AcompanhamentoEditSheet({
     return true;
   }
 
-  const isPending = isCreating || isUpdating;
+  const isPending = isCreating || isUpdating || isArchiving;
   const payload = {
     ...form,
     accountFields: form.accountFields,
   };
 
+  const archiveDestinations = form.services.map((service) => ({
+    service,
+    label: ARQUIVADOS_CATEGORY_LABEL[SERVICE_TO_ARQUIVADOS_CATEGORY[service]],
+    serviceLabel: ACOMPANHAMENTO_SERVICE_LABEL[service],
+  }));
+
+  function requestArchive() {
+    if (!rowId || creating) {
+      return;
+    }
+    if (!form.services.length) {
+      toast.error("Marque ao menos um serviço — ele define as abas de Arquivados");
+      return;
+    }
+    if (!validateBeforeSave()) {
+      return;
+    }
+    setArchiveConfirmOpen(true);
+  }
+
+  function confirmArchive() {
+    if (!rowId || !form.services.length) {
+      return;
+    }
+    archiveRow({ id: rowId, ...payload });
+  }
+
   return (
+    <>
     <Sheet open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
       <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
         <SheetHeader className="pr-10">
@@ -462,23 +522,92 @@ export function AcompanhamentoEditSheet({
               </Select>
             </div>
 
-            <div className="sm:col-span-2 flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={onClose}>
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={isPending}>
-                {isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : creating ? (
-                  "Adicionar"
-                ) : (
-                  "Salvar"
-                )}
-              </Button>
+            <div className="sm:col-span-2 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2">
+              {!creating && rowId ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="text-destructive border-destructive/40 hover:bg-destructive/10"
+                  disabled={isPending}
+                  onClick={requestArchive}
+                >
+                  {isArchiving ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Archive className="h-4 w-4 mr-2" />
+                      Arquivar cliente
+                    </>
+                  )}
+                </Button>
+              ) : (
+                <span />
+              )}
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={onClose} disabled={isPending}>
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={isPending}>
+                  {isPending && !isArchiving ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : creating ? (
+                    "Adicionar"
+                  ) : (
+                    "Salvar"
+                  )}
+                </Button>
+              </div>
             </div>
           </form>
         )}
       </SheetContent>
     </Sheet>
+
+    <AlertDialog open={archiveConfirmOpen} onOpenChange={setArchiveConfirmOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Arquivar cliente?</AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="space-y-2 text-sm text-muted-foreground">
+              <p>
+                O cliente sai do Acompanhamento e vai para Arquivados conforme os serviços
+                marcados
+                {form.name.trim() ? (
+                  <>
+                    {" "}
+                    — <span className="font-medium text-foreground">{form.name.trim()}</span>
+                  </>
+                ) : null}
+                :
+              </p>
+              <ul className="list-disc pl-5 space-y-1">
+                {archiveDestinations.map((item) => (
+                  <li key={item.service}>
+                    {item.serviceLabel} → Arquivados — {item.label}
+                  </li>
+                ))}
+              </ul>
+              {archiveDestinations.length > 1 ? (
+                <p>Com vários serviços, o cliente é replicado em cada aba.</p>
+              ) : null}
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isArchiving}>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={isArchiving}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            onClick={(event) => {
+              event.preventDefault();
+              confirmArchive();
+            }}
+          >
+            {isArchiving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Arquivar"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

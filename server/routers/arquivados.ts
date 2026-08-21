@@ -10,8 +10,8 @@ export const arquivadosRouter = router({
         category: z.enum(["american_visa", "renovacao", "passport", "e_ta"]),
       }),
     )
-    .query(({ input }) => {
-      const rows = listArquivadosSheet(input.category);
+    .query(async ({ input }) => {
+      const rows = await listArquivadosSheet(input.category);
       return { rows, total: rows.length };
     }),
 });

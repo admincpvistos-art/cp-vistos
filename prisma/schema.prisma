@@ -142,8 +142,8 @@ model User {
 }
 
 model AcompanhamentoClient {
-  id           String   @id @default(auto()) @map("_id") @db.ObjectId
-  source       String   @default("cadastro")
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  source       String    @default("cadastro")
   cells        String[]
   resp         String?
   alimto       String?
@@ -152,10 +152,39 @@ model AcompanhamentoClient {
   statusLabel  String?
   extraDate    String?
   sheetComment String?
-  services     String[] @default([])
+  services     String[]  @default([])
+  archivedAt   DateTime?
 
   userId String? @unique @db.ObjectId
   user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Snapshot of a client archived from Acompanhamento into one Arquivados tab.
+/// One row per selected service (intentional duplicates across tabs).
+model ArquivadoClient {
+  id                     String   @id @default(auto()) @map("_id") @db.ObjectId
+  category               String
+  name                   String
+  barcode                String   @default("")
+  barcodeIssued          String   @default("")
+  barcodeDone            Boolean  @default(false)
+  casv                   String   @default("")
+  interview              String   @default("")
+  meeting                String   @default("")
+  tax                    String   @default("")
+  dob                    String   @default("")
+  passport               String   @default("")
+  email                  String   @default("")
+  entryDate              String   @default("")
+  group                  String   @default("")
+  status                 String   @default("")
+  sheetComment           String   @default("")
+  services               String[] @default([])
+  sourceAcompanhamentoId String?  @db.ObjectId
+  sourceUserId           String?  @db.ObjectId
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -1,12 +1,11 @@
 import payload from "@/data/arquivados-sheets.json";
 import type { SheetClientRow } from "@/components/dashboard/sheet-clients-table";
 import type { AcompanhamentoService } from "@/lib/acompanhamento-types";
+import { isAcompanhamentoService } from "@/lib/acompanhamento-types";
+import type { ArquivadosSheetCategory } from "@/lib/arquivados-categories";
+import prisma from "@/lib/prisma";
 
-export type ArquivadosSheetCategory =
-  | "american_visa"
-  | "renovacao"
-  | "passport"
-  | "e_ta";
+export type { ArquivadosSheetCategory } from "@/lib/arquivados-categories";
 
 type SheetPayload = {
   sheet: string;
@@ -157,7 +156,7 @@ function mapEsta(
   };
 }
 
-export function listArquivadosSheet(category: ArquivadosSheetCategory): SheetClientRow[] {
+function listExcelArquivadosSheet(category: ArquivadosSheetCategory): SheetClientRow[] {
   const sheet = (payload as Record<string, SheetPayload>)[category];
   if (!sheet?.rows?.length) {
     return [];
@@ -179,4 +178,59 @@ export function listArquivadosSheet(category: ArquivadosSheetCategory): SheetCli
         return mapVisaLike("american_visa", headers, row, index, "primeiro_visto");
     }
   });
+}
+
+function mapDbArquivado(row: {
+  id: string;
+  name: string;
+  barcode: string;
+  barcodeIssued: string;
+  barcodeDone: boolean;
+  casv: string;
+  interview: string;
+  meeting: string;
+  tax: string;
+  dob: string;
+  passport: string;
+  email: string;
+  entryDate: string;
+  group: string;
+  status: string;
+  sheetComment: string;
+  services: string[];
+}): SheetClientRow {
+  const services = row.services.filter(isAcompanhamentoService);
+  return {
+    id: `db:${row.id}`,
+    name: row.name,
+    services,
+    sheetComment: row.sheetComment,
+    barcode: row.barcode,
+    barcodeIssued: row.barcodeIssued,
+    barcodeDone: row.barcodeDone,
+    casv: row.casv,
+    interview: row.interview,
+    meeting: row.meeting,
+    tax: row.tax,
+    dob: row.dob,
+    passport: row.passport,
+    email: row.email,
+    entryDate: row.entryDate,
+    group: row.group,
+    status: row.status,
+  };
+}
+
+export async function listArquivadosSheet(
+  category: ArquivadosSheetCategory,
+): Promise<SheetClientRow[]> {
+  const excelRows = listExcelArquivadosSheet(category);
+
+  const dbRows = await prisma.arquivadoClient.findMany({
+    where: { category },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const appRows = dbRows.map(mapDbArquivado);
+  return [...appRows, ...excelRows];
 }
