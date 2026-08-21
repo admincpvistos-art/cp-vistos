@@ -8,7 +8,29 @@ import { Button } from "@/components/ui/button";
 import { CeacBusy, CeacFormPanel } from "@/components/ds160/ceac-form-panel";
 import { CeacOfficialPane } from "@/components/ds160/ceac-official-pane";
 import { CEAC_URL, type CeacPageId } from "@/lib/ds160-ceac";
+import { closeCeacWindow } from "@/lib/ds160-ceac-window";
 import { trpc } from "@/lib/trpc-client";
+import { cn } from "@/lib/utils";
+
+/** Janela maximizada / larga: formulário + quadro CEAC. Win+seta / estreita: só formulário. */
+function useShowCeacSidePane() {
+  const [showPane, setShowPane] = useState(true);
+
+  useEffect(() => {
+    function update() {
+      const avail = window.screen.availWidth || window.screen.width || 1920;
+      const nearlyMaximized = window.outerWidth >= avail * 0.85;
+      const wideEnough = window.innerWidth >= 1100;
+      setShowPane(nearlyMaximized && wideEnough);
+    }
+
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
+  return showPane;
+}
 
 export default function PreencherDs160Page({
   params,
@@ -17,6 +39,7 @@ export default function PreencherDs160Page({
 }) {
   const profileId = params.profileId;
   const [pageId, setPageId] = useState<CeacPageId>("personal1");
+  const showCeacPane = useShowCeacSidePane();
 
   const { data, isPending } = trpc.ds160Router.getPacket.useQuery({ profileId });
   const startFill = trpc.ds160Router.startFill.useMutation();
@@ -26,6 +49,12 @@ export default function PreencherDs160Page({
     // start once when opening the workspace
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profileId]);
+
+  useEffect(() => {
+    if (!showCeacPane) {
+      closeCeacWindow();
+    }
+  }, [showCeacPane]);
 
   if (isPending || !data) {
     return (
@@ -57,8 +86,13 @@ export default function PreencherDs160Page({
         </a>
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 min-[1600px]:grid-cols-2">
-        <div className="min-h-0 border-r border-black/20">
+      <div
+        className={cn(
+          "grid min-h-0 flex-1 grid-cols-1",
+          showCeacPane && "lg:grid-cols-2",
+        )}
+      >
+        <div className={cn("min-h-0", showCeacPane && "border-r border-black/20")}>
           <CeacFormPanel
             packet={data}
             pageId={pageId}
@@ -68,9 +102,11 @@ export default function PreencherDs160Page({
           />
         </div>
 
-        <div className="hidden min-h-0 min-[1600px]:block">
-          <CeacOfficialPane />
-        </div>
+        {showCeacPane ? (
+          <div className="hidden min-h-0 lg:block">
+            <CeacOfficialPane />
+          </div>
+        ) : null}
       </div>
     </div>
   );

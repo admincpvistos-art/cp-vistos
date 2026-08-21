@@ -52,6 +52,21 @@ export function openCeacOverElement(
   return ceacWindow;
 }
 
+export function closeCeacWindow() {
+  window.postMessage({ type: "CP_VISTOS_CLOSE_CEAC" }, "*");
+
+  const target = getCeacWindow();
+  if (target && !target.closed) {
+    try {
+      target.close();
+    } catch {
+      // ignore
+    }
+  }
+
+  ceacWindow = null;
+}
+
 export function focusCeacWindow() {
   window.postMessage({ type: "CP_VISTOS_FOCUS_CEAC" }, "*");
 
