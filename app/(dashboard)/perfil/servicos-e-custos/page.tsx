@@ -15,7 +15,6 @@ import { cn } from "@/lib/utils";
 import { canAccessFinance } from "@/lib/staff-access";
 import { ClientDetailsModal } from "@/components/dashboard/client-details-modal";
 import { useOpenClientDetails } from "../use-open-client-details";
-import { useAcompanhamentoOperationsSync } from "@/hooks/use-acompanhamento-operations-sync";
 
 function formatBRL(value: number) {
   return value.toLocaleString("pt-BR", {
@@ -298,8 +297,6 @@ export default function ServicosECustosPage() {
   const canAccess = useMemo(() => {
     return canAccessFinance(me?.user.role, me?.user.email);
   }, [me]);
-
-  useAcompanhamentoOperationsSync(canAccess);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 300);

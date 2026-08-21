@@ -639,12 +639,24 @@ export async function getOperationsSyncStatus() {
   };
 }
 
-/** Um lote rápido de cadastro — para ser chamado em loop pelo front. */
-export async function runOperationsSyncBatch() {
+/** Um lote de cadastro — front e cron. */
+export async function runOperationsSyncBatch(options?: {
+  budgetMs?: number;
+  batchSize?: number;
+}) {
+  const budgetMs = options?.budgetMs ?? 10000;
+  const batchSize = options?.batchSize ?? 30;
+
   await seedImportedAcompanhamentoRows();
   await purgeCadastroAcompanhamentoRows();
 
-  const pendingUsers = await ensureImportedClientsRegistered(30);
+  const started = Date.now();
+  let pendingUsers = await ensureImportedClientsRegistered(batchSize);
+
+  while (pendingUsers > 0 && Date.now() - started < budgetMs) {
+    pendingUsers = await ensureImportedClientsRegistered(batchSize);
+  }
+
   const pendingFinance = await ensureImportedFinanceAndServiceRows();
   const status = await getOperationsSyncStatus();
 

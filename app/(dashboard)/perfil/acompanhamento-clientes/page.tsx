@@ -10,7 +10,6 @@ import { SheetClientsTable, type SheetClientRow } from "@/components/dashboard/s
 import { trpc } from "@/lib/trpc-client";
 import { isFullAdmin } from "@/lib/staff-access";
 import { AcompanhamentoEditSheet } from "./acompanhamento-edit-sheet";
-import { useAcompanhamentoOperationsSync } from "@/hooks/use-acompanhamento-operations-sync";
 
 export default function AcompanhamentoClientesPage() {
   const router = useRouter();
@@ -21,7 +20,6 @@ export default function AcompanhamentoClientesPage() {
     retry: false,
   });
   const isAdmin = isFullAdmin(me?.user.role, me?.user.email);
-  useAcompanhamentoOperationsSync(isAdmin);
 
   const { data, isLoading, isError, error, isFetching, refetch } =
     trpc.acompanhamentoRouter.getClientesSheet.useQuery(undefined, {
