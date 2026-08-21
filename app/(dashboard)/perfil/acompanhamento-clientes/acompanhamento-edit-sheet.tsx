@@ -571,7 +571,7 @@ export function AcompanhamentoEditSheet({
             <div className="space-y-2 text-sm text-muted-foreground">
               <p>
                 O cliente sai do Acompanhamento e vai para Arquivados conforme os serviços
-                marcados
+                marcados. Continua no Financeiro e em Serviços e Custos.
                 {form.name.trim() ? (
                   <>
                     {" "}
