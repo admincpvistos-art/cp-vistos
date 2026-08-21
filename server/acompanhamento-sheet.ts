@@ -377,6 +377,28 @@ async function registerImportedRow(
             statusLabel: cell(cells, COL.status) || null,
           },
         });
+
+        const [finance, cost] = await Promise.all([
+          prisma.financeEntry.findUnique({
+            where: { userId: existingProfile.userId },
+            select: { id: true },
+          }),
+          prisma.serviceCost.findUnique({
+            where: { userId: existingProfile.userId },
+            select: { id: true },
+          }),
+        ]);
+
+        if (!finance) {
+          await prisma.financeEntry.create({
+            data: { userId: existingProfile.userId, status: BudgetPaid.pending },
+          });
+        }
+        if (!cost) {
+          await prisma.serviceCost.create({
+            data: { userId: existingProfile.userId },
+          });
+        }
         return;
       }
     }
@@ -571,10 +593,10 @@ export async function syncExcelClientsForOperations() {
   await seedImportedAcompanhamentoRows();
   await purgeCadastroAcompanhamentoRows();
   const started = Date.now();
-  let pending = await ensureImportedClientsRegistered(20);
+  let pending = await ensureImportedClientsRegistered(40);
 
-  while (pending > 0 && Date.now() - started < 7000) {
-    pending = await ensureImportedClientsRegistered(20);
+  while (pending > 0 && Date.now() - started < 12000) {
+    pending = await ensureImportedClientsRegistered(40);
   }
 
   await linkImportedFamilyGroups();
@@ -582,14 +604,19 @@ export async function syncExcelClientsForOperations() {
   return pending + pendingFinance;
 }
 
+/**
+ * Garante FinanceEntry + ServiceCost para todos os clientes importados do
+ * Acompanhamento. Retorna quantos usuários ainda faltam (para o front continuar
+ * o polling até zerar).
+ */
 async function ensureImportedFinanceAndServiceRows() {
   const imported = await prisma.acompanhamentoClient.findMany({
     where: { source: "imported", userId: { not: null } },
     select: { userId: true },
   });
-  const ids = imported
-    .map((row) => row.userId)
-    .filter((id): id is string => Boolean(id));
+  const ids = Array.from(
+    new Set(imported.map((row) => row.userId).filter((id): id is string => Boolean(id))),
+  );
 
   if (!ids.length) {
     return 0;
@@ -608,29 +635,47 @@ async function ensureImportedFinanceAndServiceRows() {
 
   const hasFinance = new Set(finances.map((row) => row.userId));
   const hasCost = new Set(costs.map((row) => row.userId));
-  const missing = ids.filter((userId) => !hasFinance.has(userId) || !hasCost.has(userId));
+  const needFinance = ids.filter((userId) => !hasFinance.has(userId));
+  const needCost = ids.filter((userId) => !hasCost.has(userId));
 
-  let created = 0;
-  for (const userId of missing) {
-    if (created >= 80) {
-      break;
-    }
+  const BATCH = 50;
+  const budgetMs = 10000;
+  const started = Date.now();
 
-    if (!hasFinance.has(userId)) {
-      await prisma.financeEntry.create({
-        data: { userId, status: BudgetPaid.pending },
-      });
-      created += 1;
-    }
-    if (!hasCost.has(userId)) {
-      await prisma.serviceCost.create({
-        data: { userId },
-      });
-      created += 1;
-    }
+  for (let i = 0; i < needFinance.length && Date.now() - started < budgetMs; i += BATCH) {
+    const chunk = needFinance.slice(i, i + BATCH);
+    await Promise.all(
+      chunk.map(async (userId) => {
+        try {
+          await prisma.financeEntry.create({
+            data: { userId, status: BudgetPaid.pending },
+          });
+          hasFinance.add(userId);
+        } catch {
+          // unique race / already exists
+          hasFinance.add(userId);
+        }
+      }),
+    );
   }
 
-  return Math.max(0, missing.length - 80);
+  for (let i = 0; i < needCost.length && Date.now() - started < budgetMs; i += BATCH) {
+    const chunk = needCost.slice(i, i + BATCH);
+    await Promise.all(
+      chunk.map(async (userId) => {
+        try {
+          await prisma.serviceCost.create({
+            data: { userId },
+          });
+          hasCost.add(userId);
+        } catch {
+          hasCost.add(userId);
+        }
+      }),
+    );
+  }
+
+  return ids.filter((userId) => !hasFinance.has(userId) || !hasCost.has(userId)).length;
 }
 
 function pickProfile(profiles: Profile[]) {
