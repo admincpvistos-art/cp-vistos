@@ -34,10 +34,12 @@ import {
  * No MongoDB/Prisma, documentos sem o campo `archivedAt` NÃO batem com
  * `archivedAt: null`. Incluir `isSet: false` para clientes ainda ativos.
  */
-export function whereNotArchived() {
+export function whereNotArchived(): {
+  OR: Array<{ archivedAt: null } | { archivedAt: { isSet: boolean } }>;
+} {
   return {
     OR: [{ archivedAt: null }, { archivedAt: { isSet: false } }],
-  } as const;
+  };
 }
 
 export const ACOMPANHAMENTO_HEADERS = [
