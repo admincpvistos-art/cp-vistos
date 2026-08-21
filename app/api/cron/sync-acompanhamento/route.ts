@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 
-import { runOperationsSyncBatch } from "@/server/acompanhamento-sheet";
+import {
+  OPERATIONS_SYNC_PAUSED,
+  runOperationsSyncBatch,
+} from "@/server/acompanhamento-sheet";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -28,6 +31,10 @@ function isAuthorized(request: Request) {
 export async function GET(request: Request) {
   if (!isAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (OPERATIONS_SYNC_PAUSED) {
+    return NextResponse.json({ ok: true, paused: true, skipped: true });
   }
 
   try {

@@ -30,6 +30,9 @@ import {
   SERVICE_TO_ARQUIVADOS_CATEGORY,
 } from "@/lib/arquivados-categories";
 
+/** Sync em lote pausado — religar quando for continuar o cadastro Excel. */
+export const OPERATIONS_SYNC_PAUSED = true;
+
 /**
  * Clientes ativos no Acompanhamento usam source "imported".
  * Arquivados passam a source "archived" (evita filtro MongoDB em archivedAt).
@@ -748,6 +751,15 @@ export async function rebuildFinanceFromExcel(options?: {
   budgetMs?: number;
   batchSize?: number;
 }) {
+  if (OPERATIONS_SYNC_PAUSED) {
+    const status = await getOperationsSyncStatus();
+    return {
+      ...status,
+      pendingSync: Math.max(0, status.totalImported - status.linkedUsers),
+      paused: true as const,
+    };
+  }
+
   const budgetMs = options?.budgetMs ?? 45000;
   const batchSize = options?.batchSize ?? 40;
   const started = Date.now();
@@ -831,6 +843,15 @@ export async function runOperationsSyncBatch(options?: {
   batchSize?: number;
   rebuildIfEmpty?: boolean;
 }) {
+  if (OPERATIONS_SYNC_PAUSED) {
+    const status = await getOperationsSyncStatus();
+    return {
+      ...status,
+      pendingSync: Math.max(0, status.totalImported - status.linkedUsers),
+      paused: true as const,
+    };
+  }
+
   const budgetMs = options?.budgetMs ?? 25000;
   const batchSize = options?.batchSize ?? 50;
 
