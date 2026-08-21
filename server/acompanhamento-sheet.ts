@@ -30,6 +30,16 @@ import {
   SERVICE_TO_ARQUIVADOS_CATEGORY,
 } from "@/lib/arquivados-categories";
 
+/**
+ * No MongoDB/Prisma, documentos sem o campo `archivedAt` NÃO batem com
+ * `archivedAt: null`. Incluir `isSet: false` para clientes ainda ativos.
+ */
+export function whereNotArchived() {
+  return {
+    OR: [{ archivedAt: null }, { archivedAt: { isSet: false } }],
+  } as const;
+}
+
 export const ACOMPANHAMENTO_HEADERS = [
   "NOME",
   "BARCODE",
@@ -481,7 +491,9 @@ async function registerImportedRow(
 
 export async function ensureImportedClientsRegistered(limit = 25) {
   const pending = await prisma.acompanhamentoClient.findMany({
-    where: { source: "imported", userId: null, archivedAt: null },
+    where: {
+      AND: [{ source: "imported", userId: null }, whereNotArchived()],
+    },
     orderBy: { createdAt: "asc" },
     take: limit,
     select: { id: true, cells: true },
@@ -517,7 +529,9 @@ export async function ensureImportedClientsRegistered(limit = 25) {
   }
 
   return prisma.acompanhamentoClient.count({
-    where: { source: "imported", userId: null, archivedAt: null },
+    where: {
+      AND: [{ source: "imported", userId: null }, whereNotArchived()],
+    },
   });
 }
 
@@ -640,10 +654,12 @@ export async function syncExcelClientsForOperations(options?: {
 
   const [totalImported, linkedUsers] = await Promise.all([
     prisma.acompanhamentoClient.count({
-      where: { source: "imported", archivedAt: null },
+      where: { AND: [{ source: "imported" }, whereNotArchived()] },
     }),
     prisma.acompanhamentoClient.count({
-      where: { source: "imported", archivedAt: null, userId: { not: null } },
+      where: {
+        AND: [{ source: "imported", userId: { not: null } }, whereNotArchived()],
+      },
     }),
   ]);
 
@@ -656,12 +672,12 @@ export async function syncExcelClientsForOperations(options?: {
 
 /**
  * Garante FinanceEntry + ServiceCost para todos os clientes importados do
- * Acompanhamento. Retorna quantos usuários ainda faltam (para o front continuar
- * o polling até zerar).
+ * Acompanhamento (ativos e arquivados — arquivados continuam no financeiro).
+ * Retorna quantos usuários ainda faltam.
  */
 async function ensureImportedFinanceAndServiceRows() {
   const imported = await prisma.acompanhamentoClient.findMany({
-    where: { source: "imported", userId: { not: null }, archivedAt: null },
+    where: { source: "imported", userId: { not: null } },
     select: { userId: true },
   });
   const ids = Array.from(
@@ -877,7 +893,7 @@ export async function listAcompanhamentoSheet() {
   const sync = await syncExcelClientsForOperations({ linkFamilies: true });
 
   const records = await prisma.acompanhamentoClient.findMany({
-    where: { source: "imported", archivedAt: null },
+    where: { AND: [{ source: "imported" }, whereNotArchived()] },
     include: {
       user: {
         include: {

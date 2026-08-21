@@ -37,6 +37,16 @@ export async function getOperationsClientIds() {
 export async function purgeFinanceOutsideAcompanhamento() {
   const keepIds = await getOperationsClientIds();
 
+  // Segurança: nunca apagar a planilha inteira se o Acompanhamento parecer vazio
+  // (ex.: filtro MongoDB errado / sync ainda incompleto).
+  if (keepIds.size < 20) {
+    console.warn(
+      "[finance] purge ignorado — poucos clientes do Acompanhamento:",
+      keepIds.size,
+    );
+    return;
+  }
+
   const financeRows = await prisma.financeEntry.findMany({
     select: { id: true, userId: true },
   });

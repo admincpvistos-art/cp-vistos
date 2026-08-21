@@ -570,8 +570,8 @@ export function AcompanhamentoEditSheet({
           <AlertDialogDescription asChild>
             <div className="space-y-2 text-sm text-muted-foreground">
               <p>
-                O cliente sai do Acompanhamento e vai para Arquivados conforme os serviços
-                marcados. Continua no Financeiro e em Serviços e Custos.
+                O cliente sai só do Acompanhamento e vai para Arquivados conforme os
+                serviços. Permanece no Financeiro e em Serviços e Custos.
                 {form.name.trim() ? (
                   <>
                     {" "}
