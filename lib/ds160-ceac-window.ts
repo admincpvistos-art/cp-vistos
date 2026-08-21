@@ -67,6 +67,20 @@ export function closeCeacWindow() {
   ceacWindow = null;
 }
 
+/** Abre o CEAC em janela do navegador (popup), não em nova aba. */
+export function openCeacInBrowserWindow() {
+  const width = Math.min(1280, Math.round((window.screen.availWidth || 1280) * 0.9));
+  const height = Math.min(900, Math.round((window.screen.availHeight || 900) * 0.9));
+  const left = Math.max(0, Math.round(((window.screen.availWidth || width) - width) / 2));
+  const top = Math.max(0, Math.round(((window.screen.availHeight || height) - height) / 2));
+
+  return window.open(
+    CEAC_URL,
+    "cp-vistos-ceac-external",
+    `popup=yes,width=${width},height=${height},left=${left},top=${top},noopener,noreferrer`,
+  );
+}
+
 export function focusCeacWindow() {
   window.postMessage({ type: "CP_VISTOS_FOCUS_CEAC" }, "*");
 

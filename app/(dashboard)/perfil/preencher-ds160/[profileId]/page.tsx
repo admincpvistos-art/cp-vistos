@@ -7,8 +7,8 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CeacBusy, CeacFormPanel } from "@/components/ds160/ceac-form-panel";
 import { CeacOfficialPane } from "@/components/ds160/ceac-official-pane";
-import { CEAC_URL, type CeacPageId } from "@/lib/ds160-ceac";
-import { closeCeacWindow } from "@/lib/ds160-ceac-window";
+import { type CeacPageId } from "@/lib/ds160-ceac";
+import { closeCeacWindow, openCeacInBrowserWindow } from "@/lib/ds160-ceac-window";
 import { trpc } from "@/lib/trpc-client";
 import { cn } from "@/lib/utils";
 
@@ -76,14 +76,13 @@ export default function PreencherDs160Page({
         <p className="truncate text-sm font-medium">
           Preencher DS-160 · {data.profile.name}
         </p>
-        <a
-          href={CEAC_URL}
-          target="_blank"
-          rel="noreferrer"
-          className="text-xs text-white/80 underline"
+        <button
+          type="button"
+          onClick={() => openCeacInBrowserWindow()}
+          className="text-xs text-white/80 underline hover:text-white"
         >
-          Abrir CEAC em nova aba
-        </a>
+          Abrir CEAC em nova janela
+        </button>
       </div>
 
       <div
