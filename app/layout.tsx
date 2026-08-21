@@ -32,12 +32,38 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "48x48" },
+      { url: "/favicon-16x16.png", type: "image/png", sizes: "16x16" },
+      { url: "/favicon-32x32.png", type: "image/png", sizes: "32x32" },
       { url: "/favicon-48x48.png", type: "image/png", sizes: "48x48" },
       { url: "/favicon-96x96.png", type: "image/png", sizes: "96x96" },
       { url: "/favicon-192x192.png", type: "image/png", sizes: "192x192" },
     ],
     apple: [{ url: "/apple-icon.png", type: "image/png", sizes: "180x180" }],
     shortcut: "/favicon.ico",
+  },
+  openGraph: {
+    title: "CP Vistos",
+    description:
+      "Facilitamos o processo de obtenção do visto americano para você. Assistência completa, da documentação à entrevista no consulado.",
+    url: "https://www.cpvistos.com.br",
+    siteName: "CP Vistos",
+    locale: "pt_BR",
+    type: "website",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "CP Vistos",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "CP Vistos",
+    description:
+      "Facilitamos o processo de obtenção do visto americano para você. Assistência completa, da documentação à entrevista no consulado.",
+    images: ["/og-image.png"],
   },
 };
 

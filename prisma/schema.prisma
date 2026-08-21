@@ -142,15 +142,17 @@ model User {
 }
 
 model AcompanhamentoClient {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  source      String   @default("cadastro")
-  cells       String[]
-  resp        String?
-  alimto      String?
-  obs         String?
-  pagto       String?
-  statusLabel String?
-  extraDate   String?
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  source       String   @default("cadastro")
+  cells        String[]
+  resp         String?
+  alimto       String?
+  obs          String?
+  pagto        String?
+  statusLabel  String?
+  extraDate    String?
+  sheetComment String?
+  services     String[] @default([])
 
   userId String? @unique @db.ObjectId
   user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)

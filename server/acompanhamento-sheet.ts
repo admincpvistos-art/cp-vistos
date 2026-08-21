@@ -6,6 +6,7 @@ import {
   Category,
   PaymentStatus,
   Role,
+  ScheduleAccount,
   Shipping,
   Status,
   StatusDS,
@@ -18,7 +19,12 @@ import {
 import prisma from "@/lib/prisma";
 import payload from "@/data/acompanhamento-clientes.json";
 import { expireDateFromIssued } from "@/lib/barcode-validity";
-import type { AcompanhamentoRecord } from "@/lib/acompanhamento-types";
+import type {
+  AcompanhamentoAccountFields,
+  AcompanhamentoRecord,
+  AcompanhamentoService,
+} from "@/lib/acompanhamento-types";
+import { emptyAccountFields, isAcompanhamentoService } from "@/lib/acompanhamento-types";
 
 export const ACOMPANHAMENTO_HEADERS = [
   "NOME",
@@ -635,6 +641,40 @@ function pickProfile(profiles: Profile[]) {
   );
 }
 
+function buildAccountFields(user: User | null | undefined): AcompanhamentoAccountFields | null {
+  if (!user) {
+    return null;
+  }
+
+  return emptyAccountFields({
+    cpf: user.cpf ?? "",
+    address: user.address ?? "",
+    cel: user.cel ?? "",
+    email: isPlaceholderEmail(user.email) ? "" : user.email,
+    password: user.password ?? "",
+    passwordConfirm: user.password ?? "",
+    emailScheduleAccount: user.emailScheduleAccount ?? "",
+    passwordScheduleAccount: user.passwordScheduleAccount ?? "",
+    passwordConfirmScheduleAccount: user.passwordScheduleAccount ?? "",
+    budget: user.budget != null ? String(user.budget) : "",
+    budgetPaid: user.budgetPaid === BudgetPaid.paid ? "Pago" : user.budgetPaid === BudgetPaid.pending ? "Pendente" : "",
+    scheduleAccount:
+      user.scheduleAccount === ScheduleAccount.active
+        ? "Ativado"
+        : user.scheduleAccount === ScheduleAccount.inactive
+          ? "Inativo"
+          : "",
+  });
+}
+
+function normalizeServices(values: string[] | undefined | null): AcompanhamentoService[] {
+  if (!values?.length) {
+    return [];
+  }
+
+  return Array.from(new Set(values.filter(isAcompanhamentoService)));
+}
+
 function buildRecord(
   record: {
     id: string;
@@ -645,6 +685,8 @@ function buildRecord(
     pagto?: string | null;
     statusLabel?: string | null;
     extraDate?: string | null;
+    sheetComment?: string | null;
+    services?: string[] | null;
     userId: string | null;
     user: (User & { profiles: Profile[]; payerEmail?: string }) | null;
   },
@@ -689,6 +731,9 @@ function buildRecord(
     group: user?.group || cell(cells, COL.group),
     pagto: record.pagto || cell(cells, COL.pagto),
     status: record.statusLabel || cell(cells, COL.status) || statusLabel(profile?.status),
+    sheetComment: record.sheetComment ?? "",
+    services: normalizeServices(record.services),
+    accountFields: buildAccountFields(user),
   };
 }
 
@@ -822,7 +867,138 @@ export type AcompanhamentoUpdateInput = {
   pagto: string;
   status: string;
   barcodeDone: boolean;
+  sheetComment: string;
+  services: AcompanhamentoService[];
+  accountFields?: AcompanhamentoAccountFields | null;
 };
+
+export type AcompanhamentoCreateInput = Omit<AcompanhamentoUpdateInput, "id">;
+
+function cellsFromInput(input: AcompanhamentoCreateInput) {
+  return [
+    input.name,
+    input.barcode,
+    input.barcodeIssued,
+    input.casv,
+    input.interview,
+    input.meeting,
+    input.shipping,
+    input.tipo,
+    input.resp,
+    input.tax,
+    input.ds160,
+    input.alimto,
+    input.obs,
+    input.dob,
+    input.passport,
+    input.account,
+    input.email,
+    input.phone,
+    input.entryDate,
+    input.group,
+    input.pagto,
+    input.status,
+  ];
+}
+
+async function applyAccountFields(userId: string, input: AcompanhamentoAccountFields, fallbackName: string) {
+  const email = input.email.trim().toLowerCase();
+  if (email && !isPlaceholderEmail(email)) {
+    const taken = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+    if (taken && taken.id !== userId) {
+      throw new Error("E-mail já está sendo utilizado em outra conta");
+    }
+  }
+
+  if (input.password && input.password !== input.passwordConfirm) {
+    throw new Error("As senhas da conta não coincidem");
+  }
+
+  if (
+    input.passwordScheduleAccount &&
+    input.passwordScheduleAccount !== input.passwordConfirmScheduleAccount
+  ) {
+    throw new Error("As senhas da conta de agendamento não coincidem");
+  }
+
+  if (input.password && input.password.length < 6) {
+    throw new Error("Senha inválida, precisa ter no mínimo 6 caracteres");
+  }
+
+  if (input.passwordScheduleAccount && input.passwordScheduleAccount.length < 6) {
+    throw new Error("Senha de agendamento inválida, precisa ter no mínimo 6 caracteres");
+  }
+
+  const budgetPaid =
+    input.budgetPaid === "Pago"
+      ? BudgetPaid.paid
+      : input.budgetPaid === "Pendente"
+        ? BudgetPaid.pending
+        : null;
+  const scheduleAccount =
+    input.scheduleAccount === "Ativado"
+      ? ScheduleAccount.active
+      : input.scheduleAccount === "Inativo"
+        ? ScheduleAccount.inactive
+        : null;
+
+  const budgetValue = input.budget.trim() ? Number(input.budget.replace(",", ".")) : null;
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      name: fallbackName || undefined,
+      cpf: input.cpf.trim() || null,
+      address: input.address.trim() || null,
+      cel: input.cel.trim() || null,
+      ...(email && !isPlaceholderEmail(email) ? { email } : {}),
+      ...(input.password ? { password: input.password } : {}),
+      emailScheduleAccount: input.emailScheduleAccount.trim() || null,
+      ...(input.passwordScheduleAccount
+        ? { passwordScheduleAccount: input.passwordScheduleAccount }
+        : {}),
+      ...(budgetValue != null && Number.isFinite(budgetValue) ? { budget: budgetValue } : {}),
+      ...(budgetPaid ? { budgetPaid } : { budgetPaid: null }),
+      ...(scheduleAccount ? { scheduleAccount } : { scheduleAccount: null }),
+    },
+  });
+}
+
+export async function createAcompanhamentoRecord(input: AcompanhamentoCreateInput) {
+  const name = input.name.trim();
+  if (!name) {
+    throw new Error("Informe o nome do cliente");
+  }
+
+  const services = normalizeServices(input.services);
+  const cells = cellsFromInput({ ...input, name });
+
+  const record = await prisma.acompanhamentoClient.create({
+    data: {
+      source: "imported",
+      cells,
+      resp: input.resp || null,
+      alimto: input.alimto || null,
+      obs: input.obs || null,
+      pagto: input.pagto || null,
+      statusLabel: input.status || null,
+      extraDate: input.barcodeDone ? "done" : null,
+      sheetComment: input.sheetComment.trim() || null,
+      services,
+    },
+  });
+
+  return updateAcompanhamentoRecord({ id: record.id, ...input, name, services });
+}
+
+export async function updateAcompanhamentoSheetComment(id: string, sheetComment: string) {
+  const updated = await prisma.acompanhamentoClient.update({
+    where: { id },
+    data: { sheetComment: sheetComment.trim() || null },
+  });
+
+  return getAcompanhamentoRecord(updated.id);
+}
 
 export async function updateAcompanhamentoRecord(input: AcompanhamentoUpdateInput) {
   const current = await prisma.acompanhamentoClient.findUnique({
@@ -922,30 +1098,8 @@ export async function updateAcompanhamentoRecord(input: AcompanhamentoUpdateInpu
     });
   }
 
-  const nextCells = [
-    input.name,
-    input.barcode,
-    input.barcodeIssued,
-    input.casv,
-    input.interview,
-    input.meeting,
-    input.shipping,
-    input.tipo,
-    input.resp,
-    input.tax,
-    input.ds160,
-    input.alimto,
-    input.obs,
-    input.dob,
-    input.passport,
-    input.account,
-    input.email,
-    input.phone,
-    input.entryDate,
-    input.group,
-    input.pagto,
-    input.status,
-  ];
+  const nextCells = cellsFromInput(input);
+  const services = normalizeServices(input.services);
 
   await prisma.acompanhamentoClient.update({
     where: { id: input.id },
@@ -957,8 +1111,14 @@ export async function updateAcompanhamentoRecord(input: AcompanhamentoUpdateInpu
       pagto: input.pagto || null,
       statusLabel: input.status || null,
       extraDate: input.barcodeDone ? "done" : null,
+      sheetComment: input.sheetComment.trim() || null,
+      services,
     },
   });
+
+  if (input.accountFields) {
+    await applyAccountFields(fresh.user.id, input.accountFields, input.name.trim() || fresh.user.name);
+  }
 
   return getAcompanhamentoRecord(input.id);
 }

@@ -4,23 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Loader2, MessageSquare, Plus, Search } from "lucide-react";
+import { Loader2, Plus, Search } from "lucide-react";
 import { DeleteChecklistRowButton } from "@/components/dashboard/delete-checklist-row-button";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { SheetCommentBubble } from "@/components/dashboard/sheet-comment-bubble";
 import { trpc } from "@/lib/trpc-client";
 import { cn } from "@/lib/utils";
 import { canAccessFinance } from "@/lib/staff-access";
@@ -211,8 +200,6 @@ function OutrosCell({
       ? String(initialValue)
       : "",
   );
-  const [comment, setComment] = useState(initialComment ?? "");
-  const [commentOpen, setCommentOpen] = useState(false);
 
   useEffect(() => {
     setValue(
@@ -222,16 +209,11 @@ function OutrosCell({
     );
   }, [initialValue, rowId]);
 
-  useEffect(() => {
-    setComment(initialComment ?? "");
-  }, [initialComment, rowId]);
-
   const { mutate, isPending } = trpc.serviceCostRouter.updateRow.useMutation({
     onSuccess: (_data, variables) => {
       onSaved();
       if (variables.outrosComment !== undefined) {
         toast.success("Comentário salvo");
-        setCommentOpen(false);
       } else {
         toast.success("Valor atualizado");
       }
@@ -255,108 +237,41 @@ function OutrosCell({
     mutate({ id: rowId, outros: parsed });
   }
 
-  function saveComment() {
-    const next = comment.trim();
-    const previous = (initialComment ?? "").trim();
-    if (next === previous) {
-      setCommentOpen(false);
-      return;
-    }
-    mutate({ id: rowId, outrosComment: next || null });
-  }
-
-  const hasComment = Boolean((initialComment ?? "").trim());
-  const amountInput = (
-    <Input
-      type="number"
-      min={0}
-      step="0.01"
-      placeholder="0"
-      value={value}
-      disabled={isPending}
-      onChange={(e) => setValue(e.target.value)}
-      onBlur={saveAmount}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") e.currentTarget.blur();
-      }}
-      className="h-9 w-[100px] text-center"
-    />
-  );
-
   return (
     <div className="flex items-center justify-center gap-1">
-      {hasComment ? (
-        <TooltipProvider delayDuration={200}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div>{amountInput}</div>
-            </TooltipTrigger>
-            <TooltipContent
-              side="top"
-              className="max-w-xs whitespace-pre-wrap text-left"
-            >
-              {initialComment}
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      ) : (
-        amountInput
-      )}
+      <Input
+        type="number"
+        min={0}
+        step="0.01"
+        placeholder="0"
+        value={value}
+        disabled={isPending}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={saveAmount}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.currentTarget.blur();
+        }}
+        className="h-9 w-[100px] text-center"
+      />
 
-      <Popover open={commentOpen} onOpenChange={setCommentOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 shrink-0"
-            aria-label="Comentário do serviço em Outros"
-            title="Comentário do serviço"
-          >
-            <MessageSquare
-              className={cn(
-                "h-4 w-4",
-                hasComment ? "text-primary" : "text-muted-foreground",
-              )}
-            />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-72 p-3" align="center">
-          <p className="text-sm font-medium mb-2">Comentário (Outros)</p>
-          <Textarea
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            placeholder="Ex.: tradução, envio expresso..."
-            className="min-h-[88px] text-sm"
-            maxLength={500}
-          />
-          <div className="mt-3 flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setComment(initialComment ?? "");
-                setCommentOpen(false);
-              }}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              disabled={isPending}
-              onClick={saveComment}
-            >
-              {isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                "Salvar"
-              )}
-            </Button>
-          </div>
-        </PopoverContent>
-      </Popover>
+      <SheetCommentBubble
+        comment={initialComment ?? ""}
+        isPending={isPending}
+        title="Comentário (Outros)"
+        ariaLabel="Comentário do serviço em Outros"
+        placeholder="Ex.: tradução, envio expresso..."
+        onSave={async (next) => {
+          await new Promise<void>((resolve, reject) => {
+            mutate(
+              { id: rowId, outrosComment: next || null },
+              {
+                onSuccess: () => resolve(),
+                onError: (error) => reject(error),
+              },
+            );
+          });
+        }}
+      />
 
       {isPending && (
         <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />

@@ -1,23 +1,31 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { AlertTriangle, ArrowDownAZ, ArrowUpAZ, CheckCircle2, CircleAlert, Search } from "lucide-react";
 import { isValid, parse } from "date-fns";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { SheetCommentBubble } from "@/components/dashboard/sheet-comment-bubble";
 import {
   barcodeValidityStatus,
   expireDateFromIssued,
   parseIssuedDate,
 } from "@/lib/barcode-validity";
+import {
+  ACOMPANHAMENTO_SERVICE_LABEL,
+  type AcompanhamentoService,
+} from "@/lib/acompanhamento-types";
 import { cn } from "@/lib/utils";
 
 export type SheetClientRow = {
   id: string;
   name: string;
+  services?: AcompanhamentoService[];
+  sheetComment?: string;
   barcode: string;
   barcodeIssued: string;
   barcodeDone: boolean;
@@ -33,11 +41,13 @@ export type SheetClientRow = {
   status: string;
 };
 
-export const SHEET_VISIBLE_COLUMNS: {
-  key: Exclude<keyof SheetClientRow, "barcodeDone">;
-  label: string;
-}[] = [
+type VisibleColumn =
+  | { key: keyof SheetClientRow; label: string }
+  | { key: "services"; label: string };
+
+export const SHEET_VISIBLE_COLUMNS: VisibleColumn[] = [
   { key: "name", label: "NOME" },
+  { key: "services", label: "SERVIÇO" },
   { key: "barcode", label: "BARCODE" },
   { key: "barcodeIssued", label: "DATA BARCODE" },
   { key: "casv", label: "CASV" },
@@ -108,6 +118,51 @@ function BarcodeDateCell({ issued, done }: { issued: string; done: boolean }) {
   );
 }
 
+function ServicesCell({ services }: { services: AcompanhamentoService[] }) {
+  if (!services.length) {
+    return <span className="text-muted-foreground">—</span>;
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-0.5 leading-tight">
+      {services.map((service) => (
+        <span key={service} className="text-[11px] text-foreground">
+          {ACOMPANHAMENTO_SERVICE_LABEL[service]}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function NameCell({
+  row,
+  onSaveComment,
+  commentPending,
+}: {
+  row: SheetClientRow;
+  onSaveComment?: (rowId: string, comment: string) => Promise<void>;
+  commentPending?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-1.5 min-w-0">
+      <SheetCommentBubble
+        comment={row.sheetComment ?? ""}
+        isPending={commentPending}
+        title="Comentário"
+        ariaLabel="Comentário do cliente"
+        onSave={async (sheetComment) => {
+          if (!onSaveComment) {
+            toast.message("Comentário disponível quando houver clientes nesta aba");
+            return;
+          }
+          await onSaveComment(row.id, sheetComment);
+        }}
+      />
+      <span className="text-primary hover:underline truncate">{row.name || "—"}</span>
+    </div>
+  );
+}
+
 function entryTime(value: string) {
   if (!value) {
     return 0;
@@ -120,13 +175,27 @@ function entryTime(value: string) {
 export function SheetClientsTable({
   rows,
   emptyMessage = "Sem resultados",
-  footerLabel = "clientes",
+  footerLabel = "cliente",
+  footerSuffix,
   onRowClick,
+  onSaveComment,
+  commentPending,
+  toolbarActions,
+  banner,
+  isLoading,
+  errorMessage,
 }: {
   rows: SheetClientRow[];
   emptyMessage?: string;
   footerLabel?: string;
+  footerSuffix?: string;
   onRowClick?: (row: SheetClientRow) => void;
+  onSaveComment?: (rowId: string, comment: string) => Promise<void>;
+  commentPending?: boolean;
+  toolbarActions?: ReactNode;
+  banner?: ReactNode;
+  isLoading?: boolean;
+  errorMessage?: string | null;
 }) {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<"desc" | "asc">("desc");
@@ -136,9 +205,16 @@ export function SheetClientsTable({
     const term = search.trim().toLowerCase();
     const matched = term
       ? rows.filter((row) =>
-          SHEET_VISIBLE_COLUMNS.some(({ key }) =>
-            String(row[key] ?? "").toLowerCase().includes(term),
-          ),
+          SHEET_VISIBLE_COLUMNS.some(({ key }) => {
+            if (key === "services") {
+              return (row.services ?? []).some((service) =>
+                ACOMPANHAMENTO_SERVICE_LABEL[service].toLowerCase().includes(term),
+              );
+            }
+            return String(row[key] ?? "")
+              .toLowerCase()
+              .includes(term);
+          }),
         )
       : [...rows];
 
@@ -197,73 +273,94 @@ export function SheetClientsTable({
             </>
           )}
         </Button>
+        {toolbarActions}
       </div>
 
-      <div className="border rounded-xl overflow-hidden bg-white">
-        <Table containerClassName="max-h-[min(75vh,800px)]">
-          <TableHeader className="sticky top-0 z-20 bg-white shadow-[0_1px_0_0_hsl(var(--border))]">
-            <TableRow className="hover:bg-white border-b-0">
-              {SHEET_VISIBLE_COLUMNS.map((column, index) => (
-                <TableHead
-                  key={column.key}
-                  className={cn(
-                    "sticky top-0 z-20 bg-white text-center whitespace-nowrap",
-                    index === 0 && "left-0 z-30 min-w-64 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.12)]",
-                    index === statusIndex &&
-                      "right-0 z-30 min-w-36 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.12)]",
-                  )}
-                >
-                  {column.label}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredRows.length ? (
-              filteredRows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  className={cn("group", onRowClick && "cursor-pointer")}
-                  onClick={() => onRowClick?.(row)}
-                >
-                  {SHEET_VISIBLE_COLUMNS.map((column, index) => (
-                    <TableCell
-                      key={`${row.id}-${column.key}`}
-                      className={cn(
-                        "text-center text-foreground whitespace-nowrap",
-                        column.key === "barcodeIssued" && "min-w-[10.5rem]",
-                        index === 0 &&
-                          "sticky left-0 z-10 min-w-64 text-left font-medium bg-white group-hover:bg-muted/50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.12)]",
-                        index === statusIndex &&
-                          "sticky right-0 z-10 min-w-36 bg-white group-hover:bg-muted/50 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.12)]",
-                      )}
-                    >
-                      {column.key === "name" ? (
-                        <span className="text-primary hover:underline">{row.name || "—"}</span>
-                      ) : column.key === "barcodeIssued" ? (
-                        <BarcodeDateCell issued={row.barcodeIssued} done={row.barcodeDone} />
-                      ) : (
-                        String(row[column.key] || "—")
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={SHEET_VISIBLE_COLUMNS.length} className="h-24 text-center">
-                  {emptyMessage}
-                </TableCell>
+      {banner}
+
+      {isLoading ? (
+        <div className="h-48 flex items-center justify-center text-sm text-muted-foreground">
+          Carregando planilha...
+        </div>
+      ) : errorMessage ? (
+        <p className="text-sm text-destructive">{errorMessage}</p>
+      ) : (
+        <div className="border rounded-xl overflow-hidden bg-white">
+          <Table containerClassName="max-h-[min(75vh,800px)]">
+            <TableHeader className="sticky top-0 z-20 bg-white shadow-[0_1px_0_0_hsl(var(--border))]">
+              <TableRow className="hover:bg-white border-b-0">
+                {SHEET_VISIBLE_COLUMNS.map((column, index) => (
+                  <TableHead
+                    key={column.key}
+                    className={cn(
+                      "sticky top-0 z-20 bg-white text-center whitespace-nowrap",
+                      index === 0 && "left-0 z-30 min-w-64 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.12)]",
+                      index === statusIndex &&
+                        "right-0 z-30 min-w-36 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.12)]",
+                    )}
+                  >
+                    {column.label}
+                  </TableHead>
+                ))}
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+            </TableHeader>
+            <TableBody>
+              {filteredRows.length ? (
+                filteredRows.map((row) => (
+                  <TableRow
+                    key={row.id}
+                    className={cn("group", onRowClick && "cursor-pointer")}
+                    onClick={() => onRowClick?.(row)}
+                  >
+                    {SHEET_VISIBLE_COLUMNS.map((column, index) => (
+                      <TableCell
+                        key={`${row.id}-${column.key}`}
+                        className={cn(
+                          "text-center text-foreground whitespace-nowrap",
+                          column.key === "barcodeIssued" && "min-w-[10.5rem]",
+                          column.key === "services" && "min-w-[5.5rem]",
+                          index === 0 &&
+                            "sticky left-0 z-10 min-w-64 text-left font-medium bg-white group-hover:bg-muted/50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.12)]",
+                          index === statusIndex &&
+                            "sticky right-0 z-10 min-w-36 bg-white group-hover:bg-muted/50 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.12)]",
+                        )}
+                      >
+                        {column.key === "name" ? (
+                          <NameCell
+                            row={row}
+                            onSaveComment={onSaveComment}
+                            commentPending={commentPending}
+                          />
+                        ) : column.key === "services" ? (
+                          <ServicesCell services={row.services ?? []} />
+                        ) : column.key === "barcodeIssued" ? (
+                          <BarcodeDateCell issued={row.barcodeIssued} done={row.barcodeDone} />
+                        ) : (
+                          String(row[column.key] || "—")
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={SHEET_VISIBLE_COLUMNS.length} className="h-24 text-center">
+                    {emptyMessage}
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
-      <p className="mt-3 mb-8 text-sm text-muted-foreground">
-        {filteredRows.length} {footerLabel}
-        {filteredRows.length === 1 ? "" : "s"}
-      </p>
+      {!isLoading && !errorMessage ? (
+        <p className="mt-3 mb-8 text-sm text-muted-foreground">
+          {filteredRows.length} {footerLabel}
+          {filteredRows.length === 1 ? "" : "s"}
+          {footerSuffix ? ` ${footerSuffix}` : ""}
+        </p>
+      ) : null}
     </div>
   );
 }
