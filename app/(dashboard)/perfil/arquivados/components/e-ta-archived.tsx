@@ -1,11 +1,5 @@
-import { SheetClientsTable } from "@/components/dashboard/sheet-clients-table";
+import { ArquivadosSheetTab } from "./arquivados-sheet-tab";
 
 export function E_TA_Archived() {
-  return (
-    <SheetClientsTable
-      rows={[]}
-      emptyMessage="Estrutura pronta. Os arquivados de ESTA / E-TA serão carregados em breve."
-      footerLabel="arquivado"
-    />
-  );
+  return <ArquivadosSheetTab category="e_ta" />;
 }

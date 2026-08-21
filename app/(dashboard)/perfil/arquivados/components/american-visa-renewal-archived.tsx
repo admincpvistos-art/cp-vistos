@@ -1,11 +1,5 @@
-import { SheetClientsTable } from "@/components/dashboard/sheet-clients-table";
+import { ArquivadosSheetTab } from "./arquivados-sheet-tab";
 
 export function AmericanVisaRenewalArchived() {
-  return (
-    <SheetClientsTable
-      rows={[]}
-      emptyMessage="Estrutura pronta. Os arquivados de renovação serão carregados em breve."
-      footerLabel="arquivado"
-    />
-  );
+  return <ArquivadosSheetTab category="renovacao" />;
 }
