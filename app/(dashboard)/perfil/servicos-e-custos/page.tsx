@@ -318,17 +318,17 @@ export default function ServicosECustosPage() {
       enabled: canAccess,
       refetchInterval: (query) => {
         const data = query.state.data;
-        if (!data) return query.state.error ? 2000 : false;
-        if (data.pendingSync) return 1500;
-        if (
-          data.totalImported &&
-          data.linkedUsers != null &&
-          data.linkedUsers < data.totalImported
-        ) {
-          return 1500;
-        }
+        const incomplete =
+          Boolean(data?.pendingSync) ||
+          Boolean(
+            data?.totalImported &&
+              data.linkedUsers != null &&
+              data.linkedUsers < data.totalImported,
+          );
+        if (incomplete || query.state.error) return 1000;
         return false;
       },
+      retry: 2,
     },
   );
 

@@ -367,7 +367,6 @@ async function registerImportedRow(
   const cells = record.cells;
   const name = cell(cells, COL.name) || "Cliente importado";
   const barcode = cell(cells, COL.barcode);
-  const emailFromSheet = cell(cells, COL.email).toLowerCase();
 
   if (barcode) {
     const existingProfile = await prisma.profile.findFirst({
@@ -394,38 +393,28 @@ async function registerImportedRow(
           },
         });
 
-        const [finance, cost] = await Promise.all([
-          prisma.financeEntry.findUnique({
+        await Promise.all([
+          prisma.financeEntry.upsert({
             where: { userId: existingProfile.userId },
-            select: { id: true },
+            create: { userId: existingProfile.userId, status: BudgetPaid.pending },
+            update: {},
           }),
-          prisma.serviceCost.findUnique({
+          prisma.serviceCost.upsert({
             where: { userId: existingProfile.userId },
-            select: { id: true },
+            create: { userId: existingProfile.userId },
+            update: {},
           }),
         ]);
-
-        if (!finance) {
-          await prisma.financeEntry.create({
-            data: { userId: existingProfile.userId, status: BudgetPaid.pending },
-          });
-        }
-        if (!cost) {
-          await prisma.serviceCost.create({
-            data: { userId: existingProfile.userId },
-          });
-        }
         return;
       }
     }
   }
 
-  const fallbackKey = slugPart(barcode || name) || record.id.slice(-8);
-  const email = await uniqueEmail(emailFromSheet, `import.${fallbackKey}`);
+  // E-mail sempre único pelo id do registro — evita loop lento e corrida entre lotes.
+  const email = `import.${record.id}@acompanhamento.cpvistos`;
   const issued = parseSheetDate(cell(cells, COL.barcodeDate));
   const expire = issued ? expireDateFromIssued(issued) : expireDateFromIssued(new Date());
   const taxPaid = cell(cells, COL.tax).toUpperCase().includes("PAGO");
-
   const entryDate = parseSheetDate(cell(cells, COL.entry));
 
   const account = await prisma.user.create({
@@ -442,17 +431,10 @@ async function registerImportedRow(
     },
   });
 
-  await prisma.financeEntry.create({
-    data: { userId: account.id, status: BudgetPaid.pending },
-  });
-  await prisma.serviceCost.create({
-    data: { userId: account.id },
-  });
-
   const profile = await prisma.profile.create({
     data: {
       name,
-      DSNumber: barcode,
+      DSNumber: barcode || `IMP-${record.id.slice(-10)}`,
       DSValid: expire,
       issuanceDate: issued,
       expireDate: expire,
@@ -474,21 +456,28 @@ async function registerImportedRow(
     },
   });
 
-  await prisma.form.create({
-    data: { profile: { connect: { id: profile.id } } },
-  });
-
-  await prisma.acompanhamentoClient.update({
-    where: { id: record.id },
-    data: {
-      userId: account.id,
-      resp: cell(cells, COL.resp) || null,
-      alimto: cell(cells, COL.alimto) || null,
-      obs: cell(cells, COL.obs) || null,
-      pagto: cell(cells, COL.pagto) || null,
-      statusLabel: cell(cells, COL.status) || null,
-    },
-  });
+  await Promise.all([
+    prisma.financeEntry.create({
+      data: { userId: account.id, status: BudgetPaid.pending },
+    }),
+    prisma.serviceCost.create({
+      data: { userId: account.id },
+    }),
+    prisma.form.create({
+      data: { profile: { connect: { id: profile.id } } },
+    }),
+    prisma.acompanhamentoClient.update({
+      where: { id: record.id },
+      data: {
+        userId: account.id,
+        resp: cell(cells, COL.resp) || null,
+        alimto: cell(cells, COL.alimto) || null,
+        obs: cell(cells, COL.obs) || null,
+        pagto: cell(cells, COL.pagto) || null,
+        statusLabel: cell(cells, COL.status) || null,
+      },
+    }),
+  ]);
 }
 
 export async function ensureImportedClientsRegistered(limit = 25) {
@@ -505,8 +494,9 @@ export async function ensureImportedClientsRegistered(limit = 25) {
     return 0;
   }
 
-  const passwordHash = await bcrypt.hash("cp-vistos-import", 8);
-  const CONCURRENCY = 6;
+  // Hash leve: senha só de importação em lote.
+  const passwordHash = await bcrypt.hash("cp-vistos-import", 4);
+  const CONCURRENCY = 10;
 
   for (let i = 0; i < pending.length; i += CONCURRENCY) {
     const chunk = pending.slice(i, i + CONCURRENCY);
@@ -516,7 +506,6 @@ export async function ensureImportedClientsRegistered(limit = 25) {
           await registerImportedRow(record, passwordHash);
         } catch (error) {
           console.error("[acompanhamento] falha ao registrar", record.id, error);
-          // Empurra a linha problemática para o fim da fila para não travar o lote.
           try {
             await prisma.acompanhamentoClient.update({
               where: { id: record.id },
@@ -635,21 +624,20 @@ export async function syncExcelClientsForOperations(options?: {
   await purgeCadastroAcompanhamentoRows();
 
   const started = Date.now();
-  // Prioriza cadastrar usuários (sem o link de famílias, que é caro).
-  const REGISTER_BUDGET_MS = 25000;
-  let pendingUsers = await ensureImportedClientsRegistered(48);
+  // Lotes curtos: evita timeout da Vercel que travava o progresso em ~4 clientes.
+  const REGISTER_BUDGET_MS = 8000;
+  let pendingUsers = await ensureImportedClientsRegistered(24);
 
   while (pendingUsers > 0 && Date.now() - started < REGISTER_BUDGET_MS) {
-    pendingUsers = await ensureImportedClientsRegistered(48);
+    pendingUsers = await ensureImportedClientsRegistered(24);
   }
 
   const pendingFinance = await ensureImportedFinanceAndServiceRows();
 
-  // Amarração titular/dependente só quando pedida (ex.: Acompanhamento) e cadastro ok.
   if (
     options?.linkFamilies &&
     pendingUsers === 0 &&
-    Date.now() - started < 50000
+    Date.now() - started < 20000
   ) {
     await linkImportedFamilyGroups();
   }
