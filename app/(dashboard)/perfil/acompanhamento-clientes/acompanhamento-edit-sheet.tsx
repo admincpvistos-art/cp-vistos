@@ -114,10 +114,12 @@ function SectionTitle({ children }: { children: ReactNode }) {
 export function AcompanhamentoEditSheet({
   rowId,
   creating = false,
+  canArchive = true,
   onClose,
 }: {
   rowId: string | null;
   creating?: boolean;
+  canArchive?: boolean;
   onClose: () => void;
 }) {
   const utils = trpc.useUtils();
@@ -523,7 +525,7 @@ export function AcompanhamentoEditSheet({
             </div>
 
             <div className="sm:col-span-2 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2">
-              {!creating && rowId ? (
+              {!creating && rowId && canArchive ? (
                 <Button
                   type="button"
                   variant="outline"

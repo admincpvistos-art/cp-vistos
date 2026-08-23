@@ -74,7 +74,7 @@ function ProspectsComponent() {
           </TabsList>
 
           <TabsContent value="american_visa">
-            <AmericanVisaProspects />
+            <AmericanVisaProspects category="american_visa" />
           </TabsContent>
 
           <TabsContent value="renovacao">

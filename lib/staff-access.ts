@@ -29,6 +29,22 @@ export function isFullAdmin(role?: string | null, email?: string | null) {
   return role === "ADMIN" && !isOfficeCollaboratorEmail(email);
 }
 
+/** Full admin ou as 3 contas de colaborador do escritório. */
+export function canAccessAcompanhamento(
+  role?: string | null,
+  email?: string | null,
+) {
+  return isFullAdmin(role, email) || isOfficeCollaboratorEmail(email);
+}
+
+/** Somente full admin — colaboradores do escritório só editam. */
+export function canArchiveAcompanhamento(
+  role?: string | null,
+  email?: string | null,
+) {
+  return isFullAdmin(role, email);
+}
+
 export function canAccessFinance(role?: string | null, email?: string | null) {
   return isFullAdmin(role, email) && isFinanceAdminEmail(email);
 }

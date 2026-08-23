@@ -9,6 +9,14 @@ import { DeleteChecklistRowButton } from "@/components/dashboard/delete-checklis
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { SheetCommentBubble } from "@/components/dashboard/sheet-comment-bubble";
 import { trpc } from "@/lib/trpc-client";
 import { cn } from "@/lib/utils";
@@ -287,6 +295,11 @@ export default function ServicosECustosPage() {
   const [expenseName, setExpenseName] = useState("");
   const [expenseDescription, setExpenseDescription] = useState("");
   const [expenseAmount, setExpenseAmount] = useState("");
+  const [includeOpen, setIncludeOpen] = useState(false);
+  const [includeName, setIncludeName] = useState("");
+  const [includeEmail, setIncludeEmail] = useState("");
+  const [includePhone, setIncludePhone] = useState("");
+  const [includeGroup, setIncludeGroup] = useState("");
   const { openByUserId, isPending: isOpeningClient } = useOpenClientDetails();
 
   const { data: me, isLoading: loadingMe } = trpc.userRouter.getMe.useQuery(
@@ -331,6 +344,23 @@ export default function ServicosECustosPage() {
       },
       onError: () => {
         toast.error("Não foi possível enviar o pagamento");
+      },
+    });
+
+  const { mutate: includeClient, isPending: includingClient } =
+    trpc.serviceCostRouter.includeClient.useMutation({
+      onSuccess: (result) => {
+        toast.success(`${result.name} incluído em Serviços e no Financeiro`);
+        setIncludeOpen(false);
+        setIncludeName("");
+        setIncludeEmail("");
+        setIncludePhone("");
+        setIncludeGroup("");
+        utils.serviceCostRouter.getRows.invalidate();
+        utils.financeRouter.getChecklist.invalidate();
+      },
+      onError: (error) => {
+        toast.error(error.message || "Não foi possível incluir o cliente");
       },
     });
 
@@ -441,17 +471,23 @@ export default function ServicosECustosPage() {
             </p>
           </div>
 
-          <div className="h-11 flex items-center gap-2 border border-muted/70 rounded-xl bg-background px-3 py-2 w-full sm:w-72">
-            <Search
-              className="w-5 h-5 text-border flex-shrink-0"
-              strokeWidth={1.5}
-            />
-            <Input
-              placeholder="Buscar por nome..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="border-0 h-full focus-visible:ring-0 focus-visible:ring-offset-0"
-            />
+          <div className="flex flex-col sm:flex-row gap-3 sm:items-center w-full lg:w-auto">
+            <Button type="button" className="h-11" onClick={() => setIncludeOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Incluir cliente
+            </Button>
+            <div className="h-11 flex items-center gap-2 border border-muted/70 rounded-xl bg-background px-3 py-2 w-full sm:w-72">
+              <Search
+                className="w-5 h-5 text-border flex-shrink-0"
+                strokeWidth={1.5}
+              />
+              <Input
+                placeholder="Buscar por nome..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="border-0 h-full focus-visible:ring-0 focus-visible:ring-offset-0"
+              />
+            </div>
           </div>
         </div>
 
@@ -659,6 +695,84 @@ export default function ServicosECustosPage() {
         </div>
       </div>
     </div>
+    <Dialog open={includeOpen} onOpenChange={setIncludeOpen}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Incluir cliente na planilha</DialogTitle>
+        </DialogHeader>
+        <form
+          className="space-y-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!includeName.trim()) {
+              toast.error("Informe o nome");
+              return;
+            }
+            includeClient({
+              name: includeName.trim(),
+              email: includeEmail.trim() || undefined,
+              phone: includePhone.trim() || undefined,
+              group: includeGroup.trim() || undefined,
+            });
+          }}
+        >
+          <div className="space-y-1.5">
+            <Label htmlFor="svc-include-name">Nome *</Label>
+            <Input
+              id="svc-include-name"
+              value={includeName}
+              onChange={(e) => setIncludeName(e.target.value)}
+              placeholder="Nome completo"
+              autoFocus
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="svc-include-email">E-mail</Label>
+            <Input
+              id="svc-include-email"
+              type="email"
+              value={includeEmail}
+              onChange={(e) => setIncludeEmail(e.target.value)}
+              placeholder="opcional"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="svc-include-phone">Telefone</Label>
+            <Input
+              id="svc-include-phone"
+              value={includePhone}
+              onChange={(e) => setIncludePhone(e.target.value)}
+              placeholder="opcional"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="svc-include-group">Grupo</Label>
+            <Input
+              id="svc-include-group"
+              value={includeGroup}
+              onChange={(e) => setIncludeGroup(e.target.value)}
+              placeholder="opcional"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            O cliente entra em Serviços e Custos e também no checklist de
+            recebimentos do Financeiro.
+          </p>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIncludeOpen(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={includingClient}>
+              {includingClient ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Incluir"
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
     <ClientDetailsModal />
     </>
   );

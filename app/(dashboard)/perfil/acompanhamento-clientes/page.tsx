@@ -8,7 +8,7 @@ import { Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SheetClientsTable, type SheetClientRow } from "@/components/dashboard/sheet-clients-table";
 import { trpc } from "@/lib/trpc-client";
-import { isFullAdmin } from "@/lib/staff-access";
+import { isFullAdmin, canAccessAcompanhamento } from "@/lib/staff-access";
 import { AcompanhamentoEditSheet } from "./acompanhamento-edit-sheet";
 
 export default function AcompanhamentoClientesPage() {
@@ -19,11 +19,12 @@ export default function AcompanhamentoClientesPage() {
   const { data: me, isLoading: isMeLoading } = trpc.userRouter.getMe.useQuery(undefined, {
     retry: false,
   });
-  const isAdmin = isFullAdmin(me?.user.role, me?.user.email);
+  const canAccess = canAccessAcompanhamento(me?.user.role, me?.user.email);
+  const canArchive = isFullAdmin(me?.user.role, me?.user.email);
 
   const { data, isLoading, isError, error, isFetching, refetch } =
     trpc.acompanhamentoRouter.getClientesSheet.useQuery(undefined, {
-      enabled: isAdmin,
+      enabled: canAccess,
       retry: false,
       refetchInterval: (query) => (query.state.data?.pendingSync ? 2000 : false),
     });
@@ -44,11 +45,11 @@ export default function AcompanhamentoClientesPage() {
       return;
     }
 
-    if (!isAdmin) {
+    if (!canAccess) {
       toast.error("Acesso não autorizado");
-      router.push("/perfil/clientes");
+      router.push("/perfil/prospects");
     }
-  }, [isAdmin, isMeLoading, me, router]);
+  }, [canAccess, isMeLoading, me, router]);
 
   const rows = useMemo<SheetClientRow[]>(() => {
     if (!data?.rows) {
@@ -76,7 +77,7 @@ export default function AcompanhamentoClientesPage() {
     }));
   }, [data?.rows]);
 
-  if (!me || isMeLoading || !isAdmin) {
+  if (!me || isMeLoading || !canAccess) {
     return (
       <div className="w-full min-h-[50vh] flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -134,6 +135,7 @@ export default function AcompanhamentoClientesPage() {
       <AcompanhamentoEditSheet
         rowId={editingId}
         creating={creating}
+        canArchive={canArchive}
         onClose={() => {
           setEditingId(null);
           setCreating(false);

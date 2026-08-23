@@ -5,6 +5,7 @@ import superjson from "superjson";
 import { Context } from "./context";
 import prisma from "@/lib/prisma";
 import {
+  canAccessAcompanhamento,
   canAccessDs160,
   canAccessFinance,
   isOfficeCollaboratorEmail,
@@ -48,6 +49,34 @@ export const adminProcedure = trpc.procedure.use(async function isAdmin(opts) {
   });
 });
 
+/** Admin full ou colaborador do escritório (cpassessoriavistos1–3). */
+export const acompanhamentoStaffProcedure = trpc.procedure.use(
+  async function isAcompanhamentoStaff(opts) {
+    const { ctx } = opts;
+
+    if (!ctx.user || !ctx.user.user?.email) {
+      throw new TRPCError({ code: "UNAUTHORIZED" });
+    }
+
+    const email = ctx.user.user.email;
+    const staff = await prisma.user.findFirst({
+      where: {
+        email,
+        role: Role.ADMIN,
+      },
+    });
+
+    if (!staff || !canAccessAcompanhamento(staff.role, email)) {
+      throw new TRPCError({ code: "UNAUTHORIZED" });
+    }
+
+    return opts.next({
+      ctx: {
+        staff,
+      },
+    });
+  },
+);
 /** Admin com acesso à dashboard Financeiro (allowlist de e-mails). */
 export const financeAdminProcedure = trpc.procedure.use(
   async function isFinanceAdmin(opts) {

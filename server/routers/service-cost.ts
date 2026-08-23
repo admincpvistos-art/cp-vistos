@@ -10,7 +10,7 @@ import {
   OPERATIONS_SYNC_PAUSED,
 } from "@/server/acompanhamento-sheet";
 import {
-  clearFinanceAndServiceCostSheets,
+  createManualOperationsClient,
   getOperationsClientIds,
   purgeFinanceOutsideAcompanhamento,
   sortGroupedByRecency,
@@ -186,12 +186,59 @@ export const serviceCostRouter = router({
     )
     .query(async ({ input }) => {
       if (OPERATIONS_SYNC_PAUSED) {
-        await clearFinanceAndServiceCostSheets();
+        const rows = await prisma.serviceCost.findMany({
+          where: { user: { role: Role.CLIENT } },
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                createdAt: true,
+                group: true,
+                payerUserId: true,
+              },
+            },
+          },
+        });
+
+        const searchLower = input.search?.trim().toLowerCase();
+        const filtered = searchLower
+          ? rows.filter(
+              (row) =>
+                row.user.name.toLowerCase().includes(searchLower) ||
+                (row.user.group ?? "").toLowerCase().includes(searchLower),
+            )
+          : rows;
+
+        const sorted = sortGroupedByRecency(filtered, (row) => row.user, "desc");
+
         return {
           pendingSync: 0,
           totalImported: 0,
-          linkedUsers: 0,
-          rows: [],
+          linkedUsers: sorted.length,
+          rows: sorted.map((row) => {
+            const isDependent = Boolean(row.user.payerUserId);
+            const total = isDependent ? 0 : sumServiceValues(row);
+            return {
+              id: row.id,
+              userId: row.userId,
+              clientName: row.user.name,
+              clientEmail: row.user.email,
+              groupName: row.user.group,
+              isDependent,
+              renovacao: isDependent ? null : row.renovacao,
+              primeiroVisto: isDependent ? null : row.primeiroVisto,
+              reuniaoPaga: isDependent ? null : row.reuniaoPaga,
+              monitoramento: isDependent ? null : row.monitoramento,
+              passaporte: isDependent ? null : row.passaporte,
+              outros: isDependent ? null : row.outros,
+              outrosComment: isDependent ? null : row.outrosComment,
+              validadeDate: row.validadeDate,
+              situacao: tripPriorityFromDate(row.validadeDate),
+              total,
+            };
+          }),
         };
       }
 
@@ -265,6 +312,36 @@ export const serviceCostRouter = router({
           };
         }),
       };
+    }),
+
+  /** Inclui cliente na planilha de serviços e replica no checklist Financeiro. */
+  includeClient: financeAdminProcedure
+    .input(
+      z.object({
+        name: z.string().min(1, "Informe o nome"),
+        email: z.string().email().optional().or(z.literal("")),
+        group: z.string().optional(),
+        phone: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      try {
+        const user = await createManualOperationsClient({
+          name: input.name,
+          email: input.email || undefined,
+          group: input.group,
+          phone: input.phone,
+        });
+        return { userId: user.id, name: user.name, email: user.email };
+      } catch (error) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Não foi possível incluir o cliente",
+        });
+      }
     }),
 
   updateRow: financeAdminProcedure

@@ -1,11 +1,7 @@
-import { SheetClientsTable } from "@/components/dashboard/sheet-clients-table";
+"use client";
+
+import { AmericanVisaProspects } from "./american-visa-prospects";
 
 export function E_TA_Prospects() {
-  return (
-    <SheetClientsTable
-      rows={[]}
-      emptyMessage="Prospects da planilha Excel foram concentrados na aba Visto Americano."
-      footerLabel="prospect"
-    />
-  );
+  return <AmericanVisaProspects category="e_ta" />;
 }

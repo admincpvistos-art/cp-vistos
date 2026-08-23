@@ -56,6 +56,11 @@ const officeCollaboratorTools = [
     icon: ClipboardCheck,
   },
   { href: "/perfil/preencher-ds160", label: "Preencher DS-160", icon: FileInput },
+  {
+    href: "/perfil/acompanhamento-clientes",
+    label: "Acompanhamento Clientes",
+    icon: Table2,
+  },
   { href: "/perfil/prospects", label: "Prospects", icon: Contact },
   { href: "/perfil/arquivados", label: "Arquivados", icon: Archive },
 ] as const;

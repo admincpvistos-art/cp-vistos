@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 
-import { adminProcedure, router } from "../trpc";
+import { adminProcedure, acompanhamentoStaffProcedure, router } from "../trpc";
 import {
   archiveAcompanhamentoClient,
   createAcompanhamentoRecord,
@@ -11,6 +11,7 @@ import {
   updateAcompanhamentoSheetComment,
 } from "@/server/acompanhamento-sheet";
 import { ACOMPANHAMENTO_SERVICE_OPTIONS } from "@/lib/acompanhamento-types";
+import { canArchiveAcompanhamento } from "@/lib/staff-access";
 
 const serviceValues = ACOMPANHAMENTO_SERVICE_OPTIONS.map((option) => option.value) as [
   (typeof ACOMPANHAMENTO_SERVICE_OPTIONS)[number]["value"],
@@ -66,7 +67,7 @@ const updateSchema = rowFieldsSchema.extend({
 });
 
 export const acompanhamentoRouter = router({
-  getClientesSheet: adminProcedure.query(async () => {
+  getClientesSheet: acompanhamentoStaffProcedure.query(async () => {
     const sheet = await listAcompanhamentoSheet();
 
     if (!sheet.headers.length) {
@@ -78,7 +79,7 @@ export const acompanhamentoRouter = router({
 
     return sheet;
   }),
-  getRow: adminProcedure
+  getRow: acompanhamentoStaffProcedure
     .input(z.object({ id: z.string().min(1) }))
     .query(async ({ input }) => {
       const row = await getAcompanhamentoRecord(input.id);
@@ -92,7 +93,7 @@ export const acompanhamentoRouter = router({
 
       return { row };
     }),
-  createRow: adminProcedure.input(rowFieldsSchema).mutation(async ({ input }) => {
+  createRow: acompanhamentoStaffProcedure.input(rowFieldsSchema).mutation(async ({ input }) => {
     if (!input.name.trim()) {
       throw new TRPCError({
         code: "BAD_REQUEST",
@@ -110,7 +111,7 @@ export const acompanhamentoRouter = router({
       });
     }
   }),
-  updateRow: adminProcedure.input(updateSchema).mutation(async ({ input }) => {
+  updateRow: acompanhamentoStaffProcedure.input(updateSchema).mutation(async ({ input }) => {
     try {
       const row = await updateAcompanhamentoRecord(input);
 
@@ -133,7 +134,7 @@ export const acompanhamentoRouter = router({
       });
     }
   }),
-  updateComment: adminProcedure
+  updateComment: acompanhamentoStaffProcedure
     .input(
       z.object({
         id: z.string().min(1),
@@ -160,7 +161,14 @@ export const acompanhamentoRouter = router({
         });
       }
     }),
-  archiveRow: adminProcedure.input(updateSchema).mutation(async ({ input }) => {
+  archiveRow: adminProcedure.input(updateSchema).mutation(async ({ input, ctx }) => {
+      if (!canArchiveAcompanhamento(ctx.admin.role, ctx.admin.email)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Sua conta não pode arquivar clientes",
+        });
+      }
+
       try {
         const updated = await updateAcompanhamentoRecord(input);
         if (!updated) {

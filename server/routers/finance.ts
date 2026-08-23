@@ -6,17 +6,16 @@ import prisma from "@/lib/prisma";
 import { adminProcedure, financeAdminProcedure, router } from "../trpc";
 import { removeClientFromFinance } from "./service-cost";
 import {
+  getOperationsClientIds,
+  purgeFinanceOutsideAcompanhamento,
+  sortGroupedByRecency,
+} from "@/server/finance-ops";
+import {
   getOperationsSyncStatus,
   OPERATIONS_SYNC_PAUSED,
   rebuildFinanceFromExcel,
   runOperationsSyncBatch,
 } from "@/server/acompanhamento-sheet";
-import {
-  clearFinanceAndServiceCostSheets,
-  getOperationsClientIds,
-  purgeFinanceOutsideAcompanhamento,
-  sortGroupedByRecency,
-} from "@/server/finance-ops";
 
 function startOfDay(date: Date) {
   const d = new Date(date);
@@ -163,14 +162,67 @@ export const financeRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      // Listagem rápida: não bloqueia no cadastro em massa.
+      // Inclusão manual: lista o que existe nas planilhas (não apaga nem sincroniza Excel).
       if (OPERATIONS_SYNC_PAUSED) {
-        await clearFinanceAndServiceCostSheets();
+        const search = input.search?.trim();
+        const dateFilter = input.yearMonth
+          ? (() => {
+              const { start, end } = monthRange(input.yearMonth!);
+              return { gte: start, lte: end };
+            })()
+          : undefined;
+
+        const entries = await prisma.financeEntry.findMany({
+          where: {
+            user: {
+              role: Role.CLIENT,
+              ...(dateFilter ? { createdAt: dateFilter } : {}),
+            },
+          },
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                createdAt: true,
+                group: true,
+                payerUserId: true,
+              },
+            },
+          },
+        });
+
+        const searchLower = search?.toLowerCase();
+        const filtered = searchLower
+          ? entries.filter(
+              (entry) =>
+                entry.user.name.toLowerCase().includes(searchLower) ||
+                (entry.user.group ?? "").toLowerCase().includes(searchLower),
+            )
+          : entries;
+
+        const sorted = sortGroupedByRecency(filtered, (entry) => entry.user, input.sort);
+
         return {
           pendingSync: 0,
           totalImported: 0,
-          linkedUsers: 0,
-          entries: [],
+          linkedUsers: sorted.length,
+          entries: sorted.map((entry) => {
+            const isDependent = Boolean(entry.user.payerUserId);
+            return {
+              id: entry.id,
+              amount: isDependent ? null : entry.amount,
+              status: entry.status,
+              paidAt: entry.paidAt,
+              userId: entry.userId,
+              name: entry.user.name,
+              email: entry.user.email,
+              groupName: entry.user.group,
+              isDependent,
+              registeredAt: entry.user.createdAt,
+            };
+          }),
         };
       }
 

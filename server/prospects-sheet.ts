@@ -1,6 +1,7 @@
 import payload from "@/data/prospects-sheet.json";
 import type { SheetClientRow } from "@/components/dashboard/sheet-clients-table";
 import type { AcompanhamentoService } from "@/lib/acompanhamento-types";
+import prisma from "@/lib/prisma";
 
 type SheetPayload = {
   sheet: string;
@@ -37,7 +38,7 @@ function makeId(index: number, name: string, barcode: string) {
   return key || `prospect-${index}`;
 }
 
-export function listProspectsSheet(): SheetClientRow[] {
+function excelProspectRows(): SheetClientRow[] {
   const sheet = payload as SheetPayload;
   if (!sheet?.rows?.length) {
     return [];
@@ -75,5 +76,76 @@ export function listProspectsSheet(): SheetClientRow[] {
       group,
       status: "PROSPECT",
     };
+  });
+}
+
+function serviceForCategory(category: string): AcompanhamentoService[] {
+  if (category === "renovacao") return ["renovacao"];
+  if (category === "passport") return ["passaporte"];
+  if (category === "e_ta") return ["esta"];
+  return ["primeiro_visto"];
+}
+
+export async function listProspectsSheet(
+  category: string = "american_visa",
+): Promise<SheetClientRow[]> {
+  const manuals = await prisma.manualProspect.findMany({
+    where: { category },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const manualRows: SheetClientRow[] = manuals.map((row) => ({
+    id: `manual-prospect:${row.id}`,
+    name: row.name,
+    services: serviceForCategory(row.category),
+    sheetComment: row.notes || "",
+    barcode: "",
+    barcodeIssued: "",
+    barcodeDone: false,
+    casv: "",
+    interview: "",
+    meeting: "",
+    tax: "",
+    dob: row.dob || "",
+    passport: row.passport || "",
+    email: row.email || "",
+    entryDate: "",
+    group: row.group || "",
+    status: "PROSPECT",
+  }));
+
+  if (category === "american_visa") {
+    return [...manualRows, ...excelProspectRows()];
+  }
+
+  return manualRows;
+}
+
+export async function createManualProspect(input: {
+  name: string;
+  email?: string;
+  phone?: string;
+  group?: string;
+  category?: string;
+  passport?: string;
+  dob?: string;
+  notes?: string;
+}) {
+  const name = input.name.trim();
+  if (!name) {
+    throw new Error("Informe o nome do cliente");
+  }
+
+  return prisma.manualProspect.create({
+    data: {
+      name,
+      email: input.email?.trim() || "",
+      phone: input.phone?.trim() || "",
+      group: input.group?.trim() || "",
+      category: input.category?.trim() || "american_visa",
+      passport: input.passport?.trim() || "",
+      dob: input.dob?.trim() || "",
+      notes: input.notes?.trim() || "",
+    },
   });
 }

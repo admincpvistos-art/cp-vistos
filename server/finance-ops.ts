@@ -1,4 +1,5 @@
-import { Role } from "@prisma/client";
+import { BudgetPaid, Role } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 import prisma from "@/lib/prisma";
 import {
@@ -17,27 +18,94 @@ export async function clearFinanceAndServiceCostSheets() {
   ]);
 }
 
-/** User ids that should appear in Financeiro / Serviços e Custos.
- * Includes archived Acompanhamento clients — they leave the sheet but stay in accounting.
- */
-export async function getOperationsClientIds() {
-  const imported = await prisma.acompanhamentoClient.findMany({
-    where: {
-      source: { in: ["imported", "archived"] },
-      userId: { not: null },
+export async function ensureFinanceAndServiceForUser(userId: string) {
+  await Promise.all([
+    prisma.financeEntry.upsert({
+      where: { userId },
+      create: { userId, status: BudgetPaid.pending },
+      update: {},
+    }),
+    prisma.serviceCost.upsert({
+      where: { userId },
+      create: { userId },
+      update: {},
+    }),
+  ]);
+}
+
+/** Inclui cliente manualmente em Serviços e no checklist Financeiro. */
+export async function createManualOperationsClient(input: {
+  name: string;
+  email?: string;
+  group?: string;
+  phone?: string;
+}) {
+  const name = input.name.trim();
+  if (!name) {
+    throw new Error("Informe o nome do cliente");
+  }
+
+  const providedEmail = input.email?.trim().toLowerCase();
+  const email =
+    providedEmail ||
+    `ops.${Date.now()}.${Math.random().toString(36).slice(2, 8)}@manual.cpvistos`;
+
+  if (providedEmail) {
+    const existing = await prisma.user.findUnique({
+      where: { email: providedEmail },
+      select: { id: true, role: true },
+    });
+    if (existing) {
+      if (existing.role !== Role.CLIENT) {
+        throw new Error("Este e-mail já está em uso por outra conta");
+      }
+      await ensureFinanceAndServiceForUser(existing.id);
+      return existing;
+    }
+  }
+
+  const password = await bcrypt.hash("cp-vistos-import", 8);
+  const user = await prisma.user.create({
+    data: {
+      name,
+      email,
+      password,
+      role: Role.CLIENT,
+      group: input.group?.trim() || null,
+      cel: input.phone?.trim() || null,
+      wantsAmericanVisa: true,
     },
-    select: { userId: true },
   });
 
-  const ids = new Set(
-    imported.map((row) => row.userId).filter((id): id is string => Boolean(id)),
-  );
+  await ensureFinanceAndServiceForUser(user.id);
+  return user;
+}
 
-  const kept = await prisma.user.findMany({
-    where: { role: Role.CLIENT },
-    select: { id: true, name: true },
-  });
+/** User ids that should appear in Financeiro / Serviços e Custos. */
+export async function getOperationsClientIds() {
+  const ids = new Set<string>();
 
+  const [imported, financeRows, serviceRows, kept] = await Promise.all([
+    prisma.acompanhamentoClient.findMany({
+      where: {
+        source: { in: ["imported", "archived"] },
+        userId: { not: null },
+      },
+      select: { userId: true },
+    }),
+    prisma.financeEntry.findMany({ select: { userId: true } }),
+    prisma.serviceCost.findMany({ select: { userId: true } }),
+    prisma.user.findMany({
+      where: { role: Role.CLIENT },
+      select: { id: true, name: true },
+    }),
+  ]);
+
+  for (const row of imported) {
+    if (row.userId) ids.add(row.userId);
+  }
+  for (const row of financeRows) ids.add(row.userId);
+  for (const row of serviceRows) ids.add(row.userId);
   for (const user of kept) {
     if (isKeptPre2026Client(user.name)) {
       ids.add(user.id);
@@ -52,6 +120,10 @@ export async function getOperationsClientIds() {
  * list (keeps Isadora). This replaces the old checklist with the sheet clients.
  */
 export async function purgeFinanceOutsideAcompanhamento() {
+  if (OPERATIONS_SYNC_PAUSED) {
+    return;
+  }
+
   const keepIds = await getOperationsClientIds();
 
   // Segurança: nunca apagar a planilha inteira se o Acompanhamento parecer vazio
