@@ -53,7 +53,7 @@ export async function createManualOperationsClient(input: {
   if (providedEmail) {
     const existing = await prisma.user.findUnique({
       where: { email: providedEmail },
-      select: { id: true, role: true },
+      select: { id: true, role: true, name: true, email: true },
     });
     if (existing) {
       if (existing.role !== Role.CLIENT) {
@@ -75,6 +75,7 @@ export async function createManualOperationsClient(input: {
       cel: input.phone?.trim() || null,
       wantsAmericanVisa: true,
     },
+    select: { id: true, role: true, name: true, email: true },
   });
 
   await ensureFinanceAndServiceForUser(user.id);

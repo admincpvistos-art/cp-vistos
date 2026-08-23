@@ -319,7 +319,7 @@ export const serviceCostRouter = router({
     .input(
       z.object({
         name: z.string().min(1, "Informe o nome"),
-        email: z.string().email().optional().or(z.literal("")),
+        email: z.union([z.string().email(), z.literal("")]).optional(),
         group: z.string().optional(),
         phone: z.string().optional(),
       }),

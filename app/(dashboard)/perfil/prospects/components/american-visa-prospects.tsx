@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -49,7 +49,7 @@ export function AmericanVisaProspects({ category = "american_visa" }: Props) {
     },
   });
 
-  function handleSubmit(event: React.FormEvent) {
+  function handleSubmit(event: FormEvent) {
     event.preventDefault();
     if (!name.trim()) {
       toast.error("Informe o nome");
