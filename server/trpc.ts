@@ -62,7 +62,9 @@ export const acompanhamentoStaffProcedure = trpc.procedure.use(
     const staff = await prisma.user.findFirst({
       where: {
         email,
-        role: Role.ADMIN,
+        role: {
+          in: [Role.ADMIN, Role.COLLABORATOR],
+        },
       },
     });
 
