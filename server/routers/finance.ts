@@ -72,17 +72,16 @@ async function sumExpensesBetween(start?: Date, end?: Date) {
 }
 
 export const financeRouter = router({
-  /** Cadastra um lote de clientes do Acompanhamento (front logado + cron). */
+  /** Cadastra um lote de clientes do Acompanhamento (front logado + cron). Nunca apaga progresso. */
   syncBatch: financeAdminProcedure.mutation(async () => {
     return runOperationsSyncBatch({
-      budgetMs: 45000,
-      batchSize: 50,
-      rebuildIfEmpty: true,
+      budgetMs: 50000,
+      batchSize: 60,
     });
   }),
-  /** Apaga Financeiro/Serviços (exceto Isadora) e recria a partir do Excel CLIENTES. */
+  /** Continua preenchendo Financeiro/Serviços a partir do Excel CLIENTES (sem wipe). */
   rebuildFromExcel: financeAdminProcedure.mutation(async () => {
-    return rebuildFinanceFromExcel({ budgetMs: 50000, batchSize: 40 });
+    return rebuildFinanceFromExcel({ budgetMs: 50000, batchSize: 60 });
   }),
   getSyncStatus: financeAdminProcedure.query(async () => {
     return getOperationsSyncStatus();
@@ -227,7 +226,12 @@ export const financeRouter = router({
       }
 
       const sync = await getOperationsSyncStatus();
-      if (sync.pendingSync === 0) {
+      // Só limpa “lixo” quando a importação do Excel já terminou.
+      if (
+        sync.pendingSync === 0 &&
+        sync.totalImported > 50 &&
+        sync.linkedUsers >= sync.totalImported
+      ) {
         await purgeFinanceOutsideAcompanhamento();
       }
       const keepIds = await getOperationsClientIds();

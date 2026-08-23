@@ -243,7 +243,12 @@ export const serviceCostRouter = router({
       }
 
       const sync = await getOperationsSyncStatus();
-      if (sync.pendingSync === 0) {
+      // Só limpa “lixo” quando a importação do Excel já terminou.
+      if (
+        sync.pendingSync === 0 &&
+        sync.totalImported > 50 &&
+        sync.linkedUsers >= sync.totalImported
+      ) {
         await purgeFinanceOutsideAcompanhamento();
       }
       const keepIds = await getOperationsClientIds();

@@ -40,8 +40,7 @@ export async function GET(request: Request) {
   try {
     const result = await runOperationsSyncBatch({
       budgetMs: 50000,
-      batchSize: 40,
-      rebuildIfEmpty: true,
+      batchSize: 60,
     });
 
     return NextResponse.json({

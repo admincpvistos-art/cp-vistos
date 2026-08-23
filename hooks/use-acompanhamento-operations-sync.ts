@@ -7,7 +7,7 @@ import { trpc } from "@/lib/trpc-client";
 /**
  * Empurra o cadastro dos clientes do Excel em lotes.
  * Usado no layout do painel enquanto o admin estiver logado.
- * Se o financeiro estiver vazio / incompleto, reconstrói a partir do Excel.
+ * Nunca apaga progresso — só avança até linkedUsers === totalImported.
  */
 export function useAcompanhamentoOperationsSync(enabled: boolean) {
   const utils = trpc.useUtils();

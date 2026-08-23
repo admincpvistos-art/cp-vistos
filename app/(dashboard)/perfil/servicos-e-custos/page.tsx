@@ -379,7 +379,7 @@ export default function ServicosECustosPage() {
     trpc.financeRouter.rebuildFromExcel.useMutation({
       onSuccess: (result) => {
         toast.success(
-          `Importação iniciada: ${result.linkedUsers ?? 0}/${result.totalImported ?? "?"} clientes`,
+          `Importação em andamento: ${result.linkedUsers ?? 0}/${result.totalImported ?? "?"} clientes. Deixe esta aba aberta.`,
         );
         utils.serviceCostRouter.getRows.invalidate();
         utils.financeRouter.getChecklist.invalidate();

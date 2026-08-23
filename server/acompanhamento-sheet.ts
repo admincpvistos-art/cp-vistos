@@ -469,7 +469,18 @@ async function registerImportedRow(
     return;
   }
 
+  // Operações (Financeiro/Serviços) primeiro — perfil é opcional e não pode travar o lote.
+  await linkAcompanhamentoToUser(record, accountId);
+
   try {
+    const hasProfile = await prisma.profile.findFirst({
+      where: { userId: accountId },
+      select: { id: true },
+    });
+    if (hasProfile) {
+      return;
+    }
+
     const profile = await prisma.profile.create({
       data: {
         name,
@@ -495,27 +506,11 @@ async function registerImportedRow(
       },
     });
 
-    await Promise.all([
-      ensureFinanceAndServiceForUser(accountId),
-      prisma.form.create({
-        data: { profile: { connect: { id: profile.id } } },
-      }),
-      prisma.acompanhamentoClient.update({
-        where: { id: record.id },
-        data: {
-          userId: accountId,
-          resp: cell(cells, COL.resp) || null,
-          alimto: cell(cells, COL.alimto) || null,
-          obs: cell(cells, COL.obs) || null,
-          pagto: cell(cells, COL.pagto) || null,
-          statusLabel: cell(cells, COL.status) || null,
-        },
-      }),
-    ]);
+    await prisma.form.create({
+      data: { profile: { connect: { id: profile.id } } },
+    });
   } catch (error) {
-    // Se o perfil/form falhar mas o user existe, ainda vincula o acompanhamento.
-    await linkAcompanhamentoToUser(record, accountId);
-    throw error;
+    console.error("[acompanhamento] perfil/form opcional falhou", record.id, error);
   }
 }
 
@@ -565,7 +560,8 @@ export async function ensureImportedClientsRegistered(
 
   // Hash leve: senha só de importação em lote.
   const passwordHash = await bcrypt.hash("cp-vistos-import", 4);
-  const CONCURRENCY = 12;
+  // Concorrência moderada: operações já avançam antes do perfil.
+  const CONCURRENCY = 6;
 
   for (let i = 0; i < pending.length; i += CONCURRENCY) {
     const chunk = pending.slice(i, i + CONCURRENCY);
@@ -744,84 +740,48 @@ export async function restoreAcompanhamentoFromExcel() {
 }
 
 /**
- * Apaga Financeiro / Serviços e Custos (mantém Isadora) e reconstitui
- * a partir da aba CLIENTES do Excel + regras de titular/dependente.
+ * Preenche Financeiro / Serviços a partir do Excel CLIENTES.
+ * NÃO apaga progresso já feito (o wipe era o que travava em ~4/171).
  */
 export async function rebuildFinanceFromExcel(options?: {
   budgetMs?: number;
   batchSize?: number;
 }) {
-  if (OPERATIONS_SYNC_PAUSED) {
-    const status = await getOperationsSyncStatus();
-    return {
-      ...status,
-      pendingSync: Math.max(0, status.totalImported - status.linkedUsers),
-      paused: true as const,
-    };
-  }
-
   const budgetMs = options?.budgetMs ?? 45000;
   const batchSize = options?.batchSize ?? 40;
   const started = Date.now();
 
-  const restored = await restoreAcompanhamentoFromExcel();
+  await restoreAcompanhamentoFromExcel();
+  await relinkOrphanImportUsers(120);
 
-  // Apaga checklist atual (exceto Isadora).
-  const clients = await prisma.user.findMany({
-    where: { role: Role.CLIENT },
-    select: { id: true, name: true },
+  let pendingUsers = await ensureImportedClientsRegistered(batchSize, {
+    skipBarcodeLink: true,
   });
-  const keepIds = new Set(
-    clients.filter((user) => isKeptPre2026Client(user.name)).map((user) => user.id),
-  );
-
-  const [financeRows, serviceRows] = await Promise.all([
-    prisma.financeEntry.findMany({ select: { id: true, userId: true } }),
-    prisma.serviceCost.findMany({ select: { id: true, userId: true } }),
-  ]);
-
-  const financeToDelete = financeRows
-    .filter((row) => !keepIds.has(row.userId))
-    .map((row) => row.id);
-  const serviceToDelete = serviceRows
-    .filter((row) => !keepIds.has(row.userId))
-    .map((row) => row.id);
-
-  for (let i = 0; i < financeToDelete.length; i += 100) {
-    await prisma.financeEntry.deleteMany({
-      where: { id: { in: financeToDelete.slice(i, i + 100) } },
-    });
-  }
-  for (let i = 0; i < serviceToDelete.length; i += 100) {
-    await prisma.serviceCost.deleteMany({
-      where: { id: { in: serviceToDelete.slice(i, i + 100) } },
-    });
-  }
-
-  let pendingUsers = await ensureImportedClientsRegistered(batchSize);
   while (pendingUsers > 0 && Date.now() - started < budgetMs) {
-    pendingUsers = await ensureImportedClientsRegistered(batchSize);
+    await relinkOrphanImportUsers(80);
+    pendingUsers = await ensureImportedClientsRegistered(batchSize, {
+      skipBarcodeLink: true,
+    });
   }
 
   const pendingFinance = await ensureImportedFinanceAndServiceRows();
 
   if (pendingUsers === 0) {
     await linkImportedFamilyGroups();
+  } else {
+    // Liga grupos já cadastrados mesmo com fila ainda andando.
+    await linkImportedFamilyGroups();
   }
 
-  // Garante linha da Isadora
-  for (const userId of Array.from(keepIds)) {
+  // Garante Isadora
+  const kept = await prisma.user.findMany({
+    where: { role: Role.CLIENT },
+    select: { id: true, name: true },
+  });
+  for (const user of kept) {
+    if (!isKeptPre2026Client(user.name)) continue;
     try {
-      await prisma.financeEntry.upsert({
-        where: { userId },
-        create: { userId, status: BudgetPaid.pending },
-        update: {},
-      });
-      await prisma.serviceCost.upsert({
-        where: { userId },
-        create: { userId },
-        update: {},
-      });
+      await ensureFinanceAndServiceForUser(user.id);
     } catch {
       // ignore
     }
@@ -831,9 +791,6 @@ export async function rebuildFinanceFromExcel(options?: {
   return {
     ...status,
     pendingSync: pendingUsers + pendingFinance,
-    restoredTotal: restored.totalImported,
-    wipedFinance: financeToDelete.length,
-    wipedService: serviceToDelete.length,
   };
 }
 
@@ -841,7 +798,6 @@ export async function rebuildFinanceFromExcel(options?: {
 export async function runOperationsSyncBatch(options?: {
   budgetMs?: number;
   batchSize?: number;
-  rebuildIfEmpty?: boolean;
 }) {
   if (OPERATIONS_SYNC_PAUSED) {
     const status = await getOperationsSyncStatus();
@@ -855,21 +811,8 @@ export async function runOperationsSyncBatch(options?: {
   const budgetMs = options?.budgetMs ?? 25000;
   const batchSize = options?.batchSize ?? 50;
 
-  const statusBefore = await restoreAcompanhamentoFromExcel();
-  const financeCount = await prisma.financeEntry.count();
-  const serviceCount = await prisma.serviceCost.count();
-
-  // Planilhas vazias/quase vazias: reconstitui a partir do Excel (sem apagar progresso real).
-  if (
-    options?.rebuildIfEmpty !== false &&
-    statusBefore.totalImported > 50 &&
-    financeCount < 10 &&
-    serviceCount < 10
-  ) {
-    return rebuildFinanceFromExcel({ budgetMs, batchSize });
-  }
-
-  // Destrava fila: usuários já criados mas não ligados ao Acompanhamento.
+  // Nunca chama wipe/rebuild destrutivo aqui — só avança o cadastro.
+  await restoreAcompanhamentoFromExcel();
   await relinkOrphanImportUsers(100);
 
   const started = Date.now();
@@ -885,10 +828,7 @@ export async function runOperationsSyncBatch(options?: {
   }
 
   const pendingFinance = await ensureImportedFinanceAndServiceRows();
-
-  if (pendingUsers === 0) {
-    await linkImportedFamilyGroups();
-  }
+  await linkImportedFamilyGroups();
 
   const status = await getOperationsSyncStatus();
 
