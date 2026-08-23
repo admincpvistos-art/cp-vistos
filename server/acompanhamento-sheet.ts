@@ -30,8 +30,8 @@ import {
   SERVICE_TO_ARQUIVADOS_CATEGORY,
 } from "@/lib/arquivados-categories";
 
-/** Sync em lote pausado — religar quando for continuar o cadastro Excel. */
-export const OPERATIONS_SYNC_PAUSED = false;
+/** Sync em lote pausado — importação Excel desligada; cadastro manual nas planilhas. */
+export const OPERATIONS_SYNC_PAUSED = true;
 
 /**
  * Clientes ativos no Acompanhamento usam source "imported".
@@ -272,9 +272,9 @@ export function isKeptPre2026Client(name: string) {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toUpperCase()
-    .replace(/[^A-Z]/g, "");
+    .replace(/[^A-Z0-9]/g, "");
 
-  return normalized.includes("ISADORAMARCILIDOSSANTOS");
+  return normalized === "TESTE" || normalized === "ACERTODECAIXA";
 }
 
 function isPlaceholderEmail(email: string) {
@@ -1291,7 +1291,11 @@ export async function createAcompanhamentoRecord(input: AcompanhamentoCreateInpu
     },
   });
 
-  return updateAcompanhamentoRecord({ id: record.id, ...input, name, services });
+  const updated = await updateAcompanhamentoRecord({ id: record.id, ...input, name, services });
+  if (input.group?.trim()) {
+    await linkImportedFamilyGroups();
+  }
+  return updated;
 }
 
 export async function updateAcompanhamentoSheetComment(id: string, sheetComment: string) {

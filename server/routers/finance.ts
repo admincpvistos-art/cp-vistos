@@ -6,6 +6,7 @@ import prisma from "@/lib/prisma";
 import { financeAdminProcedure, router } from "../trpc";
 import { removeClientFromFinance } from "./service-cost";
 import {
+  ensureOperationsSheetsBaseline,
   getOperationsClientIds,
   purgeFinanceOutsideAcompanhamento,
   sortGroupedByRecency,
@@ -163,6 +164,8 @@ export const financeRouter = router({
     .query(async ({ input }) => {
       // Inclusão manual: lista o que existe nas planilhas (não apaga nem sincroniza Excel).
       if (OPERATIONS_SYNC_PAUSED) {
+        await ensureOperationsSheetsBaseline();
+
         const search = input.search?.trim();
         const dateFilter = input.yearMonth
           ? (() => {

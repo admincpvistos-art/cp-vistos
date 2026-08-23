@@ -7,10 +7,12 @@ import { tripPriorityFromDate } from "@/lib/trip-priority";
 import { financeAdminProcedure, router } from "../trpc";
 import {
   getOperationsSyncStatus,
+  linkImportedFamilyGroups,
   OPERATIONS_SYNC_PAUSED,
 } from "@/server/acompanhamento-sheet";
 import {
   createManualOperationsClient,
+  ensureOperationsSheetsBaseline,
   getOperationsClientIds,
   purgeFinanceOutsideAcompanhamento,
   sortGroupedByRecency,
@@ -186,6 +188,8 @@ export const serviceCostRouter = router({
     )
     .query(async ({ input }) => {
       if (OPERATIONS_SYNC_PAUSED) {
+        await ensureOperationsSheetsBaseline();
+
         const rows = await prisma.serviceCost.findMany({
           where: { user: { role: Role.CLIENT } },
           include: {
@@ -337,6 +341,9 @@ export const serviceCostRouter = router({
           group: input.group,
           phone: input.phone,
         });
+        if (input.group?.trim()) {
+          await linkImportedFamilyGroups();
+        }
         return { userId: user.id, name: user.name, email: user.email };
       } catch (error) {
         throw new TRPCError({

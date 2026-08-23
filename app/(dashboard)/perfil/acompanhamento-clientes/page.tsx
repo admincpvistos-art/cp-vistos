@@ -22,11 +22,10 @@ export default function AcompanhamentoClientesPage() {
   const canAccess = canAccessAcompanhamento(me?.user.role, me?.user.email);
   const canArchive = canArchiveAcompanhamento(me?.user.role, me?.user.email);
 
-  const { data, isLoading, isError, error, isFetching, refetch } =
+  const { data, isLoading, isError, error, refetch } =
     trpc.acompanhamentoRouter.getClientesSheet.useQuery(undefined, {
       enabled: canAccess,
       retry: false,
-      refetchInterval: (query) => (query.state.data?.pendingSync ? 2000 : false),
     });
 
   const { mutateAsync: updateComment, isPending: commentPending } =
@@ -85,8 +84,6 @@ export default function AcompanhamentoClientesPage() {
     );
   }
 
-  const syncing = Boolean(data?.pendingSync);
-
   return (
     <>
       <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-10 max-w-[1920px] mx-auto">
@@ -97,7 +94,7 @@ export default function AcompanhamentoClientesPage() {
         <SheetClientsTable
           rows={rows}
           footerLabel="cliente"
-          footerSuffix="da planilha Excel"
+          footerSuffix="da planilha"
           isLoading={isLoading}
           errorMessage={isError ? error.message || "Não foi possível carregar a planilha" : null}
           commentPending={commentPending}
@@ -120,15 +117,6 @@ export default function AcompanhamentoClientesPage() {
               <Plus className="mr-2 h-4 w-4" />
               Adicionar cliente
             </Button>
-          }
-          banner={
-            syncing ? (
-              <p className="mb-3 text-sm text-muted-foreground">
-                Cadastrando clientes da planilha Excel... {data?.pendingSync} restante
-                {data?.pendingSync === 1 ? "" : "s"}
-                {isFetching ? " ·" : ""}
-              </p>
-            ) : null
           }
         />
       </div>

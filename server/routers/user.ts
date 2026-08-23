@@ -28,6 +28,10 @@ import {
 import prisma from "@/lib/prisma";
 import { canCreateClientAccounts } from "@/lib/staff-access";
 import { tripPriorityFromDate } from "@/lib/trip-priority";
+import {
+  ACOMPANHAMENTO_HEADERS,
+  linkImportedFamilyGroups,
+} from "@/server/acompanhamento-sheet";
 import { expireDateFromIssued } from "@/lib/barcode-validity";
 import { isCadastroFrom2025, purgeCadastroClientsFrom2025 } from "@/server/client-year-ops";
 
@@ -192,6 +196,22 @@ async function createClientWithFinanceAndProfile(params: {
       userId: account.id,
     },
   });
+
+  const cells = Array.from({ length: ACOMPANHAMENTO_HEADERS.length }, () => "");
+  cells[0] = params.name;
+  cells[16] = params.email;
+  cells[19] = params.group;
+  await prisma.acompanhamentoClient.create({
+    data: {
+      source: "imported",
+      userId: account.id,
+      cells,
+    },
+  });
+
+  if (params.group?.trim()) {
+    await linkImportedFamilyGroups();
+  }
 
   // Passaporte entra imediatamente em Clientes Ativos.
   // Visto americano entra como prospect até o cliente enviar o formulário.
