@@ -31,7 +31,7 @@ import {
 } from "@/lib/arquivados-categories";
 
 /** Sync em lote pausado — religar quando for continuar o cadastro Excel. */
-export const OPERATIONS_SYNC_PAUSED = true;
+export const OPERATIONS_SYNC_PAUSED = false;
 
 /**
  * Clientes ativos no Acompanhamento usam source "imported".
@@ -857,13 +857,14 @@ export async function runOperationsSyncBatch(options?: {
 
   const statusBefore = await restoreAcompanhamentoFromExcel();
   const financeCount = await prisma.financeEntry.count();
+  const serviceCount = await prisma.serviceCost.count();
 
-  // Rebuild completo SÓ se realmente não houver nada (senão apaga o progresso e trava em ~4).
+  // Planilhas vazias/quase vazias: reconstitui a partir do Excel (sem apagar progresso real).
   if (
     options?.rebuildIfEmpty !== false &&
     statusBefore.totalImported > 50 &&
-    financeCount === 0 &&
-    statusBefore.linkedUsers === 0
+    financeCount < 10 &&
+    serviceCount < 10
   ) {
     return rebuildFinanceFromExcel({ budgetMs, batchSize });
   }

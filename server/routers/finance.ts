@@ -3,7 +3,7 @@ import { BudgetPaid, Role } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 
 import prisma from "@/lib/prisma";
-import { adminProcedure, financeAdminProcedure, router } from "../trpc";
+import { financeAdminProcedure, router } from "../trpc";
 import { removeClientFromFinance } from "./service-cost";
 import {
   getOperationsClientIds,
@@ -73,7 +73,7 @@ async function sumExpensesBetween(start?: Date, end?: Date) {
 
 export const financeRouter = router({
   /** Cadastra um lote de clientes do Acompanhamento (front logado + cron). */
-  syncBatch: adminProcedure.mutation(async () => {
+  syncBatch: financeAdminProcedure.mutation(async () => {
     return runOperationsSyncBatch({
       budgetMs: 45000,
       batchSize: 50,
@@ -81,10 +81,10 @@ export const financeRouter = router({
     });
   }),
   /** Apaga Financeiro/Serviços (exceto Isadora) e recria a partir do Excel CLIENTES. */
-  rebuildFromExcel: adminProcedure.mutation(async () => {
+  rebuildFromExcel: financeAdminProcedure.mutation(async () => {
     return rebuildFinanceFromExcel({ budgetMs: 50000, batchSize: 40 });
   }),
-  getSyncStatus: adminProcedure.query(async () => {
+  getSyncStatus: financeAdminProcedure.query(async () => {
     return getOperationsSyncStatus();
   }),
   getSummary: financeAdminProcedure

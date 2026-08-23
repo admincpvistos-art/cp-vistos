@@ -329,6 +329,17 @@ export default function ServicosECustosPage() {
     { search: debouncedSearch || undefined },
     {
       enabled: canAccess,
+      refetchInterval: (query) => {
+        const data = query.state.data;
+        const incomplete =
+          Boolean(data?.pendingSync) ||
+          Boolean(
+            data?.totalImported &&
+              data.linkedUsers != null &&
+              data.linkedUsers < data.totalImported,
+          );
+        return incomplete ? 3000 : false;
+      },
     },
   );
 
@@ -361,6 +372,21 @@ export default function ServicosECustosPage() {
       },
       onError: (error) => {
         toast.error(error.message || "Não foi possível incluir o cliente");
+      },
+    });
+
+  const { mutate: rebuildFromExcel, isPending: rebuilding } =
+    trpc.financeRouter.rebuildFromExcel.useMutation({
+      onSuccess: (result) => {
+        toast.success(
+          `Importação iniciada: ${result.linkedUsers ?? 0}/${result.totalImported ?? "?"} clientes`,
+        );
+        utils.serviceCostRouter.getRows.invalidate();
+        utils.financeRouter.getChecklist.invalidate();
+        utils.financeRouter.getSyncStatus.invalidate();
+      },
+      onError: (error) => {
+        toast.error(error.message || "Não foi possível importar o Excel");
       },
     });
 
@@ -469,9 +495,42 @@ export default function ServicosECustosPage() {
               cliente no Financeiro. No grupo, só o titular edita os valores;
               dependentes mostram hífen.
             </p>
+            {rowsQuery.data?.pendingSync ||
+            (rowsQuery.data?.totalImported &&
+              rowsQuery.data.linkedUsers < rowsQuery.data.totalImported) ? (
+              <p className="text-sm text-muted-foreground mt-2">
+                Incluindo clientes do Excel… {rowsQuery.data.linkedUsers ?? 0}/
+                {rowsQuery.data.totalImported ?? "?"} na lista
+                {rowsQuery.data.pendingSync
+                  ? ` (${rowsQuery.data.pendingSync} restante${rowsQuery.data.pendingSync === 1 ? "" : "s"})`
+                  : ""}
+                . Deixe o computador ligado e esta aba aberta.
+              </p>
+            ) : rowsQuery.data?.totalImported ? (
+              <p className="text-sm text-muted-foreground mt-2">
+                {rowsQuery.data.rows.length} cliente
+                {rowsQuery.data.rows.length === 1 ? "" : "s"} na planilha
+                {rowsQuery.data.totalImported !== rowsQuery.data.rows.length
+                  ? ` (${rowsQuery.data.totalImported} no Excel)`
+                  : ""}
+                .
+              </p>
+            ) : null}
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 sm:items-center w-full lg:w-auto">
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-11"
+              disabled={rebuilding}
+              onClick={() => rebuildFromExcel()}
+            >
+              {rebuilding ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              Importar Excel CLIENTES
+            </Button>
             <Button type="button" className="h-11" onClick={() => setIncludeOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               Incluir cliente
