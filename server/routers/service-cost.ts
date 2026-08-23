@@ -7,9 +7,10 @@ import { tripPriorityFromDate } from "@/lib/trip-priority";
 import { financeAdminProcedure, router } from "../trpc";
 import {
   getOperationsSyncStatus,
-  runOperationsSyncBatch,
+  OPERATIONS_SYNC_PAUSED,
 } from "@/server/acompanhamento-sheet";
 import {
+  clearFinanceAndServiceCostSheets,
   getOperationsClientIds,
   purgeFinanceOutsideAcompanhamento,
   sortGroupedByRecency,
@@ -184,6 +185,16 @@ export const serviceCostRouter = router({
       }),
     )
     .query(async ({ input }) => {
+      if (OPERATIONS_SYNC_PAUSED) {
+        await clearFinanceAndServiceCostSheets();
+        return {
+          pendingSync: 0,
+          totalImported: 0,
+          linkedUsers: 0,
+          rows: [],
+        };
+      }
+
       const sync = await getOperationsSyncStatus();
       if (sync.pendingSync === 0) {
         await purgeFinanceOutsideAcompanhamento();

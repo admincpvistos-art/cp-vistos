@@ -103,7 +103,7 @@ export default function FinanceiroPage() {
   useEffect(() => {
     if (!loadingMe && me && !canAccess) {
       toast.error("Acesso não autorizado");
-      router.push("/perfil/clientes");
+      router.push("/perfil/acompanhamento-clientes");
     }
   }, [loadingMe, me, canAccess, router]);
 
@@ -120,17 +120,6 @@ export default function FinanceiroPage() {
     },
     {
       enabled: canAccess,
-      refetchInterval: (query) => {
-        const data = query.state.data;
-        const incomplete =
-          Boolean(data?.pendingSync) ||
-          Boolean(
-            data?.totalImported &&
-              data.linkedUsers != null &&
-              data.linkedUsers < data.totalImported,
-          );
-        return incomplete ? 2000 : false;
-      },
     },
   );
 
@@ -364,28 +353,6 @@ export default function FinanceiroPage() {
               </Link>
               .
             </p>
-            {checklistQuery.data?.pendingSync ||
-            (checklistQuery.data?.totalImported &&
-              checklistQuery.data.linkedUsers < checklistQuery.data.totalImported) ? (
-              <p className="text-sm text-muted-foreground mt-2">
-                Incluindo clientes do acompanhamento…{" "}
-                {checklistQuery.data.linkedUsers ?? 0}/
-                {checklistQuery.data.totalImported ?? "?"} na lista
-                {checklistQuery.data.pendingSync
-                  ? ` (${checklistQuery.data.pendingSync} restante${checklistQuery.data.pendingSync === 1 ? "" : "s"})`
-                  : ""}
-                . Deixe o computador ligado e esta aba aberta — hibernar pausa o carregamento.
-              </p>
-            ) : checklistQuery.data?.totalImported ? (
-              <p className="text-sm text-muted-foreground mt-2">
-                {checklistQuery.data.entries.length} cliente
-                {checklistQuery.data.entries.length === 1 ? "" : "s"} do acompanhamento
-                {checklistQuery.data.totalImported !== checklistQuery.data.entries.length
-                  ? ` (${checklistQuery.data.totalImported} na planilha)`
-                  : ""}
-                .
-              </p>
-            ) : null}
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 sm:items-center">

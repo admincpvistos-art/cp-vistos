@@ -7,10 +7,12 @@ import { adminProcedure, financeAdminProcedure, router } from "../trpc";
 import { removeClientFromFinance } from "./service-cost";
 import {
   getOperationsSyncStatus,
+  OPERATIONS_SYNC_PAUSED,
   rebuildFinanceFromExcel,
   runOperationsSyncBatch,
 } from "@/server/acompanhamento-sheet";
 import {
+  clearFinanceAndServiceCostSheets,
   getOperationsClientIds,
   purgeFinanceOutsideAcompanhamento,
   sortGroupedByRecency,
@@ -162,6 +164,16 @@ export const financeRouter = router({
     )
     .query(async ({ input }) => {
       // Listagem rápida: não bloqueia no cadastro em massa.
+      if (OPERATIONS_SYNC_PAUSED) {
+        await clearFinanceAndServiceCostSheets();
+        return {
+          pendingSync: 0,
+          totalImported: 0,
+          linkedUsers: 0,
+          entries: [],
+        };
+      }
+
       const sync = await getOperationsSyncStatus();
       if (sync.pendingSync === 0) {
         await purgeFinanceOutsideAcompanhamento();

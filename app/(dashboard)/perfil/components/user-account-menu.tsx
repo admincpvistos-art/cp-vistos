@@ -44,7 +44,6 @@ import {
 } from "@/lib/staff-access";
 
 const collaboratorTools = [
-  { href: "/perfil/clientes", label: "Clientes", icon: Users },
   { href: "/perfil/prospects", label: "Prospects", icon: Contact },
   { href: "/perfil/arquivados", label: "Arquivados", icon: Archive },
   { href: "/perfil/criar-conta", label: "Criar Conta", icon: UserPlus },
@@ -57,7 +56,6 @@ const officeCollaboratorTools = [
     icon: ClipboardCheck,
   },
   { href: "/perfil/preencher-ds160", label: "Preencher DS-160", icon: FileInput },
-  { href: "/perfil/clientes", label: "Clientes", icon: Users },
   { href: "/perfil/prospects", label: "Prospects", icon: Contact },
   { href: "/perfil/arquivados", label: "Arquivados", icon: Archive },
 ] as const;
@@ -328,7 +326,6 @@ export function UserAccountMenu() {
                       />
                     </>
                   ) : null}
-                  <ToolItem href="/perfil/clientes" label="Clientes" icon={Users} />
                   <ToolItem href="/perfil/prospects" label="Prospects" icon={Contact} />
                   <ToolItem href="/perfil/arquivados" label="Arquivados" icon={Archive} />
                   <ToolItem href="/perfil/criar-conta" label="Criar Conta" icon={UserPlus} />

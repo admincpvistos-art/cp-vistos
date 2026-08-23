@@ -1,7 +1,21 @@
 import { Role } from "@prisma/client";
 
 import prisma from "@/lib/prisma";
-import { isKeptPre2026Client } from "@/server/acompanhamento-sheet";
+import {
+  isKeptPre2026Client,
+  OPERATIONS_SYNC_PAUSED,
+} from "@/server/acompanhamento-sheet";
+
+/**
+ * Esvazia Financeiro (checklist) e Serviços e Custos.
+ * Não altera Acompanhamento nem cadastros de User/Profile.
+ */
+export async function clearFinanceAndServiceCostSheets() {
+  await Promise.all([
+    prisma.financeEntry.deleteMany({}),
+    prisma.serviceCost.deleteMany({}),
+  ]);
+}
 
 /** User ids that should appear in Financeiro / Serviços e Custos.
  * Includes archived Acompanhamento clients — they leave the sheet but stay in accounting.

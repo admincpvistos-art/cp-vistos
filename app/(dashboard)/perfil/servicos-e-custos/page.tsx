@@ -306,7 +306,7 @@ export default function ServicosECustosPage() {
   useEffect(() => {
     if (!loadingMe && me && !canAccess) {
       toast.error("Acesso não autorizado");
-      router.push("/perfil/clientes");
+      router.push("/perfil/acompanhamento-clientes");
     }
   }, [loadingMe, me, canAccess, router]);
 
@@ -316,17 +316,6 @@ export default function ServicosECustosPage() {
     { search: debouncedSearch || undefined },
     {
       enabled: canAccess,
-      refetchInterval: (query) => {
-        const data = query.state.data;
-        const incomplete =
-          Boolean(data?.pendingSync) ||
-          Boolean(
-            data?.totalImported &&
-              data.linkedUsers != null &&
-              data.linkedUsers < data.totalImported,
-          );
-        return incomplete ? 2000 : false;
-      },
     },
   );
 
@@ -450,27 +439,6 @@ export default function ServicosECustosPage() {
               cliente no Financeiro. No grupo, só o titular edita os valores;
               dependentes mostram hífen.
             </p>
-            {rowsQuery.data?.pendingSync ||
-            (rowsQuery.data?.totalImported &&
-              rowsQuery.data.linkedUsers < rowsQuery.data.totalImported) ? (
-              <p className="text-sm text-muted-foreground mt-2">
-                Incluindo clientes do acompanhamento… {rowsQuery.data.linkedUsers ?? 0}/
-                {rowsQuery.data.totalImported ?? "?"} na lista
-                {rowsQuery.data.pendingSync
-                  ? ` (${rowsQuery.data.pendingSync} restante${rowsQuery.data.pendingSync === 1 ? "" : "s"})`
-                  : ""}
-                . Deixe o computador ligado e esta aba aberta — hibernar pausa o carregamento.
-              </p>
-            ) : rowsQuery.data?.totalImported ? (
-              <p className="text-sm text-muted-foreground mt-2">
-                {rowsQuery.data.rows.length} cliente
-                {rowsQuery.data.rows.length === 1 ? "" : "s"} do acompanhamento
-                {rowsQuery.data.totalImported !== rowsQuery.data.rows.length
-                  ? ` (${rowsQuery.data.totalImported} na planilha)`
-                  : ""}
-                .
-              </p>
-            ) : null}
           </div>
 
           <div className="h-11 flex items-center gap-2 border border-muted/70 rounded-xl bg-background px-3 py-2 w-full sm:w-72">
