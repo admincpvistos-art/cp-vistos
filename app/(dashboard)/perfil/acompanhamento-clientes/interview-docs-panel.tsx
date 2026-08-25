@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Download, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -15,10 +16,15 @@ export function InterviewDocsPanel({
   clientName: string;
 }) {
   const utils = trpc.useUtils();
+  const [saving, setSaving] = useState(false);
+
   const { data, isLoading } = trpc.acompanhamentoRouter.listInterviewDocs.useQuery(
     { userId: clientUserId },
     { enabled: Boolean(clientUserId) },
   );
+
+  const { mutateAsync: registerDoc } =
+    trpc.acompanhamentoRouter.registerInterviewDoc.useMutation();
 
   const { mutate: deleteDoc, isPending: deleting, variables } =
     trpc.acompanhamentoRouter.deleteInterviewDoc.useMutation({
@@ -46,15 +52,54 @@ export function InterviewDocsPanel({
       <UploadButton
         endpoint="interviewDocUploader"
         input={{ clientUserId }}
-        onClientUploadComplete={() => {
-          toast.success("Documento enviado");
-          utils.acompanhamentoRouter.listInterviewDocs.invalidate({ userId: clientUserId });
+        disabled={saving || !clientUserId}
+        onClientUploadComplete={async (files) => {
+          const uploaded = files?.[0];
+          if (!uploaded) {
+            toast.error("Upload concluído, mas o arquivo não retornou dados");
+            return;
+          }
+
+          const fileUrl =
+            ("ufsUrl" in uploaded && typeof uploaded.ufsUrl === "string" && uploaded.ufsUrl) ||
+            uploaded.url;
+          const fileKey = uploaded.key;
+          const fileName = uploaded.name;
+
+          if (!fileUrl || !fileKey) {
+            toast.error("Arquivo enviado sem URL/chave — tente novamente");
+            return;
+          }
+
+          setSaving(true);
+          try {
+            await registerDoc({
+              userId: clientUserId,
+              fileName,
+              fileUrl,
+              fileKey,
+            });
+            toast.success("Documento salvo");
+            await utils.acompanhamentoRouter.listInterviewDocs.invalidate({
+              userId: clientUserId,
+            });
+          } catch (error) {
+            toast.error(
+              error instanceof Error
+                ? error.message
+                : "Não foi possível salvar o documento",
+            );
+          } finally {
+            setSaving(false);
+          }
         }}
         onUploadError={(error) => {
           toast.error(error.message || "Falha no envio do documento");
         }}
       />
-      <p className="text-xs text-muted-foreground">PDF ou imagem · até 16 MB</p>
+      <p className="text-xs text-muted-foreground">
+        {saving ? "Salvando no cadastro…" : "PDF ou imagem · até 16 MB"}
+      </p>
 
       {isLoading ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">

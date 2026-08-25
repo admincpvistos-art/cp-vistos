@@ -214,6 +214,57 @@ export const acompanhamentoRouter = router({
       return { docs };
     }),
 
+  registerInterviewDoc: acompanhamentoStaffProcedure
+    .input(
+      z.object({
+        userId: z.string().min(1),
+        fileName: z.string().min(1),
+        fileUrl: z.string().min(1),
+        fileKey: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const client = await prisma.user.findFirst({
+        where: { id: input.userId },
+        select: { id: true },
+      });
+
+      if (!client) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Cliente não encontrado",
+        });
+      }
+
+      try {
+        const doc = await prisma.interviewDocument.create({
+          data: {
+            userId: input.userId,
+            fileName: input.fileName,
+            fileUrl: input.fileUrl,
+            fileKey: input.fileKey,
+            uploadedById: ctx.staff.id,
+          },
+          select: {
+            id: true,
+            fileName: true,
+            fileUrl: true,
+            createdAt: true,
+          },
+        });
+        return { doc };
+      } catch (error) {
+        console.error("[interview-doc] register failed", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Não foi possível salvar o documento no banco",
+        });
+      }
+    }),
+
   deleteInterviewDoc: acompanhamentoStaffProcedure
     .input(z.object({ id: z.string().min(1) }))
     .mutation(async ({ input }) => {

@@ -80,32 +80,31 @@ export const ourFileRouter = {
         throw new UploadThingError("Não autorizado");
       }
 
-      const client = await prisma.user.findUnique({
+      const client = await prisma.user.findFirst({
         where: { id: input.clientUserId },
         select: { id: true, role: true },
       });
 
-      if (!client || client.role !== "CLIENT") {
+      if (!client) {
         throw new UploadThingError("Cliente não encontrado");
       }
 
+      // Aceita CLIENT e contas legadas já ligadas ao acompanhamento.
       return {
         clientUserId: client.id,
         uploadedById: staff.id,
       };
     })
     .onUploadComplete(async ({ metadata, file }) => {
-      await prisma.interviewDocument.create({
-        data: {
-          userId: metadata.clientUserId,
-          fileName: file.name,
-          fileUrl: file.url,
-          fileKey: file.key,
-          uploadedById: metadata.uploadedById,
-        },
-      });
-
-      return { uploadedById: metadata.uploadedById };
+      // Só confirma o upload — o registro no banco é feito via tRPC no cliente
+      // (evita falha silenciosa do callback do UploadThing).
+      return {
+        clientUserId: metadata.clientUserId,
+        uploadedById: metadata.uploadedById,
+        fileUrl: file.url,
+        fileKey: file.key,
+        fileName: file.name,
+      };
     }),
 } satisfies FileRouter;
 
