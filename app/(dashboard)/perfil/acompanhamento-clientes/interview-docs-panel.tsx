@@ -5,7 +5,6 @@ import { Download, FileUp, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { useUploadThing } from "@/lib/uploadthing";
 import { trpc } from "@/lib/trpc-client";
 
 export function InterviewDocsPanel({
@@ -24,16 +23,6 @@ export function InterviewDocsPanel({
     { enabled: Boolean(clientUserId) },
   );
 
-  const { mutateAsync: registerDoc } =
-    trpc.acompanhamentoRouter.registerInterviewDoc.useMutation();
-
-  const { startUpload, isUploading } = useUploadThing("interviewDocUploader", {
-    onUploadError(error) {
-      setBusy(false);
-      toast.error(error.message || "Falha no envio do documento");
-    },
-  });
-
   const { mutate: deleteDoc, isPending: deleting, variables } =
     trpc.acompanhamentoRouter.deleteInterviewDoc.useMutation({
       onSuccess: () => {
@@ -46,7 +35,6 @@ export function InterviewDocsPanel({
     });
 
   const docs = data?.docs ?? [];
-  const working = busy || isUploading;
 
   async function handleFiles(fileList: FileList | null) {
     if (!fileList?.length || !clientUserId) {
@@ -56,32 +44,29 @@ export function InterviewDocsPanel({
     const files = Array.from(fileList).slice(0, 3);
     setBusy(true);
     try {
-      const uploaded = await startUpload(files, { clientUserId });
-      if (!uploaded?.length) {
-        toast.error("Upload não retornou arquivos");
-        return;
-      }
+      let saved = 0;
+      for (const file of files) {
+        const body = new FormData();
+        body.set("clientUserId", clientUserId);
+        body.set("file", file);
 
-      for (const file of uploaded) {
-        const fileUrl =
-          ("ufsUrl" in file && typeof file.ufsUrl === "string" && file.ufsUrl) ||
-          file.url;
-        if (!fileUrl || !file.key) {
-          continue;
-        }
-        await registerDoc({
-          userId: clientUserId,
-          fileName: file.name,
-          fileUrl,
-          fileKey: file.key,
+        const response = await fetch("/api/interview-doc/upload", {
+          method: "POST",
+          body,
         });
+
+        const payload = (await response.json().catch(() => null)) as {
+          doc?: { id: string };
+          error?: string;
+        } | null;
+
+        if (!response.ok || !payload?.doc) {
+          throw new Error(payload?.error || `Falha ao enviar ${file.name}`);
+        }
+        saved += 1;
       }
 
-      toast.success(
-        uploaded.length > 1
-          ? `${uploaded.length} documentos salvos`
-          : "Documento salvo",
-      );
+      toast.success(saved > 1 ? `${saved} documentos salvos` : "Documento salvo");
       await utils.acompanhamentoRouter.listInterviewDocs.invalidate({
         userId: clientUserId,
       });
@@ -113,7 +98,7 @@ export function InterviewDocsPanel({
         accept="application/pdf,image/*,.pdf"
         multiple
         className="hidden"
-        disabled={working || !clientUserId}
+        disabled={busy || !clientUserId}
         onChange={(event) => {
           void handleFiles(event.target.files);
         }}
@@ -122,15 +107,15 @@ export function InterviewDocsPanel({
       <Button
         type="button"
         variant="secondary"
-        disabled={working || !clientUserId}
+        disabled={busy || !clientUserId}
         onClick={() => inputRef.current?.click()}
       >
-        {working ? (
+        {busy ? (
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
         ) : (
           <FileUp className="mr-2 h-4 w-4" />
         )}
-        {working ? "Enviando…" : "Enviar documento (PDF/imagem)"}
+        {busy ? "Enviando…" : "Enviar documento (PDF/imagem)"}
       </Button>
       <p className="text-xs text-muted-foreground">Até 16 MB · PDF ou imagem</p>
 

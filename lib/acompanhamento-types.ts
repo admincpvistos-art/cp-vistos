@@ -60,6 +60,8 @@ export type AcompanhamentoRecord = {
   status: string;
   sheetComment: string;
   services: AcompanhamentoService[];
+  /** Timestamp ms do cadastro (usuário / linha) — ordenação “mais recentes”. */
+  registeredAt: number;
   accountFields: AcompanhamentoAccountFields | null;
 };
 

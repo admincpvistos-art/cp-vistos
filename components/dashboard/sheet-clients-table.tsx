@@ -39,6 +39,8 @@ export type SheetClientRow = {
   entryDate: string;
   group: string;
   status: string;
+  /** ms — cadastro no sistema; usado na ordem padrão “mais recentes”. */
+  registeredAt?: number;
 };
 
 type VisibleColumn =
@@ -172,6 +174,13 @@ function entryTime(value: string) {
   return isValid(parsed) ? parsed.getTime() : 0;
 }
 
+function rowRecency(row: SheetClientRow) {
+  if (typeof row.registeredAt === "number" && row.registeredAt > 0) {
+    return row.registeredAt;
+  }
+  return entryTime(row.entryDate);
+}
+
 export function SheetClientsTable({
   rows,
   emptyMessage = "Sem resultados",
@@ -221,7 +230,7 @@ export function SheetClientsTable({
     const newestByGroup = new Map<string, number>();
     for (const row of matched) {
       const key = (row.group?.trim() || row.id).toLowerCase();
-      const time = entryTime(row.entryDate);
+      const time = rowRecency(row);
       const current = newestByGroup.get(key) ?? 0;
       if (time > current) {
         newestByGroup.set(key, time);
@@ -237,7 +246,7 @@ export function SheetClientsTable({
         return sort === "desc" ? timeB - timeA : timeA - timeB;
       }
 
-      const diff = entryTime(b.entryDate) - entryTime(a.entryDate);
+      const diff = rowRecency(b) - rowRecency(a);
       return sort === "desc" ? diff : -diff;
     });
   }, [rows, search, sort]);

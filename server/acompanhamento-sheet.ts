@@ -985,7 +985,67 @@ function normalizeServices(values: string[] | undefined | null): AcompanhamentoS
     return [];
   }
 
-  return Array.from(new Set(values.filter(isAcompanhamentoService)));
+  const mapped = values
+    .map((value) => {
+      const raw = value.trim();
+      if (!raw) {
+        return null;
+      }
+      if (isAcompanhamentoService(raw)) {
+        return raw;
+      }
+
+      const key = raw
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "");
+
+      if (key.includes("primeiro") || key === "1ovisto" || key === "vistoprimeiro") {
+        return "primeiro_visto" as const;
+      }
+      if (key.includes("renov")) {
+        return "renovacao" as const;
+      }
+      if (key.includes("passaporte") || key === "passport") {
+        return "passaporte" as const;
+      }
+      if (key.includes("esta") || key.includes("eta")) {
+        return "esta" as const;
+      }
+      return null;
+    })
+    .filter((value): value is AcompanhamentoService => Boolean(value));
+
+  return Array.from(new Set(mapped));
+}
+
+function deriveServicesFromUser(
+  user: (User & { profiles: Profile[]; wantsAmericanVisa?: boolean | null; wantsPassport?: boolean | null }) | null,
+): AcompanhamentoService[] {
+  if (!user) {
+    return [];
+  }
+
+  const services: AcompanhamentoService[] = [];
+
+  for (const profile of user.profiles ?? []) {
+    if (profile.category === Category.american_visa) {
+      services.push("primeiro_visto");
+    }
+    if (profile.category === Category.passport) {
+      services.push("passaporte");
+    }
+  }
+
+  if (user.wantsAmericanVisa && !services.includes("primeiro_visto") && !services.includes("renovacao")) {
+    services.push("primeiro_visto");
+  }
+  if (user.wantsPassport && !services.includes("passaporte")) {
+    services.push("passaporte");
+  }
+
+  return Array.from(new Set(services));
 }
 
 function buildRecord(
@@ -1000,6 +1060,7 @@ function buildRecord(
     extraDate?: string | null;
     sheetComment?: string | null;
     services?: string[] | null;
+    createdAt?: Date | null;
     userId: string | null;
     user: (User & { profiles: Profile[]; payerEmail?: string }) | null;
   },
@@ -1014,6 +1075,10 @@ function buildRecord(
     : cell(cells, COL.email);
   const issued = profile?.issuanceDate ?? parseSheetDate(cell(cells, COL.barcodeDate));
   const expire = profile?.expireDate ?? profile?.DSValid ?? (issued ? expireDateFromIssued(issued) : null);
+  const registeredAt = Math.max(
+    user?.createdAt?.getTime() ?? 0,
+    record.createdAt?.getTime() ?? 0,
+  );
 
   return {
     id: record.id,
@@ -1050,7 +1115,14 @@ function buildRecord(
       statusHint: record.statusLabel || cell(cells, COL.status),
     }),
     sheetComment: record.sheetComment ?? "",
-    services: normalizeServices(record.services),
+    services: (() => {
+      const stored = normalizeServices(record.services);
+      if (stored.length) {
+        return stored;
+      }
+      return deriveServicesFromUser(user);
+    })(),
+    registeredAt,
     accountFields: buildAccountFields(user),
   };
 }
@@ -1136,19 +1208,7 @@ export async function listAcompanhamentoSheet() {
   );
 
   // Mais recentes primeiro (cadastro do usuário / entrada na planilha).
-  const rows = [...mapped].sort((a, b) => {
-    const recordA = records.find((r) => r.id === a.id);
-    const recordB = records.find((r) => r.id === b.id);
-    const timeA = Math.max(
-      recordA?.user?.createdAt?.getTime() ?? 0,
-      recordA?.createdAt?.getTime() ?? 0,
-    );
-    const timeB = Math.max(
-      recordB?.user?.createdAt?.getTime() ?? 0,
-      recordB?.createdAt?.getTime() ?? 0,
-    );
-    return timeB - timeA;
-  });
+  const rows = [...mapped].sort((a, b) => b.registeredAt - a.registeredAt);
 
   return {
     headers: [...ACOMPANHAMENTO_VISIBLE_HEADERS],

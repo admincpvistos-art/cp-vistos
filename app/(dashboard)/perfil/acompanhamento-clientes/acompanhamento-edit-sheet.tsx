@@ -48,7 +48,7 @@ import { InterviewDocsPanel } from "./interview-docs-panel";
 
 type SheetForm = Omit<
   AcompanhamentoRecord,
-  "id" | "userId" | "profileId" | "formStep" | "accountFields"
+  "id" | "userId" | "profileId" | "formStep" | "accountFields" | "registeredAt"
 > & {
   accountFields: AcompanhamentoAccountFields;
 };
@@ -226,6 +226,7 @@ export function AcompanhamentoEditSheet({
       userId: _userId,
       profileId: _profileId,
       formStep: _formStep,
+      registeredAt: _registeredAt,
       accountFields,
       ...rest
     } = data.row;
@@ -316,7 +317,9 @@ export function AcompanhamentoEditSheet({
     accountFields: form.accountFields,
   };
 
-  const archiveDestinations = form.services.map((service) => ({
+  const selectedServices = form.services ?? [];
+
+  const archiveDestinations = selectedServices.map((service) => ({
     service,
     label: ARQUIVADOS_CATEGORY_LABEL[SERVICE_TO_ARQUIVADOS_CATEGORY[service]],
     serviceLabel: ACOMPANHAMENTO_SERVICE_LABEL[service],
@@ -326,8 +329,10 @@ export function AcompanhamentoEditSheet({
     if (!rowId || creating) {
       return;
     }
-    if (!form.services.length) {
-      toast.error("Marque ao menos um serviço — ele define as abas de Arquivados");
+    if (!selectedServices.length) {
+      toast.error(
+        "Marque ao menos um item em Serviços contratados (1º visto, Renovação, Passaporte ou ESTA/eTA)",
+      );
       return;
     }
     if (!validateBeforeSave()) {
@@ -337,13 +342,15 @@ export function AcompanhamentoEditSheet({
   }
 
   function confirmArchive() {
-    if (!rowId || !form.services.length) {
-      toast.error("Marque ao menos um serviço — ele define as abas de Arquivados");
+    if (!rowId || !selectedServices.length) {
+      toast.error(
+        "Marque ao menos um item em Serviços contratados (1º visto, Renovação, Passaporte ou ESTA/eTA)",
+      );
       return;
     }
     archiveRow({
       id: rowId,
-      services: form.services,
+      services: selectedServices,
       name: form.name,
       barcode: form.barcode,
       barcodeIssued: form.barcodeIssued,
@@ -421,7 +428,7 @@ export function AcompanhamentoEditSheet({
             <SectionTitle>Serviços contratados</SectionTitle>
             <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-lg border border-muted p-3">
               {ACOMPANHAMENTO_SERVICE_OPTIONS.map((option) => {
-                const checked = form.services.includes(option.value);
+                const checked = selectedServices.includes(option.value);
                 const id = `service-${option.value}`;
                 return (
                   <div key={option.value} className="flex items-center gap-2">
@@ -437,6 +444,9 @@ export function AcompanhamentoEditSheet({
                 );
               })}
             </div>
+            <p className="sm:col-span-2 -mt-2 text-xs text-muted-foreground">
+              Obrigatório para arquivar — define em qual aba de Arquivados o cliente entra.
+            </p>
 
             <SectionTitle>Comentário</SectionTitle>
             <div className="sm:col-span-2 space-y-1.5">

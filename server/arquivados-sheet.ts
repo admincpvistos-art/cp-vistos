@@ -198,6 +198,7 @@ function mapDbArquivado(row: {
   status: string;
   sheetComment: string;
   services: string[];
+  createdAt?: Date;
 }): SheetClientRow {
   const services = row.services.filter(isAcompanhamentoService);
   return {
@@ -218,6 +219,7 @@ function mapDbArquivado(row: {
     entryDate: row.entryDate,
     group: row.group,
     status: row.status,
+    registeredAt: row.createdAt?.getTime() ?? 0,
   };
 }
 

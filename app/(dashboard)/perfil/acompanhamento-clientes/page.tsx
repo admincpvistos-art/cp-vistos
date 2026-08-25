@@ -73,6 +73,7 @@ export default function AcompanhamentoClientesPage() {
       entryDate: row.entryDate,
       group: row.group,
       status: row.status,
+      registeredAt: row.registeredAt ?? 0,
     }));
   }, [data?.rows]);
 
