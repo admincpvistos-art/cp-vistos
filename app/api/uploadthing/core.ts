@@ -1,6 +1,7 @@
+import { z } from "zod";
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
-import { Role } from "@prisma/client";
+import { canAccessAcompanhamento } from "@/lib/staff-access";
 import { createUploadthing, type FileRouter } from "uploadthing/next";
 import { UploadThingError } from "uploadthing/server";
 
@@ -25,7 +26,7 @@ export const ourFileRouter = {
         throw new UploadThingError("Usuário não encontrado");
       }
 
-      if (user.role !== Role.ADMIN) {
+      if (user.role !== "ADMIN") {
         throw new UploadThingError("Não autorizado");
       }
 
@@ -56,6 +57,56 @@ export const ourFileRouter = {
     })
     .onUploadComplete(async () => {
       return {};
+    }),
+  /** PDF/imagem para o cliente imprimir na entrevista. Admin + 3 colaboradores. */
+  interviewDocUploader: f({
+    pdf: { maxFileSize: "16MB", maxFileCount: 5 },
+    image: { maxFileSize: "8MB", maxFileCount: 5 },
+  })
+    .input(z.object({ clientUserId: z.string().min(1) }))
+    .middleware(async ({ input }) => {
+      const currentUser = await auth();
+
+      if (!currentUser?.user?.email) {
+        throw new UploadThingError("Não autorizado");
+      }
+
+      const staff = await prisma.user.findUnique({
+        where: { email: currentUser.user.email },
+        select: { id: true, role: true, email: true },
+      });
+
+      if (!staff || !canAccessAcompanhamento(staff.role, staff.email)) {
+        throw new UploadThingError("Não autorizado");
+      }
+
+      const client = await prisma.user.findUnique({
+        where: { id: input.clientUserId },
+        select: { id: true, role: true },
+      });
+
+      if (!client || client.role !== "CLIENT") {
+        throw new UploadThingError("Cliente não encontrado");
+      }
+
+      return {
+        clientUserId: client.id,
+        uploadedById: staff.id,
+      };
+    })
+    .onUploadComplete(async ({ metadata, file }) => {
+      const fileUrl = file.ufsUrl || file.url;
+      await prisma.interviewDocument.create({
+        data: {
+          userId: metadata.clientUserId,
+          fileName: file.name,
+          fileUrl,
+          fileKey: file.key,
+          uploadedById: metadata.uploadedById,
+        },
+      });
+
+      return { uploadedById: metadata.uploadedById };
     }),
 } satisfies FileRouter;
 

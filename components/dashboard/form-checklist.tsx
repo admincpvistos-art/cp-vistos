@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Edit, Eye, Loader2, Lock, Trash2 } from "lucide-react";
+import { Edit, Eye, Download, Loader2, Lock, Trash2 } from "lucide-react";
 import { StatusDS, StatusForm } from "@prisma/client";
 
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,11 @@ export type FormChecklistItem = {
   formLocked: boolean;
   updatedAt: Date | null;
   canEdit: boolean;
+  interviewDocs?: {
+    id: string;
+    fileName: string;
+    fileUrl: string;
+  }[];
 };
 
 interface Props {
@@ -283,7 +288,24 @@ export function FormChecklist({ variant, items }: Props) {
                   </>
                 )}
                 <td className="px-4 py-4">
-                  <div className="flex items-center justify-end gap-2">
+                  <div className="flex items-center justify-end gap-2 flex-wrap">
+                    {item.interviewDocs?.length
+                      ? item.interviewDocs.map((doc) => (
+                          <Button key={doc.id} variant="secondary" size="sm" asChild>
+                            <a
+                              href={doc.fileUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              download={doc.fileName}
+                              title={doc.fileName}
+                            >
+                              <Download className="mr-1 size-4" strokeWidth={1.5} />
+                              Baixar documento
+                            </a>
+                          </Button>
+                        ))
+                      : null}
+
                     {variant === "visa" && item.statusForm === "filled" && item.profileId ? (
                       <Button variant="outline" size="sm" asChild>
                         <Link href={`/resumo-formulario/${item.profileId}`}>

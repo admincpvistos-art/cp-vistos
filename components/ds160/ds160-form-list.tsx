@@ -1,13 +1,14 @@
 "use client";
 
+import { useMemo, useState } from "react";
+import { ArrowRight, Search } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ArrowRight } from "lucide-react";
-
 import { StatusForm } from "@prisma/client";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { reviewStatusLabel } from "@/lib/ds160-ceac";
 import { trpc } from "@/lib/trpc-client";
 
@@ -43,6 +44,13 @@ function formatUpdatedAt(value: ListRow["updatedAt"]) {
   }
 
   return format(new Date(value), "dd/MM/yyyy HH:mm", { locale: ptBR });
+}
+
+function normalizeSearch(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
 }
 
 function ActionButton({ mode, profileId }: { mode: Props["mode"]; profileId: string }) {
@@ -165,6 +173,7 @@ function DesktopTable({ mode, rows }: { mode: Props["mode"]; rows: ListRow[] }) 
 }
 
 export function Ds160FormList({ mode }: Props) {
+  const [search, setSearch] = useState("");
   const { data, isPending, isFetching } = trpc.ds160Router.list.useQuery(
     { mode },
     {
@@ -176,12 +185,44 @@ export function Ds160FormList({ mode }: Props) {
   const rows = data?.rows ?? [];
   const pendingSync = data?.pendingSync ?? 0;
 
+  const filteredRows = useMemo(() => {
+    const term = normalizeSearch(search.trim());
+    if (!term) {
+      return rows;
+    }
+
+    return rows.filter((row) => {
+      const haystack = normalizeSearch(
+        `${row.name} ${row.email} ${row.group ?? ""}`,
+      );
+      return haystack.includes(term);
+    });
+  }, [rows, search]);
+
   if (isPending) {
     return <p className="py-10 text-sm text-muted-foreground">Carregando formulários…</p>;
   }
 
   return (
     <>
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="h-11 flex items-center gap-2 border border-muted/70 rounded-xl bg-background px-3 py-2 w-full sm:max-w-sm">
+          <Search className="w-5 h-5 text-border flex-shrink-0" strokeWidth={1.5} />
+          <Input
+            placeholder="Buscar por nome..."
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            className="border-0 h-full focus-visible:ring-0 focus-visible:ring-offset-0"
+          />
+        </div>
+        {search.trim() && rows.length ? (
+          <p className="text-sm text-muted-foreground">
+            {filteredRows.length} de {rows.length} cliente
+            {rows.length === 1 ? "" : "s"}
+          </p>
+        ) : null}
+      </div>
+
       {pendingSync ? (
         <p className="mb-4 text-sm text-muted-foreground">
           Incluindo clientes do acompanhamento… {pendingSync} restante
@@ -195,10 +236,14 @@ export function Ds160FormList({ mode }: Props) {
             ? "Nenhum cliente do acompanhamento para preencher no CEAC ainda."
             : "Nenhum cliente do acompanhamento para conferência ainda."}
         </p>
+      ) : !filteredRows.length ? (
+        <p className="py-10 text-sm text-muted-foreground">
+          Nenhum cliente encontrado para “{search.trim()}”.
+        </p>
       ) : (
         <>
-          <MobileCards mode={mode} rows={rows} />
-          <DesktopTable mode={mode} rows={rows} />
+          <MobileCards mode={mode} rows={filteredRows} />
+          <DesktopTable mode={mode} rows={filteredRows} />
         </>
       )}
     </>

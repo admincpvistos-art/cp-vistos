@@ -136,9 +136,26 @@ model User {
   financeEntry   FinanceEntry?
   serviceCost    ServiceCost?
   acompanhamento AcompanhamentoClient?
+  interviewDocuments InterviewDocument[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+/// Documentos para impressão na entrevista (upload no Acompanhamento; download na área do cliente).
+model InterviewDocument {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  fileName     String
+  fileUrl      String
+  fileKey      String
+  userId       String   @db.ObjectId
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  uploadedById String?  @db.ObjectId
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model AcompanhamentoClient {

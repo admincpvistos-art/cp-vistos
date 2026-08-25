@@ -107,6 +107,7 @@ export default function ClientAreaPage() {
                     profileName={data.visa.current.name}
                     isTitular={data.visa.current.isTitular}
                     formStep={data.visa.current.formStep}
+                    interviewDocs={data.visa.current.interviewDocs}
                   />
                 ) : data.visa.canAddDependent ? (
                   <ProfileFormBox
@@ -132,6 +133,7 @@ export default function ClientAreaPage() {
                     profileName={data.passport.current.name}
                     isTitular={data.passport.current.isTitular}
                     formStep={data.passport.current.formStep}
+                    interviewDocs={data.passport.current.interviewDocs}
                   />
                 ) : data.passport.canAddDependent ? (
                   <ProfileFormBox

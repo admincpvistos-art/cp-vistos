@@ -1,7 +1,7 @@
 "use client";
 
 import { toast } from "sonner";
-import { ArrowRight, FileText, Loader2 } from "lucide-react";
+import { ArrowRight, Download, FileText, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,11 @@ interface Props {
   isTitular: boolean;
   formStep: number;
   mode?: "fill" | "add";
+  interviewDocs?: {
+    id: string;
+    fileName: string;
+    fileUrl: string;
+  }[];
 }
 
 export function ProfileFormBox({
@@ -28,6 +33,7 @@ export function ProfileFormBox({
   isTitular,
   formStep,
   mode = "fill",
+  interviewDocs = [],
 }: Props) {
   const router = useRouter();
   const isPassport = variant === "passport";
@@ -118,6 +124,25 @@ export function ProfileFormBox({
       </div>
 
       <div className="mt-auto flex flex-col gap-3">
+        {!isAdd && interviewDocs.length
+          ? interviewDocs.map((doc) => (
+              <Button
+                key={doc.id}
+                variant="secondary"
+                size="xl"
+                className="w-full h-12 rounded-2xl text-sm font-semibold justify-between px-6 bg-white/15 text-white hover:bg-white/25 border-0"
+                asChild
+              >
+                <a href={doc.fileUrl} target="_blank" rel="noreferrer" download={doc.fileName}>
+                  <span className="flex items-center gap-2 truncate">
+                    <Download className="size-5 shrink-0" strokeWidth={1.75} />
+                    <span className="truncate">Baixar documento para entrevista</span>
+                  </span>
+                  <ArrowRight className="size-5 shrink-0" strokeWidth={1.75} />
+                </a>
+              </Button>
+            ))
+          : null}
         <Button
           variant="secondary"
           size="xl"

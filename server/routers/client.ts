@@ -113,6 +113,11 @@ export type AreaMember = {
   formLocked: boolean;
   updatedAt: Date | null;
   canEdit: boolean;
+  interviewDocs: {
+    id: string;
+    fileName: string;
+    fileUrl: string;
+  }[];
 };
 
 function hasStarted(member: AreaMember) {
@@ -302,6 +307,10 @@ async function getGroupServiceMembers(
           OR: [wantsService, hasServiceProfile],
         },
         include: {
+          interviewDocuments: {
+            orderBy: { createdAt: "desc" },
+            select: { id: true, fileName: true, fileUrl: true },
+          },
           profiles: {
             where: {
               category: categoryEnum,
@@ -329,6 +338,10 @@ async function getGroupServiceMembers(
           OR: [wantsService, hasServiceProfile],
         },
         include: {
+          interviewDocuments: {
+            orderBy: { createdAt: "desc" },
+            select: { id: true, fileName: true, fileUrl: true },
+          },
           profiles: {
             where: {
               category: categoryEnum,
@@ -388,6 +401,11 @@ async function getGroupServiceMembers(
         formLocked: isFormLocked(statusForm, profile?.formLocked ?? null),
         updatedAt: profile?.updatedAt ?? null,
         canEdit: canEditMember(statusForm, profile?.formLocked ?? null),
+        interviewDocs: user.interviewDocuments.map((doc) => ({
+          id: doc.id,
+          fileName: doc.fileName,
+          fileUrl: doc.fileUrl,
+        })),
       };
     })
     .sort((a, b) => {

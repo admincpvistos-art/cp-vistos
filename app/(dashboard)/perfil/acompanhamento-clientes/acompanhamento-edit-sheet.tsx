@@ -44,6 +44,7 @@ import {
   type AcompanhamentoRecord,
   type AcompanhamentoService,
 } from "@/lib/acompanhamento-types";
+import { InterviewDocsPanel } from "./interview-docs-panel";
 
 type SheetForm = Omit<
   AcompanhamentoRecord,
@@ -375,6 +376,16 @@ export function AcompanhamentoEditSheet({
                 placeholder="Aparece ao passar o mouse no balão ao lado do nome"
               />
             </div>
+
+            {!creating && data?.row?.userId ? (
+              <>
+                <SectionTitle>Documentos para entrevista</SectionTitle>
+                <InterviewDocsPanel
+                  clientUserId={data.row.userId}
+                  clientName={form.name || data.row.name}
+                />
+              </>
+            ) : null}
 
             <SectionTitle>Dados da planilha</SectionTitle>
             <Field label="NOME" value={form.name} onChange={(value) => setSheet("name", value)} />

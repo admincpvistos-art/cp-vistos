@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 
 import { adminProcedure, acompanhamentoStaffProcedure, router } from "../trpc";
+import prisma from "@/lib/prisma";
 import {
   archiveAcompanhamentoClient,
   createAcompanhamentoRecord,
@@ -195,5 +196,49 @@ export const acompanhamentoRouter = router({
           message: error instanceof Error ? error.message : "Não foi possível arquivar o cliente",
         });
       }
+    }),
+
+  listInterviewDocs: acompanhamentoStaffProcedure
+    .input(z.object({ userId: z.string().min(1) }))
+    .query(async ({ input }) => {
+      const docs = await prisma.interviewDocument.findMany({
+        where: { userId: input.userId },
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          fileName: true,
+          fileUrl: true,
+          createdAt: true,
+        },
+      });
+      return { docs };
+    }),
+
+  deleteInterviewDoc: acompanhamentoStaffProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .mutation(async ({ input }) => {
+      const doc = await prisma.interviewDocument.findUnique({
+        where: { id: input.id },
+        select: { id: true, fileKey: true, userId: true },
+      });
+
+      if (!doc) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Documento não encontrado",
+        });
+      }
+
+      await prisma.interviewDocument.delete({ where: { id: doc.id } });
+
+      if (doc.fileKey) {
+        const { UTApi } = await import("uploadthing/server");
+        const utapi = new UTApi();
+        utapi.deleteFiles(doc.fileKey).catch((error) => {
+          console.error("[interview-doc] falha ao apagar arquivo", error);
+        });
+      }
+
+      return { ok: true as const, userId: doc.userId };
     }),
 });
