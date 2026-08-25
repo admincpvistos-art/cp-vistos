@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { Download, Loader2, Trash2 } from "lucide-react";
+import { useRef, useState } from "react";
+import { Download, FileUp, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { UploadButton } from "@/lib/uploadthing";
+import { useUploadThing } from "@/lib/uploadthing";
 import { trpc } from "@/lib/trpc-client";
 
 export function InterviewDocsPanel({
@@ -16,7 +16,8 @@ export function InterviewDocsPanel({
   clientName: string;
 }) {
   const utils = trpc.useUtils();
-  const [saving, setSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
 
   const { data, isLoading } = trpc.acompanhamentoRouter.listInterviewDocs.useQuery(
     { userId: clientUserId },
@@ -25,6 +26,13 @@ export function InterviewDocsPanel({
 
   const { mutateAsync: registerDoc } =
     trpc.acompanhamentoRouter.registerInterviewDoc.useMutation();
+
+  const { startUpload, isUploading } = useUploadThing("interviewDocUploader", {
+    onUploadError(error) {
+      setBusy(false);
+      toast.error(error.message || "Falha no envio do documento");
+    },
+  });
 
   const { mutate: deleteDoc, isPending: deleting, variables } =
     trpc.acompanhamentoRouter.deleteInterviewDoc.useMutation({
@@ -38,68 +46,93 @@ export function InterviewDocsPanel({
     });
 
   const docs = data?.docs ?? [];
+  const working = busy || isUploading;
+
+  async function handleFiles(fileList: FileList | null) {
+    if (!fileList?.length || !clientUserId) {
+      return;
+    }
+
+    const files = Array.from(fileList).slice(0, 3);
+    setBusy(true);
+    try {
+      const uploaded = await startUpload(files, { clientUserId });
+      if (!uploaded?.length) {
+        toast.error("Upload não retornou arquivos");
+        return;
+      }
+
+      for (const file of uploaded) {
+        const fileUrl =
+          ("ufsUrl" in file && typeof file.ufsUrl === "string" && file.ufsUrl) ||
+          file.url;
+        if (!fileUrl || !file.key) {
+          continue;
+        }
+        await registerDoc({
+          userId: clientUserId,
+          fileName: file.name,
+          fileUrl,
+          fileKey: file.key,
+        });
+      }
+
+      toast.success(
+        uploaded.length > 1
+          ? `${uploaded.length} documentos salvos`
+          : "Documento salvo",
+      );
+      await utils.acompanhamentoRouter.listInterviewDocs.invalidate({
+        userId: clientUserId,
+      });
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Não foi possível salvar o documento",
+      );
+    } finally {
+      setBusy(false);
+      if (inputRef.current) {
+        inputRef.current.value = "";
+      }
+    }
+  }
 
   return (
     <div className="sm:col-span-2 space-y-3 rounded-lg border border-muted p-4">
       <div className="space-y-1">
         <p className="text-sm font-medium">Documentos para a entrevista</p>
         <p className="text-xs text-muted-foreground">
-          Envie o arquivo que {clientName || "o cliente"} (e dependentes, cada um no
-          próprio cadastro) deverá baixar e imprimir. Visível no login do cliente.
+          Envie PDF ou imagem que {clientName || "o cliente"} deverá baixar e imprimir.
+          Visível no login do cliente (titular e dependentes, cada um no próprio cadastro).
         </p>
       </div>
 
-      <UploadButton
-        endpoint="interviewDocUploader"
-        input={{ clientUserId }}
-        disabled={saving || !clientUserId}
-        onClientUploadComplete={async (files) => {
-          const uploaded = files?.[0];
-          if (!uploaded) {
-            toast.error("Upload concluído, mas o arquivo não retornou dados");
-            return;
-          }
-
-          const fileUrl =
-            ("ufsUrl" in uploaded && typeof uploaded.ufsUrl === "string" && uploaded.ufsUrl) ||
-            uploaded.url;
-          const fileKey = uploaded.key;
-          const fileName = uploaded.name;
-
-          if (!fileUrl || !fileKey) {
-            toast.error("Arquivo enviado sem URL/chave — tente novamente");
-            return;
-          }
-
-          setSaving(true);
-          try {
-            await registerDoc({
-              userId: clientUserId,
-              fileName,
-              fileUrl,
-              fileKey,
-            });
-            toast.success("Documento salvo");
-            await utils.acompanhamentoRouter.listInterviewDocs.invalidate({
-              userId: clientUserId,
-            });
-          } catch (error) {
-            toast.error(
-              error instanceof Error
-                ? error.message
-                : "Não foi possível salvar o documento",
-            );
-          } finally {
-            setSaving(false);
-          }
-        }}
-        onUploadError={(error) => {
-          toast.error(error.message || "Falha no envio do documento");
+      <input
+        ref={inputRef}
+        type="file"
+        accept="application/pdf,image/*,.pdf"
+        multiple
+        className="hidden"
+        disabled={working || !clientUserId}
+        onChange={(event) => {
+          void handleFiles(event.target.files);
         }}
       />
-      <p className="text-xs text-muted-foreground">
-        {saving ? "Salvando no cadastro…" : "PDF ou imagem · até 16 MB"}
-      </p>
+
+      <Button
+        type="button"
+        variant="secondary"
+        disabled={working || !clientUserId}
+        onClick={() => inputRef.current?.click()}
+      >
+        {working ? (
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        ) : (
+          <FileUp className="mr-2 h-4 w-4" />
+        )}
+        {working ? "Enviando…" : "Enviar documento (PDF/imagem)"}
+      </Button>
+      <p className="text-xs text-muted-foreground">Até 16 MB · PDF ou imagem</p>
 
       {isLoading ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">

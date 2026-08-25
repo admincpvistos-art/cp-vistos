@@ -235,23 +235,54 @@ function statusLabel(value: Status | null | undefined, fallback = "") {
     case Status.active:
       return "ATIVO";
     case Status.prospect:
-      return "PROSPECT";
+      // No Acompanhamento não usamos PROSPECT — em preenchimento = ATIVO.
+      return "ATIVO";
     case Status.archived:
       return "ARQUIVADO";
     default:
-      return fallback;
+      return fallback || "ATIVO";
   }
 }
 
 function parseStatus(value: string): Status {
   const normalized = value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
-  if (normalized.includes("PROSPECT")) {
-    return Status.prospect;
+  if (normalized.includes("FINALIZ")) {
+    return Status.active;
   }
   if (normalized.includes("ARQUIV")) {
     return Status.archived;
   }
+  // PROSPECT no sheet vira ativo (fluxo de preenchimento).
   return Status.active;
+}
+
+/** Status da planilha Acompanhamento: ATIVO ou FINALIZADO (nunca PROSPECT). */
+export function deriveAcompanhamentoSheetStatus(input: {
+  barcode?: string | null;
+  barcodeDone?: boolean;
+  interview?: string | null;
+  statusHint?: string | null;
+}): "ATIVO" | "FINALIZADO" {
+  const hint = (input.statusHint ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase();
+
+  if (hint.includes("FINALIZ")) {
+    return "FINALIZADO";
+  }
+
+  const barcode = (input.barcode ?? "").trim();
+  const hasBarcode = Boolean(barcode) || Boolean(input.barcodeDone);
+  const interviewDate = parseSheetDate((input.interview ?? "").trim());
+  const interviewExpired =
+    interviewDate != null && interviewDate.getTime() < Date.now();
+
+  if (hasBarcode && interviewExpired) {
+    return "FINALIZADO";
+  }
+
+  return "ATIVO";
 }
 
 function slugPart(value: string) {
@@ -283,8 +314,13 @@ function isPlaceholderEmail(email: string) {
 
 export async function seedImportedAcompanhamentoRows() {
   const rows = payload.rows ?? [];
-  const importedCount = await prisma.acompanhamentoClient.count({
-    where: { source: "imported" },
+  // Conta ativos + arquivados para não recriar quem já saiu do Acompanhamento.
+  const knownCount = await prisma.acompanhamentoClient.count({
+    where: {
+      source: {
+        in: [ACOMPANHAMENTO_ACTIVE_SOURCE, ACOMPANHAMENTO_ARCHIVED_SOURCE, "imported", "archived"],
+      },
+    },
   });
   const expected = rows.length;
 
@@ -292,11 +328,11 @@ export async function seedImportedAcompanhamentoRows() {
     return;
   }
 
-  if (importedCount >= expected) {
+  if (knownCount >= expected) {
     return;
   }
 
-  if (importedCount === 0) {
+  if (knownCount === 0) {
     for (const cells of rows) {
       await prisma.acompanhamentoClient.create({
         data: {
@@ -313,9 +349,13 @@ export async function seedImportedAcompanhamentoRows() {
     return;
   }
 
-  // Partial seed: add missing rows by name+barcode fingerprint
+  // Partial seed: fingerprints incluem arquivados (evita duplicar após Arquivar).
   const existing = await prisma.acompanhamentoClient.findMany({
-    where: { source: "imported" },
+    where: {
+      source: {
+        in: [ACOMPANHAMENTO_ACTIVE_SOURCE, ACOMPANHAMENTO_ARCHIVED_SOURCE, "imported", "archived"],
+      },
+    },
     select: { cells: true },
   });
   const fingerprints = new Set(
@@ -703,39 +743,12 @@ export async function getOperationsSyncStatus() {
 }
 
 /**
- * Garante que a planilha Excel volte a aparecer no Acompanhamento.
- * Só restaura em massa se a lista ativa estiver suspeitamente vazia.
+ * Garante seed inicial do Excel. Nunca desarquiva clientes —
+ * isso quebrava o botão Arquivar (eles voltavam na próxima listagem).
  */
 export async function restoreAcompanhamentoFromExcel() {
   await seedImportedAcompanhamentoRows();
   await purgeCadastroAcompanhamentoRows();
-
-  const expected = payload.rows?.length ?? 0;
-  const active = await prisma.acompanhamentoClient.count({
-    where: { source: ACOMPANHAMENTO_ACTIVE_SOURCE },
-  });
-
-  // Lista ok — não desarquiva quem foi arquivado de propósito.
-  if (expected > 0 && active >= Math.max(20, Math.floor(expected * 0.5))) {
-    return getOperationsSyncStatus();
-  }
-
-  // Lista sumiu: devolve linhas importadas/arquivadas para a planilha ativa.
-  await prisma.acompanhamentoClient.updateMany({
-    where: {
-      OR: [
-        { source: ACOMPANHAMENTO_ACTIVE_SOURCE },
-        { source: ACOMPANHAMENTO_ARCHIVED_SOURCE },
-        { source: "imported" },
-        { source: "archived" },
-      ],
-    },
-    data: {
-      source: ACOMPANHAMENTO_ACTIVE_SOURCE,
-      archivedAt: null,
-    },
-  });
-
   return getOperationsSyncStatus();
 }
 
@@ -1030,7 +1043,12 @@ function buildRecord(
     entryDate: formatDate(profile?.entryDate) || cell(cells, COL.entry),
     group: user?.group || cell(cells, COL.group),
     pagto: record.pagto || cell(cells, COL.pagto),
-    status: record.statusLabel || cell(cells, COL.status) || statusLabel(profile?.status),
+    status: deriveAcompanhamentoSheetStatus({
+      barcode: profile?.DSNumber || cell(cells, COL.barcode),
+      barcodeDone: record.extraDate === "done",
+      interview: formatDate(profile?.interviewDate) || cell(cells, COL.interview),
+      statusHint: record.statusLabel || cell(cells, COL.status),
+    }),
     sheetComment: record.sheetComment ?? "",
     services: normalizeServices(record.services),
     accountFields: buildAccountFields(user),
@@ -1085,7 +1103,7 @@ export async function listAcompanhamentoSheet() {
         },
       },
     },
-    orderBy: { createdAt: "asc" },
+    orderBy: { createdAt: "desc" },
   });
 
   const payerIds = Array.from(
@@ -1103,7 +1121,7 @@ export async function listAcompanhamentoSheet() {
     : [];
   const payerEmailById = new Map(payers.map((payer) => [payer.id, payer.email]));
 
-  const rows = records.map((record) =>
+  const mapped = records.map((record) =>
     buildRecord({
       ...record,
       user: record.user
@@ -1116,6 +1134,21 @@ export async function listAcompanhamentoSheet() {
         : null,
     }),
   );
+
+  // Mais recentes primeiro (cadastro do usuário / entrada na planilha).
+  const rows = [...mapped].sort((a, b) => {
+    const recordA = records.find((r) => r.id === a.id);
+    const recordB = records.find((r) => r.id === b.id);
+    const timeA = Math.max(
+      recordA?.user?.createdAt?.getTime() ?? 0,
+      recordA?.createdAt?.getTime() ?? 0,
+    );
+    const timeB = Math.max(
+      recordB?.user?.createdAt?.getTime() ?? 0,
+      recordB?.createdAt?.getTime() ?? 0,
+    );
+    return timeB - timeA;
+  });
 
   return {
     headers: [...ACOMPANHAMENTO_VISIBLE_HEADERS],
@@ -1274,7 +1307,13 @@ export async function createAcompanhamentoRecord(input: AcompanhamentoCreateInpu
   }
 
   const services = normalizeServices(input.services);
-  const cells = cellsFromInput({ ...input, name });
+  const derivedStatus = deriveAcompanhamentoSheetStatus({
+    barcode: input.barcode,
+    barcodeDone: input.barcodeDone,
+    interview: input.interview,
+    statusHint: input.status,
+  });
+  const cells = cellsFromInput({ ...input, name, status: derivedStatus });
 
   const record = await prisma.acompanhamentoClient.create({
     data: {
@@ -1284,14 +1323,20 @@ export async function createAcompanhamentoRecord(input: AcompanhamentoCreateInpu
       alimto: input.alimto || null,
       obs: input.obs || null,
       pagto: input.pagto || null,
-      statusLabel: input.status || null,
+      statusLabel: derivedStatus,
       extraDate: input.barcodeDone ? "done" : null,
       sheetComment: input.sheetComment.trim() || null,
       services,
     },
   });
 
-  const updated = await updateAcompanhamentoRecord({ id: record.id, ...input, name, services });
+  const updated = await updateAcompanhamentoRecord({
+    id: record.id,
+    ...input,
+    name,
+    services,
+    status: derivedStatus,
+  });
   if (input.group?.trim()) {
     await linkImportedFamilyGroups();
   }
@@ -1399,7 +1444,7 @@ export async function updateAcompanhamentoRecord(input: AcompanhamentoUpdateInpu
     birthDate: parseSheetDate(input.dob),
     passport: input.passport.trim() || null,
     entryDate: parseSheetDate(input.entryDate),
-    status: parseStatus(input.status),
+    status: Status.active,
   };
 
   if (profile) {
@@ -1409,7 +1454,13 @@ export async function updateAcompanhamentoRecord(input: AcompanhamentoUpdateInpu
     });
   }
 
-  const nextCells = cellsFromInput(input);
+  const derivedStatus = deriveAcompanhamentoSheetStatus({
+    barcode: input.barcode,
+    barcodeDone: input.barcodeDone,
+    interview: input.interview,
+    statusHint: input.status,
+  });
+  const nextCells = cellsFromInput({ ...input, status: derivedStatus });
   const services = normalizeServices(input.services);
 
   await prisma.acompanhamentoClient.update({
@@ -1420,7 +1471,7 @@ export async function updateAcompanhamentoRecord(input: AcompanhamentoUpdateInpu
       alimto: input.alimto || null,
       obs: input.obs || null,
       pagto: input.pagto || null,
-      statusLabel: input.status || null,
+      statusLabel: derivedStatus,
       extraDate: input.barcodeDone ? "done" : null,
       sheetComment: input.sheetComment.trim() || null,
       services,

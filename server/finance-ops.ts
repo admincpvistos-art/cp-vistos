@@ -65,6 +65,7 @@ async function ensureAcompanhamentoRowForUser(user: {
       source: "imported",
       userId: user.id,
       cells,
+      statusLabel: "ATIVO",
     },
   });
 }

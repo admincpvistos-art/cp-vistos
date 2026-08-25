@@ -58,10 +58,9 @@ export const ourFileRouter = {
     .onUploadComplete(async () => {
       return {};
     }),
-  /** PDF/imagem para o cliente imprimir na entrevista. Admin + 3 colaboradores. */
+  /** PDF/imagem/qualquer arquivo para impressão na entrevista. */
   interviewDocUploader: f({
-    pdf: { maxFileSize: "16MB", maxFileCount: 5 },
-    image: { maxFileSize: "8MB", maxFileCount: 5 },
+    blob: { maxFileSize: "16MB", maxFileCount: 3 },
   })
     .input(z.object({ clientUserId: z.string().min(1) }))
     .middleware(async ({ input }) => {
@@ -82,22 +81,19 @@ export const ourFileRouter = {
 
       const client = await prisma.user.findFirst({
         where: { id: input.clientUserId },
-        select: { id: true, role: true },
+        select: { id: true },
       });
 
       if (!client) {
         throw new UploadThingError("Cliente não encontrado");
       }
 
-      // Aceita CLIENT e contas legadas já ligadas ao acompanhamento.
       return {
         clientUserId: client.id,
         uploadedById: staff.id,
       };
     })
     .onUploadComplete(async ({ metadata, file }) => {
-      // Só confirma o upload — o registro no banco é feito via tRPC no cliente
-      // (evita falha silenciosa do callback do UploadThing).
       return {
         clientUserId: metadata.clientUserId,
         uploadedById: metadata.uploadedById,

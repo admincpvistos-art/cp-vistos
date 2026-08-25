@@ -139,6 +139,10 @@ export function AcompanhamentoEditSheet({
         utils.acompanhamentoRouter.getClientesSheet.invalidate();
         toast.success("Cliente adicionado ao acompanhamento");
         onClose();
+        window.requestAnimationFrame(() => {
+          document.body.style.pointerEvents = "";
+          document.body.style.overflow = "";
+        });
       },
       onError: (error) => {
         toast.error(error.message || "Não foi possível criar o cliente");
@@ -152,6 +156,10 @@ export function AcompanhamentoEditSheet({
         utils.acompanhamentoRouter.getRow.invalidate({ id: rowId ?? "" });
         toast.success("Acompanhamento atualizado");
         onClose();
+        window.requestAnimationFrame(() => {
+          document.body.style.pointerEvents = "";
+          document.body.style.overflow = "";
+        });
       },
       onError: (error) => {
         toast.error(error.message || "Não foi possível salvar");
@@ -161,8 +169,6 @@ export function AcompanhamentoEditSheet({
   const { mutate: archiveRow, isPending: isArchiving } =
     trpc.acompanhamentoRouter.archiveRow.useMutation({
       onSuccess: (result) => {
-        utils.acompanhamentoRouter.getClientesSheet.invalidate();
-        utils.arquivadosRouter.getSheet.invalidate();
         const tabs = result.labels.join(", ");
         toast.success(
           result.labels.length > 1
@@ -170,12 +176,40 @@ export function AcompanhamentoEditSheet({
             : `Cliente arquivado em Arquivados — ${tabs}`,
         );
         setArchiveConfirmOpen(false);
-        onClose();
+        window.setTimeout(() => {
+          document.body.style.pointerEvents = "";
+          document.body.style.overflow = "";
+          onClose();
+          void utils.acompanhamentoRouter.getClientesSheet.invalidate();
+          void utils.arquivadosRouter.getSheet.invalidate();
+        }, 50);
       },
       onError: (error) => {
+        setArchiveConfirmOpen(false);
+        window.setTimeout(() => {
+          document.body.style.pointerEvents = "";
+        }, 50);
         toast.error(error.message || "Não foi possível arquivar");
       },
     });
+
+  function releaseBodyLock() {
+    document.body.style.pointerEvents = "";
+    document.body.style.overflow = "";
+    document.querySelectorAll("[data-radix-focus-guard]").forEach((node) => {
+      node.parentElement?.removeChild(node);
+    });
+  }
+
+  function handleSheetOpenChange(nextOpen: boolean) {
+    if (!nextOpen) {
+      setArchiveConfirmOpen(false);
+      onClose();
+      window.requestAnimationFrame(() => {
+        releaseBodyLock();
+      });
+    }
+  }
 
   useEffect(() => {
     if (creating) {
@@ -304,15 +338,54 @@ export function AcompanhamentoEditSheet({
 
   function confirmArchive() {
     if (!rowId || !form.services.length) {
+      toast.error("Marque ao menos um serviço — ele define as abas de Arquivados");
       return;
     }
-    archiveRow({ id: rowId, ...payload });
+    archiveRow({
+      id: rowId,
+      services: form.services,
+      name: form.name,
+      barcode: form.barcode,
+      barcodeIssued: form.barcodeIssued,
+      casv: form.casv,
+      interview: form.interview,
+      meeting: form.meeting,
+      shipping: form.shipping,
+      tipo: form.tipo,
+      resp: form.resp,
+      tax: form.tax,
+      ds160: form.ds160,
+      alimto: form.alimto,
+      obs: form.obs,
+      dob: form.dob,
+      passport: form.passport,
+      account: form.account,
+      email: form.email,
+      phone: form.phone,
+      entryDate: form.entryDate,
+      group: form.group,
+      pagto: form.pagto,
+      status: form.status,
+      barcodeDone: form.barcodeDone,
+      sheetComment: form.sheetComment,
+      accountFields: form.accountFields,
+    });
   }
 
   return (
     <>
-    <Sheet open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
-      <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
+    <Sheet open={open} onOpenChange={handleSheetOpenChange}>
+      <SheetContent
+        side="right"
+        className="w-full sm:max-w-2xl overflow-y-auto"
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          releaseBodyLock();
+        }}
+        onEscapeKeyDown={() => {
+          setArchiveConfirmOpen(false);
+        }}
+      >
         <SheetHeader className="pr-10">
           <SheetTitle>{creating ? "Adicionar cliente" : "Editar acompanhamento"}</SheetTitle>
           <SheetDescription>
@@ -430,7 +503,14 @@ export function AcompanhamentoEditSheet({
             <Field label="DT. ENTRADA" value={form.entryDate} onChange={(value) => setSheet("entryDate", value)} />
             <Field label="GRUPO" value={form.group} onChange={(value) => setSheet("group", value)} />
             <Field label="PAGTO" value={form.pagto} onChange={(value) => setSheet("pagto", value)} />
-            <Field label="STATUS" value={form.status} onChange={(value) => setSheet("status", value)} />
+            <Field
+              label="STATUS"
+              value={form.status === "FINALIZADO" ? "FINALIZADO" : "ATIVO"}
+              disabled
+            />
+            <p className="sm:col-span-2 -mt-2 text-xs text-muted-foreground">
+              ATIVO enquanto em preenchimento. FINALIZADO quando houver barcode e a data da entrevista já tiver passado.
+            </p>
             <div className="sm:col-span-2 space-y-1.5">
               <Label>OBS</Label>
               <Textarea
@@ -557,7 +637,7 @@ export function AcompanhamentoEditSheet({
                 <span />
               )}
               <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={onClose} disabled={isPending}>
+                <Button type="button" variant="outline" onClick={() => handleSheetOpenChange(false)} disabled={isPending}>
                   Cancelar
                 </Button>
                 <Button type="submit" disabled={isPending}>

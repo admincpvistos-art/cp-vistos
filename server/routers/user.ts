@@ -201,11 +201,13 @@ async function createClientWithFinanceAndProfile(params: {
   cells[0] = params.name;
   cells[16] = params.email;
   cells[19] = params.group;
+  cells[21] = "ATIVO";
   await prisma.acompanhamentoClient.create({
     data: {
       source: "imported",
       userId: account.id,
       cells,
+      statusLabel: "ATIVO",
     },
   });
 
