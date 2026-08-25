@@ -95,12 +95,11 @@ export const ourFileRouter = {
       };
     })
     .onUploadComplete(async ({ metadata, file }) => {
-      const fileUrl = file.ufsUrl || file.url;
       await prisma.interviewDocument.create({
         data: {
           userId: metadata.clientUserId,
           fileName: file.name,
-          fileUrl,
+          fileUrl: file.url,
           fileKey: file.key,
           uploadedById: metadata.uploadedById,
         },
