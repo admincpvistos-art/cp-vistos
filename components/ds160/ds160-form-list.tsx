@@ -182,7 +182,7 @@ export function Ds160FormList({ mode }: Props) {
     },
   );
 
-  const rows = data?.rows ?? [];
+  const rows = useMemo(() => data?.rows ?? [], [data?.rows]);
   const pendingSync = data?.pendingSync ?? 0;
 
   const filteredRows = useMemo(() => {

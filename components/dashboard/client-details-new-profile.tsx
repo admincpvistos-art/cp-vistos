@@ -202,47 +202,48 @@ export function ClientDetailsNewProfile({ handleClose }: Props) {
   const currentYear = getYear(new Date());
   const visaType = form.watch("visaType");
   const category = form.watch("category");
+  const { setValue } = form;
 
   useEffect(() => {
     if (birthDateCalendar !== undefined) {
       const dateFormatted = format(birthDateCalendar, "dd/MM/yyyy");
 
-      form.setValue("birthDate", dateFormatted);
+      setValue("birthDate", dateFormatted);
     }
-  }, [birthDateCalendar]);
+  }, [birthDateCalendar, setValue]);
 
   useEffect(() => {
     if (issuanceDateCalendar !== undefined) {
       const dateFormatted = format(issuanceDateCalendar, "dd/MM/yyyy");
 
-      form.setValue("issuanceDate", dateFormatted);
+      setValue("issuanceDate", dateFormatted);
       setExpireDateCalendar(expireDateFromIssued(issuanceDateCalendar));
     }
-  }, [issuanceDateCalendar]);
+  }, [issuanceDateCalendar, setValue]);
 
   useEffect(() => {
     if (expireDateCalendar !== undefined) {
       const dateFormatted = format(expireDateCalendar, "dd/MM/yyyy");
 
-      form.setValue("expireDate", dateFormatted);
+      setValue("expireDate", dateFormatted);
     }
-  }, [expireDateCalendar]);
+  }, [expireDateCalendar, setValue]);
 
   useEffect(() => {
     if (scheduleDateCalendar !== undefined) {
       const dateFormatted = format(scheduleDateCalendar, "dd/MM/yyyy");
 
-      form.setValue("scheduleDate", dateFormatted);
+      setValue("scheduleDate", dateFormatted);
     }
-  }, [scheduleDateCalendar]);
+  }, [scheduleDateCalendar, setValue]);
 
   useEffect(() => {
     if (entryDateCalendar !== undefined) {
       const dateFormatted = format(entryDateCalendar, "dd/MM/yyyy");
 
-      form.setValue("entryDate", dateFormatted);
+      setValue("entryDate", dateFormatted);
     }
-  }, [entryDateCalendar]);
+  }, [entryDateCalendar, setValue]);
 
   function handleTime(event: ChangeEvent<HTMLInputElement>) {
     let value = event.target.value.replace(/[^0-9:]/g, "");
