@@ -379,7 +379,7 @@ export async function seedImportedAcompanhamentoRows() {
 
   // Também bloqueia recriação de quem já está em Arquivados (snapshot).
   const arquivados = await prisma.arquivadoClient.findMany({
-    select: { name: true, barcode: true, email: true },
+    select: { name: true, barcode: true, email: true, group: true },
     take: 5000,
   });
   for (const row of arquivados) {
