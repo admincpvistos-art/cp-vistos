@@ -16,7 +16,7 @@ import { trpc } from "@/lib/trpc-client";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-export function NotificationHeaderMenu() {
+export function NotificationHeaderMenu({ onBrand = false }: { onBrand?: boolean }) {
   const { openModal } = useNotificationStore();
   const { data: me } = trpc.userRouter.getMe.useQuery(undefined, {
     retry: false,
@@ -62,12 +62,17 @@ export function NotificationHeaderMenu() {
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className="relative bg-secondary/40 border-secondary/40"
+          className={cn(
+            "relative",
+            onBrand
+              ? "bg-white/15 border-white/25 text-white hover:bg-white/25 hover:text-white"
+              : "bg-secondary/40 border-secondary/40",
+          )}
         >
           <Bell />
 
           {hasUnread && (
-            <div className="size-6 flex items-center justify-center bg-primary rounded-full absolute top-0.5 right-1 text-white font-medium text-sm !leading-none">
+            <div className="size-6 flex items-center justify-center bg-rose-500 rounded-full absolute top-0.5 right-1 text-white font-medium text-sm !leading-none">
               {data!.notifications.length}
             </div>
           )}

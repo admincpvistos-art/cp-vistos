@@ -19,6 +19,7 @@ interface Props {
   currentStep?: number;
   isEditing?: boolean;
   formStep?: string | null;
+  onBrand?: boolean;
 }
 
 export function MobileFormMenu({
@@ -27,6 +28,7 @@ export function MobileFormMenu({
   currentStep,
   isEditing,
   formStep,
+  onBrand = false,
 }: Props) {
   const [isOpen, setIsOpen] = useState<boolean>(false);
 
@@ -52,7 +54,10 @@ export function MobileFormMenu({
         <Button
           variant="outline"
           className={cn(
-            "hidden bg-secondary/40 border-secondary/40 z-20 text-foreground lg:hidden",
+            "hidden z-20 lg:hidden",
+            onBrand
+              ? "bg-white/15 border-white/25 text-white hover:bg-white/25 hover:text-white"
+              : "bg-secondary/40 border-secondary/40 text-foreground",
             {
               flex: pathname.includes(`/formulario`) && !isEditing,
             },

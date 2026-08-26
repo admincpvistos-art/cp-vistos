@@ -70,7 +70,7 @@ function MobileCards({ mode, rows }: { mode: Props["mode"]; rows: ListRow[] }) {
       {rows.map((row) => (
         <article
           key={row.profileId}
-          className="rounded-xl border bg-white p-4 shadow-sm"
+          className="rounded-xl border bg-white/85 p-4 shadow-sm backdrop-blur-[1px]"
         >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -118,12 +118,12 @@ function MobileCards({ mode, rows }: { mode: Props["mode"]; rows: ListRow[] }) {
 
 function DesktopTable({ mode, rows }: { mode: Props["mode"]; rows: ListRow[] }) {
   return (
-    <div className="hidden overflow-hidden rounded-xl border bg-white md:block">
+    <div className="hidden overflow-hidden rounded-xl border bg-white/80 md:block backdrop-blur-[1px]">
       <div className="max-h-[min(70vh,720px)] overflow-auto">
         <table className="w-full min-w-[860px] border-separate border-spacing-0 text-left">
-          <thead className="sticky top-0 z-20 bg-white shadow-[0_1px_0_0_hsl(var(--border))]">
+          <thead className="sticky top-0 z-20 bg-white/90 shadow-[0_1px_0_0_hsl(var(--border))] backdrop-blur-sm">
             <tr>
-              <th className="sticky left-0 top-0 z-30 min-w-52 bg-white px-4 py-3 text-xs font-semibold uppercase tracking-wide text-foreground/60 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.12)]">
+              <th className="sticky left-0 top-0 z-30 min-w-52 bg-white/90 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-foreground/60 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.12)]">
                 Cliente
               </th>
               <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-foreground/60">
@@ -138,7 +138,7 @@ function DesktopTable({ mode, rows }: { mode: Props["mode"]; rows: ListRow[] }) 
               <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-foreground/60">
                 Atualizado
               </th>
-              <th className="sticky right-0 top-0 z-30 min-w-[8.5rem] bg-white px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-foreground/60 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.12)]">
+              <th className="sticky right-0 top-0 z-30 min-w-[8.5rem] bg-white/90 px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-foreground/60 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.12)]">
                 Ação
               </th>
             </tr>
@@ -146,7 +146,7 @@ function DesktopTable({ mode, rows }: { mode: Props["mode"]; rows: ListRow[] }) 
           <tbody>
             {rows.map((row) => (
               <tr key={row.profileId} className="group">
-                <td className="sticky left-0 z-10 min-w-52 bg-white px-4 py-3 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.12)] group-hover:bg-muted/50">
+                <td className="sticky left-0 z-10 min-w-52 bg-white/85 px-4 py-3 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.12)] group-hover:bg-muted/50">
                   <p className="font-semibold">{row.name}</p>
                   <p className="text-xs text-muted-foreground">{row.email}</p>
                 </td>
@@ -160,7 +160,7 @@ function DesktopTable({ mode, rows }: { mode: Props["mode"]; rows: ListRow[] }) 
                 <td className="whitespace-nowrap px-4 py-3 text-sm">
                   {formatUpdatedAt(row.updatedAt)}
                 </td>
-                <td className="sticky right-0 z-10 min-w-[8.5rem] bg-white px-4 py-3 text-right shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.12)] group-hover:bg-muted/50">
+                <td className="sticky right-0 z-10 min-w-[8.5rem] bg-white/85 px-4 py-3 text-right shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.12)] group-hover:bg-muted/50">
                   <ActionButton mode={mode} profileId={row.profileId} />
                 </td>
               </tr>

@@ -42,23 +42,23 @@ export function DashboardHeader({
     data?.user.role === "COLLABORATOR";
 
   return (
-    <header className="w-full bg-transparent h-20 fixed top-0 left-0 right-0 z-30 sm:top-4">
+    <header className="w-full h-20 fixed top-0 left-0 right-0 z-30 sm:top-4">
+      {/* Barra azul translúcida — destaca a logo branca oficial */}
       <div
         className={cn(
-          "w-full h-20 absolute top-0 left-0 transform -translate-y-full bg-white/35 backdrop-blur-lg rounded-b-xl transition-transform duration-500 sm:rounded-b-3xl sm:h-[calc(80px+32px)] sm:-translate-y-[calc(100%+16px)]",
-          {
-            "translate-y-0 sm:-translate-y-4": y > 0,
-          },
+          "absolute inset-x-0 top-0 h-20 bg-[#0b3a6e]/88 backdrop-blur-xl border-b border-white/15 shadow-[0_8px_30px_rgba(11,58,110,0.22)] transition-[background-color,box-shadow] duration-300 sm:inset-x-4 sm:rounded-2xl sm:border sm:h-20",
+          y > 8 && "bg-[#0b3a6e]/95 shadow-[0_10px_36px_rgba(11,58,110,0.32)]",
         )}
       />
 
       <div className="relative z-40 w-full h-20 px-4 sm:px-6 lg:px-8 xl:px-10 max-w-[1920px] mx-auto flex items-center justify-between">
-        <Link href="/" className="relative w-20 h-20">
+        <Link href="/" className="relative w-[4.75rem] h-[4.75rem] shrink-0" aria-label="CP Vistos">
           <Image
-            src="/assets/images/cp-vistos-logo-azul.png"
-            alt="CP Vistos Logo"
+            src="/assets/images/cp-vistos-logo.png"
+            alt="CP Vistos"
             fill
-            className="object-center object-contain"
+            priority
+            className="object-center object-contain drop-shadow-sm"
           />
         </Link>
 
@@ -70,13 +70,14 @@ export function DashboardHeader({
                 currentStep={currentStep}
                 profileId={profileId}
                 formStep={formStep}
+                onBrand
               />
             </div>
           )}
 
-          {showNotifications && <NotificationHeaderMenu />}
+          {showNotifications && <NotificationHeaderMenu onBrand />}
 
-          <UserAccountMenu />
+          <UserAccountMenu onBrand />
         </div>
       </div>
     </header>

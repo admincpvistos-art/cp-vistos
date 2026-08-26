@@ -178,7 +178,7 @@ function CollapsibleSection({
   );
 }
 
-export function UserAccountMenu() {
+export function UserAccountMenu({ onBrand = false }: { onBrand?: boolean }) {
   const session = useSession();
   const [adminOpen, setAdminOpen] = useState(true);
   const [devOpen, setDevOpen] = useState(false);
@@ -201,7 +201,11 @@ export function UserAccountMenu() {
     return (
       <Button
         variant="outline"
-        className="bg-secondary/40 border-secondary/40"
+        className={cn(
+          onBrand
+            ? "bg-white/15 border-white/25 text-white hover:bg-white/25 hover:text-white"
+            : "bg-secondary/40 border-secondary/40",
+        )}
         asChild
       >
         <Link href="/login">Entrar</Link>
@@ -224,7 +228,12 @@ export function UserAccountMenu() {
         <Button
           variant="outline"
           size="icon"
-          className="relative h-11 w-11 rounded-full overflow-hidden bg-secondary/40 border-secondary/40"
+          className={cn(
+            "relative h-11 w-11 rounded-full overflow-hidden",
+            onBrand
+              ? "bg-white/15 border-white/30 text-white hover:bg-white/25 hover:text-white"
+              : "bg-secondary/40 border-secondary/40",
+          )}
           aria-label="Menu do usuário"
         >
           {imageUrl ? (
@@ -235,7 +244,12 @@ export function UserAccountMenu() {
               className="absolute inset-0 h-full w-full object-cover"
             />
           ) : (
-            <span className="text-sm font-semibold text-primary">
+            <span
+              className={cn(
+                "text-sm font-semibold",
+                onBrand ? "text-white" : "text-primary",
+              )}
+            >
               {getInitials(displayName)}
             </span>
           )}

@@ -15,7 +15,7 @@ export default function FormResumePage({ params }: { params: { profileId: string
     <>
       <DashboardHeader />
 
-      <div className="w-full h-full p-6 pt-20 sm:pt-36 sm:px-16 sm:pb-12 lg:container lg:mx-auto">
+      <div className="w-full h-full p-6 pt-24 sm:pt-28 sm:px-16 sm:pb-12 lg:container lg:mx-auto">
         {!data ? (
           <div className="w-full flex flex-col gap-9 bg-secondary py-8 px-11 rounded-xl">
             <div className="w-full flex flex-col items-center justify-between gap-4 md:flex-row-reverse">

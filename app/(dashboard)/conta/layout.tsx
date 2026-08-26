@@ -6,7 +6,7 @@ export default function AccountLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="w-full min-h-screen relative pt-20 sm:pt-36">
+    <div className="w-full min-h-screen relative pt-24 sm:pt-28">
       <DashboardHeader />
       {children}
     </div>
