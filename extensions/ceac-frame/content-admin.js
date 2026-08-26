@@ -1,9 +1,9 @@
 /**
  * Ponte entre o painel DS-160 (cpvistos) e o service worker da extensão.
- * v1.5.1 — pin pausado no Transferir; fill direto via executeScript.
+ * v1.5.2 — transfer com timeout/retry; pin pausado; fill via executeScript.
  */
 
-const EXT_VERSION = "1.5.1";
+const EXT_VERSION = "1.5.2";
 
 function markReady() {
   try {
@@ -33,10 +33,24 @@ function postTransferResult(requestId, payload) {
   );
 }
 
-function sendRuntime(message) {
+function sendRuntime(message, timeoutMs = 12000) {
   return new Promise((resolve, reject) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      reject(new Error("Tempo esgotado aguardando a extensão (service worker)."));
+    }, timeoutMs);
+
     try {
       chrome.runtime.sendMessage(message, (response) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        clearTimeout(timer);
         const err = chrome.runtime.lastError;
         if (err) {
           reject(new Error(err.message));
@@ -45,9 +59,29 @@ function sendRuntime(message) {
         resolve(response);
       });
     } catch (error) {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      clearTimeout(timer);
       reject(error instanceof Error ? error : new Error(String(error)));
     }
   });
+}
+
+async function sendRuntimeWithRetry(message, attempts = 2) {
+  let lastError = null;
+  for (let i = 0; i < attempts; i += 1) {
+    try {
+      return await sendRuntime(message, 14000);
+    } catch (error) {
+      lastError = error;
+      await new Promise((resolve) => setTimeout(resolve, 200 + i * 300));
+    }
+  }
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("Extensão não respondeu após novas tentativas.");
 }
 
 window.addEventListener("message", (event) => {
@@ -105,17 +139,15 @@ window.addEventListener("message", (event) => {
 
   if (data.type === "CP_VISTOS_TRANSFER_CEAC") {
     const requestId = data.requestId || null;
-    void sendRuntime({ type: "unpin-ceac-window" })
-      .catch(() => {})
-      .then(() =>
-        sendRuntime({
+    void (async () => {
+      try {
+        await sendRuntime({ type: "unpin-ceac-window" }).catch(() => {});
+        const response = await sendRuntimeWithRetry({
           type: "transfer-ceac-fields",
           fields: data.fields || [],
           pageId: data.pageId || "",
           pageTitle: data.pageTitle || "",
-        }),
-      )
-      .then((response) => {
+        });
         postTransferResult(requestId, {
           ok: Boolean(response?.ok),
           filled: response?.filled ?? 0,
@@ -123,9 +155,7 @@ window.addEventListener("message", (event) => {
           details: response?.details || [],
           error: response?.error || null,
         });
-        void sendRuntime({ type: "pin-ceac-window", ms: 15000 }).catch(() => {});
-      })
-      .catch((error) => {
+      } catch (error) {
         postTransferResult(requestId, {
           ok: false,
           filled: 0,
@@ -135,8 +165,10 @@ window.addEventListener("message", (event) => {
               ? error.message
               : "Extensão não respondeu. Recarregue a extensão CP Vistos (chrome://extensions) e esta página.",
         });
-        void sendRuntime({ type: "pin-ceac-window", ms: 15000 }).catch(() => {});
-      });
+      } finally {
+        void sendRuntime({ type: "pin-ceac-window", ms: 20000 }).catch(() => {});
+      }
+    })();
   }
 });
 

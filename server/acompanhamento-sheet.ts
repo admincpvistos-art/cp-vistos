@@ -1839,9 +1839,10 @@ export async function updateAcompanhamentoRecord(input: AcompanhamentoUpdateInpu
 }
 
 /**
- * Move client out of Acompanhamento and copy into Arquivados tabs
- * matching each selected service (one row per service / intentional duplicates).
- * Also archives sibling duplicate rows (same user / same name+email+barcode).
+ * Transfere o cliente do Acompanhamento para Arquivados:
+ * 1) grava snapshot em cada aba dos serviços marcados (replicas intencionais);
+ * 2) remove a(s) linha(s) do Acompanhamento (não só soft-archive — evita “voltar”).
+ * Irmãs (mesmo userId ou mesma impressão nome|email|barcode) também saem.
  */
 export async function archiveAcompanhamentoClient(
   id: string,
@@ -1860,16 +1861,23 @@ export async function archiveAcompanhamentoClient(
     return null;
   }
 
-  if (existing.source === ACOMPANHAMENTO_ARCHIVED_SOURCE || existing.archivedAt) {
-    throw new Error("Este cliente já foi arquivado");
-  }
-
   let services = normalizeServices(servicesInput);
   if (!services.length) {
     services = resolveServices(existing.services, existing.user);
   }
   if (!services.length) {
     throw new Error("Marque ao menos um serviço para definir as abas de Arquivados");
+  }
+
+  // Persiste os serviços na ficha antes do snapshot (fonte da verdade do admin).
+  if (
+    existing.source !== ACOMPANHAMENTO_ARCHIVED_SOURCE &&
+    JSON.stringify(normalizeServices(existing.services)) !== JSON.stringify(services)
+  ) {
+    await prisma.acompanhamentoClient.update({
+      where: { id },
+      data: { services },
+    });
   }
 
   const row = await getAcompanhamentoRecord(id);
@@ -1885,123 +1893,169 @@ export async function archiveAcompanhamentoClient(
       throw new Error(`Serviço inválido para arquivar: ${service}`);
     }
 
-    const already = await prisma.arquivadoClient.findFirst({
-      where: {
-        sourceAcompanhamentoId: id,
+    const alreadyClauses: Array<Record<string, unknown>> = [
+      { sourceAcompanhamentoId: id, category },
+    ];
+    if (row.userId) {
+      alreadyClauses.push({ sourceUserId: row.userId, category, name: row.name });
+    } else if (row.email?.trim()) {
+      alreadyClauses.push({
         category,
-      },
+        name: row.name,
+        email: row.email.trim(),
+      });
+    }
+
+    const already = await prisma.arquivadoClient.findFirst({
+      where: { OR: alreadyClauses },
       select: { id: true },
     });
+
     if (!already) {
-      await prisma.arquivadoClient.create({
-        data: {
+      try {
+        await prisma.arquivadoClient.create({
+          data: {
+            category,
+            name: row.name,
+            barcode: row.barcode,
+            barcodeIssued: row.barcodeIssued,
+            barcodeDone: row.barcodeDone,
+            casv: row.casv,
+            interview: row.interview,
+            meeting: row.meeting || row.shipping,
+            tax: row.tax,
+            dob: row.dob,
+            passport: row.passport,
+            email: row.email,
+            entryDate: row.entryDate,
+            group: row.group,
+            status: row.status || "FINALIZADO",
+            sheetComment: row.sheetComment,
+            services: [service],
+            sourceAcompanhamentoId: id,
+            sourceUserId: row.userId,
+          },
+        });
+      } catch (error) {
+        console.error("[acompanhamento] arquivadoClient.create failed", {
+          id,
           category,
-          name: row.name,
-          barcode: row.barcode,
-          barcodeIssued: row.barcodeIssued,
-          barcodeDone: row.barcodeDone,
-          casv: row.casv,
-          interview: row.interview,
-          meeting: row.meeting || row.shipping,
-          tax: row.tax,
-          dob: row.dob,
-          passport: row.passport,
-          email: row.email,
-          entryDate: row.entryDate,
-          group: row.group,
-          status: row.status,
-          sheetComment: row.sheetComment,
-          services: [service],
-          sourceAcompanhamentoId: id,
-          sourceUserId: row.userId,
-        },
-      });
+          service,
+          error,
+        });
+        throw new Error(
+          `Falha ao gravar em Arquivados (${ARQUIVADOS_CATEGORY_LABEL[category] ?? category}). Tente novamente.`,
+        );
+      }
     }
     categories.push(category);
   }
 
-  const archivedAt = new Date();
-  const archiveData = {
-    services,
-    archivedAt,
-    source: ACOMPANHAMENTO_ARCHIVED_SOURCE,
-    statusLabel: "FINALIZADO",
-  };
+  const idsToRemove = new Set<string>([id]);
 
-  // Linha principal.
-  await prisma.acompanhamentoClient.update({
-    where: { id },
-    data: archiveData,
-  });
-
-  // Irmãs ativas do mesmo userId (evita “voltar” por duplicata ligada).
+  // Irmãs do mesmo userId (relação @unique costuma ser 1, mas cobre legado).
   if (existing.userId) {
-    await prisma.acompanhamentoClient.updateMany({
-      where: {
-        userId: existing.userId,
-        source: ACOMPANHAMENTO_ACTIVE_SOURCE,
-        NOT: { id },
-      },
-      data: archiveData,
+    const byUser = await prisma.acompanhamentoClient.findMany({
+      where: { userId: existing.userId },
+      select: { id: true },
     });
+    for (const sibling of byUser) {
+      idsToRemove.add(sibling.id);
+    }
   }
 
   // Irmãs órfãs com mesma impressão (nome + e-mail + barcode).
-  const targetFp = archiveFingerprint(
-    row.name,
-    row.email,
-    row.barcode,
-  );
+  const targetFp = archiveFingerprint(row.name, row.email, row.barcode);
   if (targetFp) {
     const activeSiblings = await prisma.acompanhamentoClient.findMany({
       where: {
-        source: ACOMPANHAMENTO_ACTIVE_SOURCE,
-        NOT: { id },
+        NOT: { id: { in: Array.from(idsToRemove) } },
       },
       include: {
         user: { select: { name: true, email: true } },
       },
-      take: 500,
+      take: 800,
     });
 
-    const siblingIds = activeSiblings
-      .filter((sibling) => {
-        const name =
-          sibling.user?.name || cell(sibling.cells, COL.name);
-        const email =
-          sibling.user && !isPlaceholderEmail(sibling.user.email)
-            ? sibling.user.email
-            : cell(sibling.cells, COL.email);
-        const barcode = cell(sibling.cells, COL.barcode);
-        return archiveFingerprint(name, email, barcode) === targetFp;
-      })
-      .map((sibling) => sibling.id);
-
-    if (siblingIds.length) {
-      await prisma.acompanhamentoClient.updateMany({
-        where: { id: { in: siblingIds } },
-        data: archiveData,
-      });
+    for (const sibling of activeSiblings) {
+      const name = sibling.user?.name || cell(sibling.cells, COL.name);
+      const email =
+        sibling.user && !isPlaceholderEmail(sibling.user.email)
+          ? sibling.user.email
+          : cell(sibling.cells, COL.email);
+      const barcode = cell(sibling.cells, COL.barcode);
+      if (archiveFingerprint(name, email, barcode) === targetFp) {
+        idsToRemove.add(sibling.id);
+      }
     }
   }
 
-  const verify = await prisma.acompanhamentoClient.findUnique({
-    where: { id },
-    select: { source: true, archivedAt: true },
+  const removeIds = Array.from(idsToRemove);
+
+  // Soft-mark residual (caso delete falhe parcialmente) + delete definitivo.
+  await prisma.acompanhamentoClient.updateMany({
+    where: { id: { in: removeIds } },
+    data: {
+      services,
+      archivedAt: new Date(),
+      source: ACOMPANHAMENTO_ARCHIVED_SOURCE,
+      statusLabel: "FINALIZADO",
+    },
   });
-  if (
-    !verify ||
-    verify.source !== ACOMPANHAMENTO_ARCHIVED_SOURCE ||
-    !verify.archivedAt
-  ) {
-    throw new Error("Arquivamento não foi gravado. Tente novamente.");
+
+  await prisma.acompanhamentoClient.deleteMany({
+    where: { id: { in: removeIds } },
+  });
+
+  const stillOnSheet = await prisma.acompanhamentoClient.count({
+    where: {
+      OR: [
+        { id: { in: removeIds } },
+        ...(existing.userId
+          ? [{ userId: existing.userId, source: ACOMPANHAMENTO_ACTIVE_SOURCE }]
+          : []),
+      ],
+    },
+  });
+  if (stillOnSheet > 0) {
+    throw new Error(
+      "Cliente ainda aparece no Acompanhamento após arquivar. Tente novamente.",
+    );
   }
 
-  const stillActive = await prisma.arquivadoClient.count({
-    where: { sourceAcompanhamentoId: id },
+  const arquivadoWhere =
+    row.userId != null
+      ? {
+          OR: [
+            { sourceAcompanhamentoId: id },
+            { sourceUserId: row.userId },
+          ],
+        }
+      : { sourceAcompanhamentoId: id };
+
+  const inArquivados = await prisma.arquivadoClient.count({
+    where: arquivadoWhere,
   });
-  if (!stillActive) {
+  if (!inArquivados) {
     throw new Error("Cliente não apareceu em Arquivados. Tente novamente.");
+  }
+
+  // Garante uma linha por categoria pedida (mesmo se já existia snapshot antigo).
+  for (const category of categories) {
+    const present = await prisma.arquivadoClient.count({
+      where: {
+        category,
+        OR: [
+          { sourceAcompanhamentoId: id },
+          ...(row.userId ? [{ sourceUserId: row.userId }] : []),
+        ],
+      },
+    });
+    if (!present) {
+      throw new Error(
+        `Cliente não entrou na aba ${ARQUIVADOS_CATEGORY_LABEL[category as keyof typeof ARQUIVADOS_CATEGORY_LABEL] ?? category}.`,
+      );
+    }
   }
 
   return {
@@ -2011,6 +2065,8 @@ export async function archiveAcompanhamentoClient(
         ARQUIVADOS_CATEGORY_LABEL[category as keyof typeof ARQUIVADOS_CATEGORY_LABEL] ??
         category,
     ),
+    removedIds: removeIds,
+    arquivadoCount: inArquivados,
   };
 }
 

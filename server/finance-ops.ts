@@ -56,9 +56,16 @@ async function ensureAcompanhamentoRowForUser(user: {
     return;
   }
 
-  // Já foi para Arquivados — não devolver ao Acompanhamento.
+  // Já foi para Arquivados — não devolver ao Acompanhamento (mesmo após delete da linha).
   const archived = await prisma.arquivadoClient.findFirst({
-    where: { sourceUserId: user.id },
+    where: {
+      OR: [
+        { sourceUserId: user.id },
+        ...(user.email?.trim()
+          ? [{ email: user.email.trim(), name: user.name }]
+          : []),
+      ],
+    },
     select: { id: true },
   });
   if (archived) {

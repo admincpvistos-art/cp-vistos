@@ -1,4 +1,4 @@
-# CP Vistos — Extensão CEAC (v1.5.1)
+# CP Vistos — Extensão CEAC (v1.5.2)
 
 Pasta pronta para instalar em qualquer computador do escritório (Chrome ou Edge).
 
@@ -21,7 +21,7 @@ Pasta pronta para instalar em qualquer computador do escritório (Chrome ou Edge
 
 Ou rode `instalar.bat`.
 
-Confirme que a versão exibida no quadro CEAC é **v1.5.1**.
+Confirme que a versão exibida no quadro CEAC é **v1.5.2**.
 
 ## Uso
 
@@ -42,7 +42,7 @@ Confirme que a versão exibida no quadro CEAC é **v1.5.1**.
 
 | Arquivo | Função |
 |---|---|
-| `manifest.json` | Configuração MV3 (v1.5.1) |
+| `manifest.json` | Configuração MV3 (v1.5.2) |
 | `background.js` | Janela CEAC + pin + transferência |
 | `content-admin.js` | Ponte com o site CP Vistos |
 | `content-ceac.js` | Preenche campos no site do governo |

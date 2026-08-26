@@ -7,7 +7,7 @@ if errorlevel 1 start "" "%ProgramFiles(x86)%\Google\Chrome\Application\chrome.e
 if errorlevel 1 start "" "%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe" "edge://extensions"
 echo.
 echo ========================================
-echo  CP Vistos — CEAC Transferir (v1.5.1)
+echo  CP Vistos — CEAC Transferir (v1.5.2)
 echo ========================================
 echo.
 echo 1. Ative "Modo do desenvolvedor" (canto superior direito).

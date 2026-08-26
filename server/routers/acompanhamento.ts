@@ -166,7 +166,7 @@ export const acompanhamentoRouter = router({
     .input(
       z.object({
         id: z.string().min(1),
-        services: z.array(z.enum(serviceValues)).optional().default([]),
+        services: z.array(z.enum(serviceValues)).min(1, "Marque ao menos um serviço"),
       }),
     )
     .mutation(async ({ input, ctx }) => {

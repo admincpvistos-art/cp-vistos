@@ -240,7 +240,7 @@ export function transferFieldsToCeac(input: {
     });
   }
 
-  pauseCeacPinForTransfer(25000);
+  pauseCeacPinForTransfer(45000);
   const requestId = `ceac-transfer-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
   return new Promise((resolve) => {
@@ -252,9 +252,9 @@ export function transferFieldsToCeac(input: {
         filled: 0,
         skipped: 0,
         error:
-          "Extensão não respondeu. Recarregue a extensão CP Vistos (chrome://extensions → Atualizar) para v1.5.1, dê Ctrl+F5 nesta página e abra o CEAC.",
+          "Extensão não respondeu. Recarregue a extensão CP Vistos (chrome://extensions → Atualizar) para v1.5.2, dê Ctrl+F5 nesta página e abra o CEAC.",
       });
-    }, 25000);
+    }, 40000);
 
     function onMessage(event: MessageEvent) {
       if (event.source !== window) {

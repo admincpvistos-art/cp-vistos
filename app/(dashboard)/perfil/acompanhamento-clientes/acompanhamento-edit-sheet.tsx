@@ -168,21 +168,45 @@ export function AcompanhamentoEditSheet({
 
   const { mutateAsync: archiveRowAsync, isPending: isArchiving } =
     trpc.acompanhamentoRouter.archiveRow.useMutation();
+  const { mutateAsync: updateBeforeArchiveAsync } =
+    trpc.acompanhamentoRouter.updateRow.useMutation();
 
   async function confirmArchive() {
     if (!rowId) {
       return;
     }
+    const servicesToArchive =
+      selectedServices.length > 0
+        ? selectedServices
+        : Array.isArray(form.services)
+          ? form.services
+          : [];
+    if (!servicesToArchive.length) {
+      toast.error("Marque ao menos um serviço antes de arquivar");
+      setArchiveConfirmOpen(false);
+      return;
+    }
     try {
+      // Garante serviços (e demais campos) gravados antes da transferência.
+      try {
+        await updateBeforeArchiveAsync({
+          id: rowId,
+          ...payload,
+          services: servicesToArchive,
+        });
+      } catch {
+        // Se o save falhar (validação leve), o archive ainda resolve serviços no servidor.
+      }
+
       const result = await archiveRowAsync({
         id: rowId,
-        services: selectedServices,
+        services: servicesToArchive,
       });
       const tabs = result.labels.join(", ");
       toast.success(
         result.labels.length > 1
-          ? `Cliente arquivado em: ${tabs}`
-          : `Cliente arquivado em Arquivados — ${tabs}`,
+          ? `Cliente transferido para Arquivados: ${tabs}`
+          : `Cliente transferido para Arquivados — ${tabs}`,
       );
       setArchiveConfirmOpen(false);
 
@@ -359,6 +383,10 @@ export function AcompanhamentoEditSheet({
       return;
     }
     if (!validateBeforeSave()) {
+      return;
+    }
+    if (!selectedServices.length) {
+      toast.error("Marque ao menos um serviço antes de arquivar");
       return;
     }
     setArchiveConfirmOpen(true);
