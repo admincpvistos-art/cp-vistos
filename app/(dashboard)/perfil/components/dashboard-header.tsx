@@ -43,12 +43,17 @@ export function DashboardHeader({
 
   return (
     <header className="w-full h-20 fixed top-0 left-0 right-0 z-30 sm:top-4">
-      {/* Barra azul translúcida — destaca a logo branca oficial */}
+      {/* Azul sólido via rgba — evita falha do modificador /88 do Tailwind */}
       <div
         className={cn(
-          "absolute inset-x-0 top-0 h-20 bg-[#0b3a6e]/88 backdrop-blur-xl border-b border-white/15 shadow-[0_8px_30px_rgba(11,58,110,0.22)] transition-[background-color,box-shadow] duration-300 sm:inset-x-4 sm:rounded-2xl sm:border sm:h-20",
-          y > 8 && "bg-[#0b3a6e]/95 shadow-[0_10px_36px_rgba(11,58,110,0.32)]",
+          "absolute inset-x-0 top-0 h-20 border-b border-white/20 backdrop-blur-md transition-shadow duration-300 sm:inset-x-4 sm:rounded-2xl sm:border sm:h-20",
+          y > 8
+            ? "shadow-[0_12px_40px_rgba(11,58,110,0.35)]"
+            : "shadow-[0_8px_28px_rgba(11,58,110,0.25)]",
         )}
+        style={{
+          backgroundColor: y > 8 ? "rgba(11, 58, 110, 0.96)" : "rgba(11, 58, 110, 0.92)",
+        }}
       />
 
       <div className="relative z-40 w-full h-20 px-4 sm:px-6 lg:px-8 xl:px-10 max-w-[1920px] mx-auto flex items-center justify-between">
@@ -58,7 +63,7 @@ export function DashboardHeader({
             alt="CP Vistos"
             fill
             priority
-            className="object-center object-contain drop-shadow-sm"
+            className="object-center object-contain"
           />
         </Link>
 
