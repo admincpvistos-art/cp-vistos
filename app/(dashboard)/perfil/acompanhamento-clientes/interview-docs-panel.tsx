@@ -87,7 +87,7 @@ export function InterviewDocsPanel({
       <div className="space-y-1">
         <p className="text-sm font-medium">Documentos para a entrevista</p>
         <p className="text-xs text-muted-foreground">
-          Envie PDF ou imagem que {clientName || "o cliente"} deverá baixar e imprimir.
+          Envie PDF, Word ou imagem que {clientName || "o cliente"} deverá baixar e imprimir.
           Visível no login do cliente (titular e dependentes, cada um no próprio cadastro).
         </p>
       </div>
@@ -95,7 +95,7 @@ export function InterviewDocsPanel({
       <input
         ref={inputRef}
         type="file"
-        accept="application/pdf,image/*,.pdf"
+        accept="application/pdf,image/*,.pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         multiple
         className="hidden"
         disabled={busy || !clientUserId}
@@ -115,9 +115,9 @@ export function InterviewDocsPanel({
         ) : (
           <FileUp className="mr-2 h-4 w-4" />
         )}
-        {busy ? "Enviando…" : "Enviar documento (PDF/imagem)"}
+        {busy ? "Enviando…" : "Enviar documento (PDF/Word/imagem)"}
       </Button>
-      <p className="text-xs text-muted-foreground">Até 16 MB · PDF ou imagem</p>
+      <p className="text-xs text-muted-foreground">Até 16 MB · PDF, Word (.doc/.docx) ou imagem</p>
 
       {isLoading ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">

@@ -22,6 +22,8 @@ export function openCeacOverElement(
   const width = Math.max(480, Math.round(rect.width));
   const height = Math.max(520, Math.round(rect.height));
 
+  const useExtension = Boolean(options?.useExtension || isCeacExtensionPresent());
+
   window.postMessage(
     {
       type: "CP_VISTOS_OPEN_CEAC_WINDOW",
@@ -33,7 +35,7 @@ export function openCeacOverElement(
     "*",
   );
 
-  if (options?.useExtension) {
+  if (useExtension) {
     return null;
   }
 
@@ -82,20 +84,28 @@ export function openCeacInBrowserWindow() {
 }
 
 export function focusCeacWindow() {
-  window.postMessage({ type: "CP_VISTOS_FOCUS_CEAC" }, "*");
-
-  const target = getCeacWindow();
-  if (!target) {
-    return;
+  // Várias tentativas: o clique no CP Vistos tira o foco da janela do CEAC.
+  for (const ms of [0, 50, 150, 400, 800]) {
+    window.setTimeout(() => {
+      window.postMessage({ type: "CP_VISTOS_FOCUS_CEAC" }, "*");
+      const target = getCeacWindow();
+      if (!target || target.closed) {
+        return;
+      }
+      try {
+        target.focus();
+      } catch {
+        // o browser pode bloquear focus em outra janela
+      }
+    }, ms);
   }
+}
 
-  window.setTimeout(() => {
-    try {
-      target.focus();
-    } catch {
-      // o browser pode bloquear focus em outra janela
-    }
-  }, 80);
+export function isCeacExtensionPresent() {
+  if (typeof document === "undefined") {
+    return false;
+  }
+  return Boolean(document.documentElement.getAttribute("data-cp-vistos-ceac-ext"));
 }
 
 export type CeacTransferField = {

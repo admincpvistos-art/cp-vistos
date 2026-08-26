@@ -41,6 +41,7 @@ export function CeacFormPanel({
       return;
     }
 
+    focusCeacWindow();
     await navigator.clipboard.writeText(value);
     setCopiedId(id);
     setActiveId(id);
@@ -66,6 +67,7 @@ export function CeacFormPanel({
       return;
     }
 
+    focusCeacWindow();
     setTransferring(true);
     try {
       const pageTitle = CEAC_PAGES.find((page) => page.id === pageId)?.title ?? pageId;
@@ -77,6 +79,7 @@ export function CeacFormPanel({
 
       if (!result.ok) {
         toast.error(result.error || "Não foi possível transferir para o CEAC");
+        focusCeacWindow();
         return;
       }
 
@@ -87,6 +90,7 @@ export function CeacFormPanel({
       focusCeacWindow();
     } finally {
       setTransferring(false);
+      focusCeacWindow();
     }
   }
 

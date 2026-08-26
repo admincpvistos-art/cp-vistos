@@ -4,13 +4,19 @@ import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { CEAC_URL } from "@/lib/ds160-ceac";
-import { openCeacOverElement } from "@/lib/ds160-ceac-window";
+import { isCeacExtensionPresent, openCeacOverElement } from "@/lib/ds160-ceac-window";
 
 export function CeacOfficialPane() {
   const paneRef = useRef<HTMLDivElement>(null);
   const [extensionReady, setExtensionReady] = useState(false);
 
   useEffect(() => {
+    function syncReady() {
+      if (isCeacExtensionPresent()) {
+        setExtensionReady(true);
+      }
+    }
+
     function onMessage(event: MessageEvent) {
       if (event.source !== window) {
         return;
@@ -21,9 +27,17 @@ export function CeacOfficialPane() {
     }
 
     window.addEventListener("message", onMessage);
+    syncReady();
     window.postMessage({ type: "CP_VISTOS_CEAC_EXT_PING" }, "*");
+    const timer = window.setInterval(() => {
+      syncReady();
+      window.postMessage({ type: "CP_VISTOS_CEAC_EXT_PING" }, "*");
+    }, 2000);
 
-    return () => window.removeEventListener("message", onMessage);
+    return () => {
+      window.removeEventListener("message", onMessage);
+      window.clearInterval(timer);
+    };
   }, []);
 
   function openOverPane() {
@@ -31,7 +45,9 @@ export function CeacOfficialPane() {
       return;
     }
 
-    openCeacOverElement(paneRef.current, { useExtension: extensionReady });
+    openCeacOverElement(paneRef.current, {
+      useExtension: extensionReady || isCeacExtensionPresent(),
+    });
   }
 
   function openPanel() {
@@ -72,7 +88,7 @@ export function CeacOfficialPane() {
       </div>
 
       <p className="max-w-md text-xs text-[#6b7280]">
-        Extensão v1.3: use <strong>Transferir para o CEAC</strong> no painel esquerdo após abrir
+        Extensão v1.4: use <strong>Transferir para o CEAC</strong> no painel esquerdo após abrir
         o site oficial. Captcha e avanço de páginas continuam manuais. Sem a extensão, use
         Copiar + Ctrl+V.
       </p>

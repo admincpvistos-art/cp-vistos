@@ -35,6 +35,7 @@ import {
 } from "@/server/acompanhamento-sheet";
 import { expireDateFromIssued } from "@/lib/barcode-validity";
 import { isCadastroFrom2025, purgeCadastroClientsFrom2025 } from "@/server/client-year-ops";
+import { toUpperDisplay } from "@/lib/uppercase";
 
 function mapProfileToClientTableRow(profile: {
   id: string;
@@ -170,14 +171,17 @@ async function createClientWithFinanceAndProfile(params: {
   wantsAmericanVisa: boolean;
   wantsPassport: boolean;
 }) {
+  const name = toUpperDisplay(params.name);
+  const group = toUpperDisplay(params.group || params.name);
+
   const account = await prisma.user.create({
     data: {
-      name: params.name,
+      name,
       email: params.email,
       password: params.password,
       cpf: params.cpf,
       role: Role.CLIENT,
-      group: params.group,
+      group,
       payerUserId: params.payerUserId,
       wantsAmericanVisa: params.wantsAmericanVisa,
       wantsPassport: params.wantsPassport,
@@ -199,9 +203,9 @@ async function createClientWithFinanceAndProfile(params: {
   });
 
   const cells = Array.from({ length: ACOMPANHAMENTO_HEADERS.length }, () => "");
-  cells[0] = params.name;
+  cells[0] = name;
   cells[16] = params.email;
-  cells[19] = params.group;
+  cells[19] = group;
   cells[21] = "ATIVO";
   await prisma.acompanhamentoClient.create({
     data: {
@@ -216,7 +220,7 @@ async function createClientWithFinanceAndProfile(params: {
     },
   });
 
-  if (params.group?.trim()) {
+  if (group.trim()) {
     await linkImportedFamilyGroups();
   }
 
@@ -225,7 +229,7 @@ async function createClientWithFinanceAndProfile(params: {
   if (params.wantsPassport) {
     await createActiveProfile({
       userId: account.id,
-      name: params.name,
+      name,
       cpf: params.cpf,
       category: Category.passport,
     });
@@ -234,7 +238,7 @@ async function createClientWithFinanceAndProfile(params: {
   if (params.wantsAmericanVisa) {
     await createActiveProfile({
       userId: account.id,
-      name: params.name,
+      name,
       cpf: params.cpf,
       category: Category.american_visa,
       status: Status.prospect,
@@ -520,6 +524,8 @@ export const userRouter = router({
       }),
     )
     .mutation(async ({ input }) => {
+      const name = toUpperDisplay(input.name);
+      const group = toUpperDisplay(input.group);
       const category =
         input.category === "passport"
           ? Category.passport
@@ -540,18 +546,18 @@ export const userRouter = router({
         taxDate: inputDate(input.taxDate),
         statusDS: input.statusDS as StatusDS | undefined,
         responsibleCpf: input.responsibleCpf || undefined,
-        protocol: input.protocol || undefined,
+        protocol: input.protocol ? toUpperDisplay(input.protocol) : undefined,
         entryDate: inputDate(input.entryDate),
         scheduleDate: inputDate(input.scheduleDate),
         process: input.process || undefined,
-        passport: input.passport || undefined,
+        passport: input.passport ? toUpperDisplay(input.passport) : undefined,
         ETAStatus: input.ETAStatus as ETAStatus | undefined,
       };
 
       const titular = await prisma.user.findFirst({
         where: {
           role: Role.CLIENT,
-          group: input.group,
+          group,
           payerUserId: null,
         },
         select: { id: true, group: true, createdAt: true },
@@ -585,7 +591,7 @@ export const userRouter = router({
 
         await createActiveProfile({
           userId: existingUser.id,
-          name: input.name,
+          name,
           cpf: input.cpf,
           category,
           ...profileData,
@@ -594,6 +600,7 @@ export const userRouter = router({
         await prisma.user.update({
           where: { id: existingUser.id },
           data: {
+            name: toUpperDisplay(existingUser.name),
             ...(input.scheduleAccount ? { scheduleAccount: input.scheduleAccount as ScheduleAccount } : {}),
             wantsAmericanVisa:
               existingUser.wantsAmericanVisa ||
@@ -608,11 +615,11 @@ export const userRouter = router({
 
       const digits = cpfDigits(input.cpf);
       const member = await createClientWithFinanceAndProfile({
-        name: input.name,
+        name,
         email: `dependente.${digits}.${titular.id}.${Date.now()}@grupo.cpvistos`,
         password: `dep-${titular.id}-${digits}-${Date.now()}`,
         cpf: input.cpf,
-        group: input.group,
+        group,
         payerUserId: titular.id,
         wantsAmericanVisa: category === Category.american_visa,
         wantsPassport: category === Category.passport,
@@ -899,7 +906,7 @@ export const userRouter = router({
 
       const groupNameExists = await prisma.user.findFirst({
         where: {
-          group: input.group,
+          group: toUpperDisplay(input.group || input.name),
         },
       });
 
@@ -924,14 +931,14 @@ export const userRouter = router({
 
       const account = await prisma.user.create({
         data: {
-          name: input.name,
+          name: toUpperDisplay(input.name),
           email: input.email.toLowerCase(),
           password: input.password,
           emailScheduleAccount: input.emailScheduleAccount.toLowerCase(),
           passwordScheduleAccount: input.passwordScheduleAccount,
-          group: input.group,
+          group: toUpperDisplay(input.group || input.name),
           role: Role.CLIENT,
-          address: input.address,
+          address: toUpperDisplay(input.address),
           budget: parseFloat(input.budget),
           budgetPaid,
           cpf: input.cpf,

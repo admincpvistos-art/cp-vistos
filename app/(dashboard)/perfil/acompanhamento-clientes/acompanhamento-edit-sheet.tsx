@@ -168,7 +168,7 @@ export function AcompanhamentoEditSheet({
 
   const { mutate: archiveRow, isPending: isArchiving } =
     trpc.acompanhamentoRouter.archiveRow.useMutation({
-      onSuccess: (result) => {
+      onSuccess: async (result) => {
         const tabs = result.labels.join(", ");
         toast.success(
           result.labels.length > 1
@@ -176,6 +176,18 @@ export function AcompanhamentoEditSheet({
             : `Cliente arquivado em Arquivados — ${tabs}`,
         );
         setArchiveConfirmOpen(false);
+
+        // Atualiza a lista imediatamente (remove o cliente do Acompanhamento).
+        utils.acompanhamentoRouter.getClientesSheet.setData(undefined, (current) => {
+          if (!current?.rows || !rowId) {
+            return current;
+          }
+          return {
+            ...current,
+            rows: current.rows.filter((row) => row.id !== rowId),
+          };
+        });
+
         window.setTimeout(() => {
           document.body.style.pointerEvents = "";
           document.body.style.overflow = "";
@@ -347,34 +359,10 @@ export function AcompanhamentoEditSheet({
     if (!rowId) {
       return;
     }
+    // Payload mínimo: o servidor resolve serviços do cadastro se a lista vier vazia.
     archiveRow({
       id: rowId,
       services: selectedServices,
-      name: form.name,
-      barcode: form.barcode,
-      barcodeIssued: form.barcodeIssued,
-      casv: form.casv,
-      interview: form.interview,
-      meeting: form.meeting,
-      shipping: form.shipping,
-      tipo: form.tipo,
-      resp: form.resp,
-      tax: form.tax,
-      ds160: form.ds160,
-      alimto: form.alimto,
-      obs: form.obs,
-      dob: form.dob,
-      passport: form.passport,
-      account: form.account,
-      email: form.email,
-      phone: form.phone,
-      entryDate: form.entryDate,
-      group: form.group,
-      pagto: form.pagto,
-      status: form.status,
-      barcodeDone: form.barcodeDone,
-      sheetComment: form.sheetComment,
-      accountFields: form.accountFields,
     });
   }
 

@@ -29,6 +29,7 @@ import {
   ARQUIVADOS_CATEGORY_LABEL,
   SERVICE_TO_ARQUIVADOS_CATEGORY,
 } from "@/lib/arquivados-categories";
+import { toUpperDisplay, toUpperDisplayOrEmpty } from "@/lib/uppercase";
 
 /** Sync em lote pausado — importação Excel desligada; cadastro manual nas planilhas. */
 export const OPERATIONS_SYNC_PAUSED = true;
@@ -1189,8 +1190,12 @@ export async function listAcompanhamentoSheet() {
   await restoreAcompanhamentoFromExcel();
   const sync = await getOperationsSyncStatus();
 
+  // Ativos = source imported E sem archivedAt (cinto e suspensório).
   const records = await prisma.acompanhamentoClient.findMany({
-    where: { source: ACOMPANHAMENTO_ACTIVE_SOURCE },
+    where: {
+      source: ACOMPANHAMENTO_ACTIVE_SOURCE,
+      archivedAt: null,
+    },
     include: {
       user: {
         include: {
@@ -1394,43 +1399,67 @@ async function applyAccountFields(userId: string, input: AcompanhamentoAccountFi
 }
 
 export async function createAcompanhamentoRecord(input: AcompanhamentoCreateInput) {
-  const name = input.name.trim();
+  const name = toUpperDisplay(input.name);
   if (!name) {
     throw new Error("Informe o nome do cliente");
   }
 
-  const services = normalizeServices(input.services);
+  const normalizedInput: AcompanhamentoCreateInput = {
+    ...input,
+    name,
+    barcode: toUpperDisplayOrEmpty(input.barcode),
+    resp: toUpperDisplayOrEmpty(input.resp),
+    alimto: toUpperDisplayOrEmpty(input.alimto),
+    obs: toUpperDisplayOrEmpty(input.obs),
+    passport: toUpperDisplayOrEmpty(input.passport),
+    account: toUpperDisplayOrEmpty(input.account),
+    group: toUpperDisplayOrEmpty(input.group),
+    pagto: toUpperDisplayOrEmpty(input.pagto),
+    shipping: toUpperDisplayOrEmpty(input.shipping),
+    tipo: toUpperDisplayOrEmpty(input.tipo),
+    tax: toUpperDisplayOrEmpty(input.tax),
+    ds160: toUpperDisplayOrEmpty(input.ds160),
+    sheetComment: toUpperDisplayOrEmpty(input.sheetComment),
+    accountFields: input.accountFields
+      ? {
+          ...input.accountFields,
+          address: toUpperDisplayOrEmpty(input.accountFields.address),
+        }
+      : input.accountFields,
+  };
+
+  const services = normalizeServices(normalizedInput.services);
   const derivedStatus = deriveAcompanhamentoSheetStatus({
-    barcode: input.barcode,
-    barcodeDone: input.barcodeDone,
-    interview: input.interview,
-    statusHint: input.status,
+    barcode: normalizedInput.barcode,
+    barcodeDone: normalizedInput.barcodeDone,
+    interview: normalizedInput.interview,
+    statusHint: normalizedInput.status,
   });
-  const cells = cellsFromInput({ ...input, name, status: derivedStatus });
+  const cells = cellsFromInput({ ...normalizedInput, name, status: derivedStatus });
 
   const record = await prisma.acompanhamentoClient.create({
     data: {
       source: "imported",
       cells,
-      resp: input.resp || null,
-      alimto: input.alimto || null,
-      obs: input.obs || null,
-      pagto: input.pagto || null,
+      resp: normalizedInput.resp || null,
+      alimto: normalizedInput.alimto || null,
+      obs: normalizedInput.obs || null,
+      pagto: normalizedInput.pagto || null,
       statusLabel: derivedStatus,
-      extraDate: input.barcodeDone ? "done" : null,
-      sheetComment: input.sheetComment.trim() || null,
+      extraDate: normalizedInput.barcodeDone ? "done" : null,
+      sheetComment: normalizedInput.sheetComment.trim() || null,
       services,
     },
   });
 
   const updated = await updateAcompanhamentoRecord({
     id: record.id,
-    ...input,
+    ...normalizedInput,
     name,
     services,
     status: derivedStatus,
   });
-  if (input.group?.trim()) {
+  if (normalizedInput.group?.trim()) {
     await linkImportedFamilyGroups();
   }
   return updated;
@@ -1497,13 +1526,29 @@ export async function updateAcompanhamentoRecord(input: AcompanhamentoUpdateInpu
     ? normalizedInput
     : resolveServices(fresh.services, fresh.user);
 
+  const name = toUpperDisplay(input.name.trim() || fresh.user.name);
+  const group = toUpperDisplayOrEmpty(input.group);
+  const phone = input.phone.trim();
+  const account = toUpperDisplayOrEmpty(input.account);
+  const barcode = toUpperDisplayOrEmpty(input.barcode);
+  const resp = toUpperDisplayOrEmpty(input.resp);
+  const alimto = toUpperDisplayOrEmpty(input.alimto);
+  const obs = toUpperDisplayOrEmpty(input.obs);
+  const passport = toUpperDisplayOrEmpty(input.passport);
+  const pagto = toUpperDisplayOrEmpty(input.pagto);
+  const shipping = toUpperDisplayOrEmpty(input.shipping);
+  const tipo = toUpperDisplayOrEmpty(input.tipo);
+  const tax = toUpperDisplayOrEmpty(input.tax);
+  const ds160 = toUpperDisplayOrEmpty(input.ds160);
+  const sheetComment = toUpperDisplayOrEmpty(input.sheetComment);
+
   await prisma.user.update({
     where: { id: fresh.user.id },
     data: {
-      name: input.name.trim() || fresh.user.name,
-      group: input.group.trim() || null,
-      cel: input.phone.trim() || null,
-      emailScheduleAccount: input.account.trim() || null,
+      name,
+      group: group || null,
+      cel: phone || null,
+      emailScheduleAccount: account || null,
       wantsAmericanVisa:
         services.includes("primeiro_visto") || services.includes("renovacao"),
       wantsPassport: services.includes("passaporte"),
@@ -1529,21 +1574,21 @@ export async function updateAcompanhamentoRecord(input: AcompanhamentoUpdateInpu
   }
 
   const profileData = {
-    name: input.name.trim() || fresh.user.name,
-    DSNumber: input.barcode.trim(),
+    name,
+    DSNumber: barcode,
     issuanceDate: issued,
     expireDate: expire,
     DSValid: expire ?? expireDateFromIssued(new Date()),
     CASVDate: parseSheetDate(input.casv),
     interviewDate: parseSheetDate(input.interview),
     meetingDate: parseSheetDate(input.meeting),
-    shipping: parseShipping(input.shipping),
-    visaType: parseVisaType(input.tipo),
-    statusDS: parseStatusDs(input.ds160),
+    shipping: parseShipping(shipping),
+    visaType: parseVisaType(tipo),
+    statusDS: parseStatusDs(ds160),
     paymentStatus: taxPaid ? PaymentStatus.paid : PaymentStatus.pending,
     taxDate: taxPaid ? issued ?? new Date() : null,
     birthDate: parseSheetDate(input.dob),
-    passport: input.passport.trim() || null,
+    passport: passport || null,
     entryDate: parseSheetDate(input.entryDate),
     status: Status.active,
   };
@@ -1556,30 +1601,55 @@ export async function updateAcompanhamentoRecord(input: AcompanhamentoUpdateInpu
   }
 
   const derivedStatus = deriveAcompanhamentoSheetStatus({
-    barcode: input.barcode,
+    barcode,
     barcodeDone: input.barcodeDone,
     interview: input.interview,
     statusHint: input.status,
   });
-  const nextCells = cellsFromInput({ ...input, status: derivedStatus });
+  const nextCells = cellsFromInput({
+    ...input,
+    name,
+    barcode,
+    resp,
+    alimto,
+    obs,
+    passport,
+    account,
+    group,
+    pagto,
+    shipping,
+    tipo,
+    tax,
+    ds160,
+    sheetComment,
+    phone,
+    status: derivedStatus,
+  });
 
   await prisma.acompanhamentoClient.update({
     where: { id: input.id },
     data: {
       cells: nextCells,
-      resp: input.resp || null,
-      alimto: input.alimto || null,
-      obs: input.obs || null,
-      pagto: input.pagto || null,
+      resp: resp || null,
+      alimto: alimto || null,
+      obs: obs || null,
+      pagto: pagto || null,
       statusLabel: derivedStatus,
       extraDate: input.barcodeDone ? "done" : null,
-      sheetComment: input.sheetComment.trim() || null,
+      sheetComment: sheetComment || null,
       services,
     },
   });
 
   if (input.accountFields) {
-    await applyAccountFields(fresh.user.id, input.accountFields, input.name.trim() || fresh.user.name);
+    await applyAccountFields(
+      fresh.user.id,
+      {
+        ...input.accountFields,
+        address: toUpperDisplayOrEmpty(input.accountFields.address),
+      },
+      name,
+    );
   }
 
   return getAcompanhamentoRecord(input.id);
@@ -1628,43 +1698,73 @@ export async function archiveAcompanhamentoClient(
 
   for (const service of services) {
     const category = SERVICE_TO_ARQUIVADOS_CATEGORY[service];
-    await prisma.arquivadoClient.create({
-      data: {
-        category,
-        name: row.name,
-        barcode: row.barcode,
-        barcodeIssued: row.barcodeIssued,
-        barcodeDone: row.barcodeDone,
-        casv: row.casv,
-        interview: row.interview,
-        meeting: row.meeting || row.shipping,
-        tax: row.tax,
-        dob: row.dob,
-        passport: row.passport,
-        email: row.email,
-        entryDate: row.entryDate,
-        group: row.group,
-        status: row.status,
-        sheetComment: row.sheetComment,
-        services: [service],
+
+    // Evita duplicar se o admin confirmar duas vezes rápido.
+    const already = await prisma.arquivadoClient.findFirst({
+      where: {
         sourceAcompanhamentoId: id,
-        sourceUserId: row.userId,
+        category,
       },
+      select: { id: true },
     });
+    if (!already) {
+      await prisma.arquivadoClient.create({
+        data: {
+          category,
+          name: row.name,
+          barcode: row.barcode,
+          barcodeIssued: row.barcodeIssued,
+          barcodeDone: row.barcodeDone,
+          casv: row.casv,
+          interview: row.interview,
+          meeting: row.meeting || row.shipping,
+          tax: row.tax,
+          dob: row.dob,
+          passport: row.passport,
+          email: row.email,
+          entryDate: row.entryDate,
+          group: row.group,
+          status: row.status,
+          sheetComment: row.sheetComment,
+          services: [service],
+          sourceAcompanhamentoId: id,
+          sourceUserId: row.userId,
+        },
+      });
+    }
     categories.push(category);
   }
 
+  const archivedAt = new Date();
   await prisma.acompanhamentoClient.update({
     where: { id },
     data: {
       services,
-      archivedAt: new Date(),
+      archivedAt,
       source: ACOMPANHAMENTO_ARCHIVED_SOURCE,
+      statusLabel: "FINALIZADO",
     },
   });
 
+  // Confirma persistência — se falhar, não mente para a UI.
+  const verify = await prisma.acompanhamentoClient.findUnique({
+    where: { id },
+    select: { source: true, archivedAt: true },
+  });
+  if (
+    !verify ||
+    verify.source !== ACOMPANHAMENTO_ARCHIVED_SOURCE ||
+    !verify.archivedAt
+  ) {
+    throw new Error("Arquivamento não foi gravado. Tente novamente.");
+  }
+
   return {
     categories,
-    labels: categories.map((category) => ARQUIVADOS_CATEGORY_LABEL[category as keyof typeof ARQUIVADOS_CATEGORY_LABEL] ?? category),
+    labels: categories.map(
+      (category) =>
+        ARQUIVADOS_CATEGORY_LABEL[category as keyof typeof ARQUIVADOS_CATEGORY_LABEL] ??
+        category,
+    ),
   };
 }

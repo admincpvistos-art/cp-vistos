@@ -12,6 +12,31 @@ const MAX_BYTES = 16 * 1024 * 1024;
 /** Limite seguro para gravar no Mongo (doc ≤ 16MB; base64 cresce ~33%). */
 const MAX_INLINE_BYTES = 8 * 1024 * 1024;
 
+const WORD_MIME = new Set([
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+]);
+
+function isAllowedInterviewFile(file: File) {
+  const name = file.name.toLowerCase();
+  const type = (file.type || "").toLowerCase();
+
+  if (type.startsWith("image/") || type === "application/pdf") {
+    return true;
+  }
+  if (WORD_MIME.has(type)) {
+    return true;
+  }
+  // Windows às vezes envia MIME vazio — valida pela extensão.
+  return /\.(pdf|png|jpe?g|gif|webp|bmp|doc|docx)$/i.test(name);
+}
+
+function assertAllowedInterviewFile(file: File) {
+  if (!isAllowedInterviewFile(file)) {
+    throw new Error("Formato não permitido. Use PDF, Word (.doc/.docx) ou imagem.");
+  }
+}
+
 async function storeInline(file: File, clientUserId: string, uploadedById: string) {
   if (file.size > MAX_INLINE_BYTES) {
     throw new Error(
@@ -105,6 +130,15 @@ export async function POST(req: Request) {
 
     if (file.size > MAX_BYTES) {
       return NextResponse.json({ error: "Arquivo maior que 16 MB" }, { status: 400 });
+    }
+
+    try {
+      assertAllowedInterviewFile(file);
+    } catch (error) {
+      return NextResponse.json(
+        { error: error instanceof Error ? error.message : "Arquivo inválido" },
+        { status: 400 },
+      );
     }
 
     const client = await prisma.user.findFirst({

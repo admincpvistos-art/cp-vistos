@@ -167,31 +167,6 @@ export const acompanhamentoRouter = router({
       z.object({
         id: z.string().min(1),
         services: z.array(z.enum(serviceValues)).optional().default([]),
-        name: z.string().optional(),
-        barcode: z.string().optional(),
-        barcodeIssued: z.string().optional(),
-        casv: z.string().optional(),
-        interview: z.string().optional(),
-        meeting: z.string().optional(),
-        shipping: z.string().optional(),
-        tipo: z.string().optional(),
-        resp: z.string().optional(),
-        tax: z.string().optional(),
-        ds160: z.string().optional(),
-        alimto: z.string().optional(),
-        obs: z.string().optional(),
-        dob: z.string().optional(),
-        passport: z.string().optional(),
-        account: z.string().optional(),
-        email: z.string().optional(),
-        phone: z.string().optional(),
-        entryDate: z.string().optional(),
-        group: z.string().optional(),
-        pagto: z.string().optional(),
-        status: z.string().optional(),
-        barcodeDone: z.boolean().optional(),
-        sheetComment: z.string().optional(),
-        accountFields: accountFieldsSchema.nullable().optional(),
       }),
     )
     .mutation(async ({ input, ctx }) => {
@@ -203,54 +178,18 @@ export const acompanhamentoRouter = router({
       }
 
       try {
-        const existingRow = await getAcompanhamentoRecord(input.id);
-        const servicesToArchive =
-          input.services?.length > 0
-            ? input.services
-            : (existingRow?.services ?? []);
-
-        // Salva o que der — falha de update não impede arquivar se já há serviços.
-        if (input.name != null) {
-          try {
-            await updateAcompanhamentoRecord({
-              id: input.id,
-              name: input.name,
-              barcode: input.barcode ?? "",
-              barcodeIssued: input.barcodeIssued ?? "",
-              casv: input.casv ?? "",
-              interview: input.interview ?? "",
-              meeting: input.meeting ?? "",
-              shipping: input.shipping ?? "",
-              tipo: input.tipo ?? "",
-              resp: input.resp ?? "",
-              tax: input.tax ?? "",
-              ds160: input.ds160 ?? "",
-              alimto: input.alimto ?? "",
-              obs: input.obs ?? "",
-              dob: input.dob ?? "",
-              passport: input.passport ?? "",
-              account: input.account ?? "",
-              email: input.email ?? "",
-              phone: input.phone ?? "",
-              entryDate: input.entryDate ?? "",
-              group: input.group ?? "",
-              pagto: input.pagto ?? "",
-              status: input.status ?? "",
-              barcodeDone: input.barcodeDone ?? false,
-              sheetComment: input.sheetComment ?? "",
-              services: servicesToArchive,
-              accountFields: input.accountFields,
-            });
-          } catch (saveError) {
-            console.warn("[acompanhamento] save antes de arquivar falhou", saveError);
-          }
-        }
-
-        const result = await archiveAcompanhamentoClient(input.id, servicesToArchive);
+        // Arquiva direto — sem update completo antes (evitava gravar / mascarava falhas).
+        const result = await archiveAcompanhamentoClient(input.id, input.services ?? []);
         if (!result) {
           throw new TRPCError({
             code: "NOT_FOUND",
             message: "Cliente não encontrado no cadastro",
+          });
+        }
+        if (!result.categories.length) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Nenhuma aba de Arquivados foi definida para este cliente",
           });
         }
         return result;
