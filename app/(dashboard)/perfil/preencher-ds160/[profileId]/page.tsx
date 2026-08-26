@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { CeacBusy, CeacFormPanel } from "@/components/ds160/ceac-form-panel";
 import { CeacOfficialPane } from "@/components/ds160/ceac-official-pane";
 import { type CeacPageId } from "@/lib/ds160-ceac";
-import { closeCeacWindow, openCeacInBrowserWindow } from "@/lib/ds160-ceac-window";
+import { closeCeacWindow, openCeacInBrowserWindow, startCeacAlwaysOnTop } from "@/lib/ds160-ceac-window";
 import { trpc } from "@/lib/trpc-client";
 import { cn } from "@/lib/utils";
 
@@ -51,8 +51,9 @@ export default function PreencherDs160Page({
   }, [profileId]);
 
   useEffect(() => {
-    // Não fecha o CEAC ao redimensionar — só ao sair da página.
+    const stopPin = startCeacAlwaysOnTop();
     return () => {
+      stopPin();
       closeCeacWindow();
     };
   }, []);

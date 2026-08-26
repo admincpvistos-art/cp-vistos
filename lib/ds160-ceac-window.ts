@@ -106,19 +106,76 @@ export function openCeacInBrowserWindow() {
 }
 
 export function focusCeacWindow() {
-  for (const ms of [0, 120, 350]) {
-    window.setTimeout(() => {
-      window.postMessage({ type: "CP_VISTOS_FOCUS_CEAC" }, "*");
-      const target = getCeacWindow();
-      if (!target || target.closed) {
-        return;
-      }
-      try {
-        target.focus();
-      } catch {
-        // ignore
-      }
-    }, ms);
+  window.postMessage({ type: "CP_VISTOS_FOCUS_CEAC" }, "*");
+  const target = getCeacWindow();
+  if (target && !target.closed) {
+    try {
+      target.focus();
+    } catch {
+      // ignore
+    }
+  }
+}
+
+let alwaysOnTopStop: (() => void) | null = null;
+
+/**
+ * Mantém a janela do CEAC na frente enquanto o DS-160 estiver aberto.
+ * Qualquer clique/tecla na página do CP Vistos reativa o raise.
+ */
+export function startCeacAlwaysOnTop() {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+  if (alwaysOnTopStop) {
+    return alwaysOnTopStop;
+  }
+
+  let lastRaise = 0;
+  function raise(force = false) {
+    const now = Date.now();
+    if (!force && now - lastRaise < 80) {
+      return;
+    }
+    lastRaise = now;
+    window.postMessage({ type: "CP_VISTOS_PIN_CEAC" }, "*");
+    focusCeacWindow();
+  }
+
+  function onInteract() {
+    raise(true);
+  }
+
+  window.postMessage({ type: "CP_VISTOS_PIN_CEAC" }, "*");
+  raise(true);
+
+  // Capture: qualquer clique/toque na página (Copiar, Transferir, campos, etc.).
+  document.addEventListener("pointerdown", onInteract, true);
+  document.addEventListener("mousedown", onInteract, true);
+  document.addEventListener("keydown", onInteract, true);
+  window.addEventListener("focus", onInteract);
+
+  const keepAlive = window.setInterval(() => {
+    window.postMessage({ type: "CP_VISTOS_PIN_CEAC" }, "*");
+    raise(false);
+  }, 400);
+
+  alwaysOnTopStop = () => {
+    document.removeEventListener("pointerdown", onInteract, true);
+    document.removeEventListener("mousedown", onInteract, true);
+    document.removeEventListener("keydown", onInteract, true);
+    window.removeEventListener("focus", onInteract);
+    window.clearInterval(keepAlive);
+    window.postMessage({ type: "CP_VISTOS_UNPIN_CEAC" }, "*");
+    alwaysOnTopStop = null;
+  };
+
+  return alwaysOnTopStop;
+}
+
+export function stopCeacAlwaysOnTop() {
+  if (alwaysOnTopStop) {
+    alwaysOnTopStop();
   }
 }
 

@@ -1,9 +1,9 @@
 /**
  * Ponte entre o painel DS-160 (cpvistos) e o service worker da extensão.
- * v1.4.1 — handshake via DOM attribute + postMessage, respostas sempre garantidas.
+ * v1.5.0 — pin à frente + Transferir robusto (aliases, frames, retry).
  */
 
-const EXT_VERSION = "1.4.1";
+const EXT_VERSION = "1.5.0";
 
 function markReady() {
   try {
@@ -67,12 +67,24 @@ window.addEventListener("message", (event) => {
       top: data.top,
       width: data.width,
       height: data.height,
-    }).catch(() => {});
+    })
+      .then(() => sendRuntime({ type: "pin-ceac-window", ms: 60000 }))
+      .catch(() => {});
     return;
   }
 
   if (data.type === "CP_VISTOS_FOCUS_CEAC") {
     void sendRuntime({ type: "focus-ceac-window" }).catch(() => {});
+    return;
+  }
+
+  if (data.type === "CP_VISTOS_PIN_CEAC") {
+    void sendRuntime({ type: "pin-ceac-window", ms: 15000 }).catch(() => {});
+    return;
+  }
+
+  if (data.type === "CP_VISTOS_UNPIN_CEAC") {
+    void sendRuntime({ type: "unpin-ceac-window" }).catch(() => {});
     return;
   }
 
@@ -107,7 +119,7 @@ window.addEventListener("message", (event) => {
           details: response?.details || [],
           error: response?.error || null,
         });
-        // Reafirma o foco no CEAC após a transferência.
+        void sendRuntime({ type: "pin-ceac-window", ms: 15000 }).catch(() => {});
         void sendRuntime({ type: "focus-ceac-window" }).catch(() => {});
       })
       .catch((error) => {

@@ -41,16 +41,19 @@ export function CeacFormPanel({
       return;
     }
 
-    await navigator.clipboard.writeText(value);
+    // O clique em Copiar traz o CP Vistos à frente e esconde o CEAC —
+    // pede o raise imediatamente e de novo após o clipboard/re-render.
+    focusCeacWindow();
+    try {
+      await navigator.clipboard.writeText(value);
+    } finally {
+      focusCeacWindow();
+    }
     setCopiedId(id);
-    setActiveId(id);
     const index = fields.findIndex((field) => field.id === id);
     const next = fields[index + 1];
-    if (next) {
-      setActiveId(next.id);
-    }
-    // Foco no CEAC só depois de copiar — evita tempestade de focus.
-    focusCeacWindow();
+    setActiveId(next?.id ?? id);
+    requestAnimationFrame(() => focusCeacWindow());
   }
 
   async function transferPage() {
@@ -69,7 +72,7 @@ export function CeacFormPanel({
 
     if (!isCeacExtensionPresent()) {
       toast.error(
-        "Extensão CP Vistos não detectada. Atualize para v1.4.1, recarregue a extensão e dê Ctrl+F5.",
+        "Extensão CP Vistos não detectada. Atualize para v1.5.0, recarregue a extensão e dê Ctrl+F5.",
       );
       return;
     }

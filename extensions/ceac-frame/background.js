@@ -62,29 +62,105 @@ async function findCeacTab() {
   return all.find((tab) => isCeacUrl(tab.url || "")) || null;
 }
 
-async function bringCeacToFront(tab) {
+let focusGeneration = 0;
+let pinUntil = 0;
+let pinTimer = null;
+
+async function raiseWindow(windowId, tabId) {
+  // Não força state:"normal" a cada raise — evita flicker / “sumir”.
+  await chrome.windows.update(windowId, {
+    focused: true,
+    drawAttention: true,
+  });
+  if (tabId != null) {
+    await chrome.tabs.update(tabId, { active: true });
+  }
+}
+
+async function bringCeacToFront(tab, options = {}) {
   if (!tab?.windowId) {
     return { ok: false };
   }
 
   await rememberWindowId(tab.windowId);
 
-  try {
-    await chrome.windows.update(tab.windowId, {
-      focused: true,
-      drawAttention: true,
-      state: "normal",
-    });
-    if (tab.id != null) {
-      await chrome.tabs.update(tab.id, { active: true });
+  const persistent = Boolean(options.persistent);
+  if (!persistent) {
+    try {
+      await raiseWindow(tab.windowId, tab.id);
+      return { ok: true };
+    } catch {
+      return { ok: false };
     }
-    // Segunda tentativa curta — o clique no CP Vistos tira o foco.
-    await new Promise((resolve) => setTimeout(resolve, 80));
-    await chrome.windows.update(tab.windowId, { focused: true, drawAttention: true });
-    return { ok: true };
+  }
+
+  const generation = ++focusGeneration;
+  const schedule = [0, 40, 100, 220, 400, 700];
+  let ok = false;
+  let lastAt = 0;
+  try {
+    for (const at of schedule) {
+      if (generation !== focusGeneration) {
+        return { ok };
+      }
+      const wait = Math.max(0, at - lastAt);
+      lastAt = at;
+      if (wait) {
+        await new Promise((resolve) => setTimeout(resolve, wait));
+      }
+      if (generation !== focusGeneration) {
+        return { ok };
+      }
+      try {
+        await raiseWindow(tab.windowId, tab.id);
+        ok = true;
+      } catch {
+        // tenta de novo
+      }
+    }
+    return { ok };
   } catch {
     return { ok: false };
   }
+}
+
+async function pinTick() {
+  if (Date.now() > pinUntil) {
+    if (pinTimer != null) {
+      clearInterval(pinTimer);
+      pinTimer = null;
+    }
+    return;
+  }
+  const tab = await findCeacTab();
+  if (!tab?.windowId) {
+    return;
+  }
+  try {
+    await raiseWindow(tab.windowId, tab.id);
+  } catch {
+    // ignore
+  }
+}
+
+function pinCeacWindow(ms = 8000) {
+  pinUntil = Math.max(pinUntil, Date.now() + ms);
+  if (pinTimer == null) {
+    pinTimer = setInterval(() => {
+      void pinTick();
+    }, 350);
+  }
+  void pinTick();
+  return { ok: true };
+}
+
+function unpinCeacWindow() {
+  pinUntil = 0;
+  if (pinTimer != null) {
+    clearInterval(pinTimer);
+    pinTimer = null;
+  }
+  return { ok: true };
 }
 
 async function openCeacWindow(bounds) {
@@ -103,12 +179,12 @@ async function openCeacWindow(bounds) {
   if (ceacWindowId != null) {
     try {
       await chrome.windows.update(ceacWindowId, applyBounds);
-      // Chrome às vezes ignora o primeiro resize — reaplica.
       await chrome.windows.update(ceacWindowId, applyBounds);
       const tab = await findCeacTab();
       if (tab) {
-        await bringCeacToFront(tab);
+        await bringCeacToFront(tab, { persistent: true });
       }
+      pinCeacWindow(60000);
       return { ok: true };
     } catch {
       await rememberWindowId(null);
@@ -117,7 +193,7 @@ async function openCeacWindow(bounds) {
 
   const created = await chrome.windows.create({
     url: CEAC_URL,
-    type: "normal",
+    type: "popup",
     focused: true,
     left: bounds.left,
     top: bounds.top,
@@ -133,18 +209,23 @@ async function openCeacWindow(bounds) {
       // ignore
     }
   }
+  pinCeacWindow(60000);
   return { ok: Boolean(ceacWindowId) };
 }
 
 async function focusCeacWindow() {
+  pinCeacWindow(8000);
   const tab = await findCeacTab();
   if (!tab) {
     return { ok: false };
   }
-  return bringCeacToFront(tab);
+  // Raise rápido + reforço curto (clique no CP Vistos compete).
+  await bringCeacToFront(tab, { persistent: true });
+  return { ok: true };
 }
 
 async function closeCeacWindow() {
+  unpinCeacWindow();
   await loadStoredWindowId();
   if (ceacWindowId == null) {
     const tab = await findCeacTab();
@@ -174,6 +255,9 @@ async function openCeacPanel(windowId) {
 }
 
 async function transferToCeac(payload) {
+  // Pausa o pin para o fill não perder eventos de input no CEAC.
+  unpinCeacWindow();
+
   let tab = await findCeacTab();
 
   if (!tab?.id) {
@@ -193,46 +277,112 @@ async function transferToCeac(payload) {
   }
 
   if (!tab?.id) {
+    pinCeacWindow(60000);
     return {
       ok: false,
       error: "Abra o CEAC primeiro (botão Abrir CEAC neste quadro).",
     };
   }
 
-  await bringCeacToFront(tab);
+  await bringCeacToFront(tab, { persistent: true });
+  await new Promise((resolve) => setTimeout(resolve, 120));
 
-  try {
-    const response = await chrome.tabs.sendMessage(tab.id, {
-      type: "fill-ceac-fields",
-      fields: payload.fields || [],
-      pageId: payload.pageId || "",
-      pageTitle: payload.pageTitle || "",
-    });
-    await bringCeacToFront(tab);
-    return response || { ok: false, error: "Sem resposta do CEAC" };
-  } catch (error) {
+  const message = {
+    type: "fill-ceac-fields",
+    fields: payload.fields || [],
+    pageId: payload.pageId || "",
+    pageTitle: payload.pageTitle || "",
+  };
+
+  async function injectAllFrames() {
     try {
       await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
+        target: { tabId: tab.id, allFrames: true },
         files: ["content-ceac.js"],
       });
-      const response = await chrome.tabs.sendMessage(tab.id, {
-        type: "fill-ceac-fields",
-        fields: payload.fields || [],
-        pageId: payload.pageId || "",
-        pageTitle: payload.pageTitle || "",
+    } catch {
+      // frame cross-origin / já injetado
+    }
+  }
+
+  async function pickBestFrameId() {
+    try {
+      const probes = await chrome.scripting.executeScript({
+        target: { tabId: tab.id, allFrames: true },
+        func: () => {
+          const nodes = document.querySelectorAll(
+            "input:not([type=hidden]):not([type=submit]):not([type=button]), select, textarea",
+          );
+          let visible = 0;
+          for (const el of nodes) {
+            const style = window.getComputedStyle(el);
+            if (style.display === "none" || style.visibility === "hidden") {
+              continue;
+            }
+            const rect = el.getBoundingClientRect();
+            if (rect.width > 0 && rect.height > 0) {
+              visible += 1;
+            }
+          }
+          return { count: visible, href: location.href };
+        },
       });
-      await bringCeacToFront(tab);
-      return response || { ok: false, error: "Sem resposta do CEAC" };
-    } catch (injectError) {
+      let best = null;
+      for (const probe of probes || []) {
+        const count = Number(probe?.result?.count) || 0;
+        if (!best || count > best.count) {
+          best = { frameId: probe.frameId, count };
+        }
+      }
+      return best?.count > 0 ? best.frameId : 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  async function sendFill(frameId) {
+    return chrome.tabs.sendMessage(tab.id, message, { frameId });
+  }
+
+  try {
+    await injectAllFrames();
+    const frameId = await pickBestFrameId();
+    let response = null;
+    try {
+      response = await sendFill(frameId);
+    } catch {
+      await injectAllFrames();
+      await new Promise((resolve) => setTimeout(resolve, 80));
+      response = await sendFill(frameId);
+    }
+
+    pinCeacWindow(60000);
+    await bringCeacToFront(tab, { persistent: true });
+
+    if (!response) {
+      return { ok: false, error: "Sem resposta do CEAC" };
+    }
+    if (!response.ok && response.filled === 0) {
       return {
         ok: false,
+        filled: 0,
+        skipped: response.skipped || 0,
         error:
-          injectError instanceof Error
-            ? injectError.message
-            : "Não foi possível injetar no CEAC. Recarregue a aba do CEAC e tente de novo.",
+          response.error ||
+          "Nenhum campo correspondeu a esta tela do CEAC. Confira se está na página certa e tente de novo.",
       };
     }
+    return response;
+  } catch (error) {
+    pinCeacWindow(60000);
+    await bringCeacToFront(tab, { persistent: true });
+    return {
+      ok: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Não foi possível transferir para o CEAC. Recarregue a aba do CEAC e a extensão.",
+    };
   }
 }
 
@@ -252,6 +402,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "focus-ceac-window") {
     focusCeacWindow().then(sendResponse, () => sendResponse({ ok: false }));
     return true;
+  }
+
+  if (message?.type === "pin-ceac-window") {
+    sendResponse(pinCeacWindow(Number(message.ms) || 15000));
+    return false;
+  }
+
+  if (message?.type === "unpin-ceac-window") {
+    sendResponse(unpinCeacWindow());
+    return false;
   }
 
   if (message?.type === "close-ceac-window") {

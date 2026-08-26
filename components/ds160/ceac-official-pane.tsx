@@ -95,7 +95,7 @@ export function CeacOfficialPane() {
 
       <p className="max-w-md text-xs text-[#6b7280]">
         Extensão {extVersion ? `v${extVersion}` : "não detectada"}
-        {extVersion && extVersion !== "1.4.1" ? " (atualize para 1.4.1)" : ""}
+        {extVersion && extVersion !== "1.5.0" ? " (atualize para 1.5.0)" : ""}
         : use <strong> Transferir para o CEAC</strong> no painel esquerdo após abrir
         o site oficial. Captcha e avanço de páginas continuam manuais. Sem a extensão, use
         Copiar + Ctrl+V.
