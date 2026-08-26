@@ -385,6 +385,10 @@ export async function seedImportedAcompanhamentoRows() {
   for (const row of arquivados) {
     fingerprints.add(`${(row.name ?? "").trim()}|${(row.barcode ?? "").trim()}`.toLowerCase());
     fingerprints.add(`${(row.name ?? "").trim()}|`.toLowerCase());
+    const groupKey = archiveNameGroupKey(row.name ?? "", row.group ?? "");
+    if (groupKey) {
+      fingerprints.add(groupKey);
+    }
   }
 
   for (const cells of rows) {
@@ -1389,9 +1393,37 @@ export async function listAcompanhamentoSheet() {
     orderBy: { createdAt: "desc" },
   });
 
+  const arquivadoSnapshots = await prisma.arquivadoClient.findMany({
+    select: { sourceUserId: true, name: true, group: true },
+    take: 5000,
+  });
+  const archivedUserIds = new Set(
+    arquivadoSnapshots
+      .map((row) => row.sourceUserId)
+      .filter((userId): userId is string => Boolean(userId)),
+  );
+  const archivedNameGroups = new Set(
+    arquivadoSnapshots
+      .map((row) => archiveNameGroupKey(row.name, row.group))
+      .filter(Boolean),
+  );
+
+  const visibleRecords = records.filter((record) => {
+    if (record.userId && archivedUserIds.has(record.userId)) {
+      return false;
+    }
+    const name = record.user?.name || cell(record.cells, COL.name);
+    const group = record.user?.group || cell(record.cells, COL.group);
+    const key = archiveNameGroupKey(name, group);
+    if (key && archivedNameGroups.has(key)) {
+      return false;
+    }
+    return true;
+  });
+
   const payerIds = Array.from(
     new Set(
-      records
+      visibleRecords
         .map((record) => record.user?.payerUserId)
         .filter((id): id is string => Boolean(id)),
     ),
@@ -1404,7 +1436,7 @@ export async function listAcompanhamentoSheet() {
     : [];
   const payerEmailById = new Map(payers.map((payer) => [payer.id, payer.email]));
 
-  const mapped = records.map((record) =>
+  const mapped = visibleRecords.map((record) =>
     buildRecord({
       ...record,
       user: record.user
@@ -1911,7 +1943,30 @@ export async function archiveAcompanhamentoClient(
       select: { id: true },
     });
 
-    if (!already) {
+    if (already) {
+      await prisma.arquivadoClient.update({
+        where: { id: already.id },
+        data: {
+          name: row.name,
+          barcode: row.barcode,
+          barcodeIssued: row.barcodeIssued,
+          barcodeDone: row.barcodeDone,
+          casv: row.casv,
+          interview: row.interview,
+          meeting: row.meeting || row.shipping,
+          tax: row.tax,
+          dob: row.dob,
+          passport: row.passport,
+          email: row.email,
+          entryDate: row.entryDate,
+          group: row.group,
+          status: row.status || "FINALIZADO",
+          sheetComment: row.sheetComment,
+          services: [service],
+          sourceUserId: row.userId,
+        },
+      });
+    } else {
       try {
         await prisma.arquivadoClient.create({
           data: {
@@ -1952,15 +2007,32 @@ export async function archiveAcompanhamentoClient(
   }
 
   const idsToRemove = new Set<string>([id]);
+  const nameGroupKey = archiveNameGroupKey(row.name, row.group);
 
   // Irmãs do mesmo userId (relação @unique costuma ser 1, mas cobre legado).
   if (existing.userId) {
     const byUser = await prisma.acompanhamentoClient.findMany({
-      where: { userId: existing.userId },
+      where: { userId: existing.userId, source: ACOMPANHAMENTO_ACTIVE_SOURCE },
       select: { id: true },
     });
     for (const sibling of byUser) {
       idsToRemove.add(sibling.id);
+    }
+  }
+
+  // Mesmo nome + grupo (ex.: Olivia Gomes no grupo Jefferson Ribeiro) — duplicatas Excel.
+  if (nameGroupKey) {
+    const activeInGroup = await prisma.acompanhamentoClient.findMany({
+      where: { source: ACOMPANHAMENTO_ACTIVE_SOURCE },
+      include: { user: { select: { name: true, group: true } } },
+      take: 1000,
+    });
+    for (const sibling of activeInGroup) {
+      const siblingName = sibling.user?.name || cell(sibling.cells, COL.name);
+      const siblingGroup = sibling.user?.group || cell(sibling.cells, COL.group);
+      if (archiveNameGroupKey(siblingName, siblingGroup) === nameGroupKey) {
+        idsToRemove.add(sibling.id);
+      }
     }
   }
 
@@ -1969,6 +2041,7 @@ export async function archiveAcompanhamentoClient(
   if (targetFp) {
     const activeSiblings = await prisma.acompanhamentoClient.findMany({
       where: {
+        source: ACOMPANHAMENTO_ACTIVE_SOURCE,
         NOT: { id: { in: Array.from(idsToRemove) } },
       },
       include: {
@@ -1991,33 +2064,42 @@ export async function archiveAcompanhamentoClient(
   }
 
   const removeIds = Array.from(idsToRemove);
+  const archivedAt = new Date();
+  const archiveData = {
+    services,
+    archivedAt,
+    source: ACOMPANHAMENTO_ARCHIVED_SOURCE,
+    statusLabel: "FINALIZADO",
+  };
 
-  // Soft-mark residual (caso delete falhe parcialmente) + delete definitivo.
+  // Soft-archive (não apaga) — evita recriação pelo financeiro/sync e mantém histórico.
   await prisma.acompanhamentoClient.updateMany({
     where: { id: { in: removeIds } },
-    data: {
-      services,
-      archivedAt: new Date(),
-      source: ACOMPANHAMENTO_ARCHIVED_SOURCE,
-      statusLabel: "FINALIZADO",
-    },
+    data: archiveData,
   });
 
-  await prisma.acompanhamentoClient.deleteMany({
-    where: { id: { in: removeIds } },
+  const stillActive = await prisma.acompanhamentoClient.findMany({
+    where: { source: ACOMPANHAMENTO_ACTIVE_SOURCE },
+    include: { user: { select: { name: true, group: true } } },
+    take: 1200,
   });
-
-  const stillOnSheet = await prisma.acompanhamentoClient.count({
-    where: {
-      OR: [
-        { id: { in: removeIds } },
-        ...(existing.userId
-          ? [{ userId: existing.userId, source: ACOMPANHAMENTO_ACTIVE_SOURCE }]
-          : []),
-      ],
-    },
+  const leaked = stillActive.filter((active) => {
+    if (removeIds.includes(active.id)) {
+      return true;
+    }
+    if (row.userId && active.userId === row.userId) {
+      return true;
+    }
+    if (nameGroupKey) {
+      const activeName = active.user?.name || cell(active.cells, COL.name);
+      const activeGroup = active.user?.group || cell(active.cells, COL.group);
+      if (archiveNameGroupKey(activeName, activeGroup) === nameGroupKey) {
+        return true;
+      }
+    }
+    return false;
   });
-  if (stillOnSheet > 0) {
+  if (leaked.length) {
     throw new Error(
       "Cliente ainda aparece no Acompanhamento após arquivar. Tente novamente.",
     );
@@ -2068,6 +2150,25 @@ export async function archiveAcompanhamentoClient(
     removedIds: removeIds,
     arquivadoCount: inArquivados,
   };
+}
+
+export function archiveNameGroupKey(name: string, group: string) {
+  const n = name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "")
+    .trim();
+  const g = group
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "")
+    .trim();
+  if (!n || !g) {
+    return "";
+  }
+  return `${n}|${g}`;
 }
 
 function archiveFingerprint(name: string, email: string, barcode: string) {

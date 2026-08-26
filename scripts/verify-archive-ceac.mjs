@@ -97,9 +97,9 @@ const archiveFn = fs.readFileSync(
   path.join(root, "server/acompanhamento-sheet.ts"),
   "utf8",
 );
-assert.ok(archiveFn.includes("deleteMany"));
-assert.ok(archiveFn.includes("arquivadoClient.create"));
-assert.ok(archiveFn.includes("Cliente ainda aparece no Acompanhamento"));
+assert.ok(archiveFn.includes("archiveNameGroupKey(row.name, row.group)"));
+assert.ok(archiveFn.includes("visibleRecords"));
+assert.ok(archiveFn.includes("ACOMPANHAMENTO_ARCHIVED_SOURCE"));
 
 const editSheet = fs.readFileSync(
   path.join(
@@ -108,7 +108,7 @@ const editSheet = fs.readFileSync(
   ),
   "utf8",
 );
-assert.ok(editSheet.includes("updateBeforeArchiveAsync"));
+assert.ok(editSheet.includes("removedIds"));
 assert.ok(editSheet.includes("Marque ao menos um serviço antes de arquivar"));
 
 console.log("OK verify-archive-ceac: mapeamento, transferência simulada e CEAC v1.5.2");

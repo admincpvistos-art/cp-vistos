@@ -5,12 +5,56 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 
 /**
- * Logo branca no header — avião percorre o arco do C (topo do globo → fim do C)
- * e para na posição do logo, como no desenho original.
+ * Recorte do avião da PNG original (mesma escala da logo no header).
+ * Não desenhamos ícone novo — só exibimos os pixels do avião que já existem.
  */
-const C_ARC_PATH =
-  "M 50 20 C 22 18, 8 34, 10 50 C 12 64, 30 72, 49 66";
+function LogoPlaneCrop() {
+  return (
+    <>
+      {/* mobile / default */}
+      <div
+        aria-hidden
+        className="pointer-events-none overflow-hidden sm:hidden"
+        style={{ width: "0.78rem", height: "0.78rem" }}
+      >
+        <div
+          className="relative h-[4.4rem] w-[5rem] shrink-0"
+          style={{ marginLeft: "-1.52rem", marginTop: "-2.18rem" }}
+        >
+          <Image
+            src="/assets/images/cp-vistos-logo.png"
+            alt=""
+            fill
+            className="object-contain object-center"
+          />
+        </div>
+      </div>
 
+      {/* sm+ */}
+      <div
+        aria-hidden
+        className="pointer-events-none hidden overflow-hidden sm:block"
+        style={{ width: "0.88rem", height: "0.88rem" }}
+      >
+        <div
+          className="relative h-[5rem] w-[5.75rem] shrink-0"
+          style={{ marginLeft: "-1.74rem", marginTop: "-2.48rem" }}
+        >
+          <Image
+            src="/assets/images/cp-vistos-logo.png"
+            alt=""
+            fill
+            className="object-contain object-center"
+          />
+        </div>
+      </div>
+    </>
+  );
+}
+
+/**
+ * Logo branca no header: fundo azul, maior, avião original animado na curva do C.
+ */
 export function HeaderBrandLogo() {
   return (
     <Link
@@ -18,7 +62,11 @@ export function HeaderBrandLogo() {
       className="relative z-40 flex items-center"
       aria-label="CP Vistos — início"
     >
-      <div className="relative flex items-center justify-center rounded-2xl bg-[#0B3A6E] px-2.5 py-1.5 shadow-[0_10px_28px_rgba(11,58,110,0.32)] ring-1 ring-white/20 sm:px-3.5 sm:py-2">
+      <motion.div
+        className="relative flex items-center justify-center rounded-2xl bg-[#0B3A6E] px-2.5 py-1.5 shadow-[0_10px_28px_rgba(11,58,110,0.32)] ring-1 ring-white/20 sm:px-3.5 sm:py-2"
+        animate={{ y: [0, -2, 0] }}
+        transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+      >
         <div className="relative h-[4.4rem] w-[5rem] sm:h-[5rem] sm:w-[5.75rem]">
           <Image
             src="/assets/images/cp-vistos-logo.png"
@@ -28,52 +76,29 @@ export function HeaderBrandLogo() {
             className="object-contain object-center"
           />
 
-          {/* Esconde o avião estático da PNG — o animado assume no fim do arco */}
+          {/* Cobre só o avião estático — o recorte animado fica por cima */}
           <span
             aria-hidden
-            className="pointer-events-none absolute left-[33%] top-[53%] h-[13%] w-[17%] rounded-full bg-[#0B3A6E]"
+            className="pointer-events-none absolute left-[33%] top-[50%] z-[1] h-[11%] w-[11%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#0B3A6E]"
           />
 
-          <svg
+          {/*
+            Órbita suave na curva interna do C.
+            O recorte usa a mesma PNG; só a janela se move.
+          */}
+          <motion.div
             aria-hidden
-            viewBox="0 0 100 100"
-            className="pointer-events-none absolute inset-0 h-full w-full overflow-visible"
+            className="pointer-events-none absolute left-[18%] top-[22%] z-[2] h-[52%] w-[48%]"
+            style={{ transformOrigin: "44% 62%" }}
+            animate={{ rotate: [24, 148, 24] }}
+            transition={{ duration: 7.2, repeat: Infinity, ease: "easeInOut" }}
           >
-            {/* guia do arco (só debug visual — opacidade zero em produção) */}
-            <path
-              d={C_ARC_PATH}
-              fill="none"
-              stroke="transparent"
-              strokeWidth="0.5"
-            />
-
-            <motion.g
-              style={{
-                offsetPath: `path('${C_ARC_PATH}')`,
-                offsetRotate: "auto",
-                offsetAnchor: "10px 7px",
-              }}
-              initial={{ offsetDistance: "0%" }}
-              animate={{
-                offsetDistance: ["0%", "100%", "100%", "0%"],
-              }}
-              transition={{
-                duration: 9,
-                times: [0, 0.32, 0.78, 0.79],
-                ease: "easeInOut",
-                repeat: Infinity,
-              }}
-            >
-              <g transform="translate(-10,-7)">
-                <path
-                  d="M2 7 L14 4.5 L17 7 L14 9.5 Z M5.5 6.5 L0 2.5 L1.5 6.5 L0 10.5 Z"
-                  fill="#ffffff"
-                />
-              </g>
-            </motion.g>
-          </svg>
+            <div className="absolute left-[80%] top-[84%] -translate-x-1/2 -translate-y-1/2">
+              <LogoPlaneCrop />
+            </div>
+          </motion.div>
         </div>
-      </div>
+      </motion.div>
     </Link>
   );
 }

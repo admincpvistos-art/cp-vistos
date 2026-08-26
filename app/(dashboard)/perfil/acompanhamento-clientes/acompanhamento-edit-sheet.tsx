@@ -168,8 +168,6 @@ export function AcompanhamentoEditSheet({
 
   const { mutateAsync: archiveRowAsync, isPending: isArchiving } =
     trpc.acompanhamentoRouter.archiveRow.useMutation();
-  const { mutateAsync: updateBeforeArchiveAsync } =
-    trpc.acompanhamentoRouter.updateRow.useMutation();
 
   async function confirmArchive() {
     if (!rowId) {
@@ -187,17 +185,6 @@ export function AcompanhamentoEditSheet({
       return;
     }
     try {
-      // Garante serviços (e demais campos) gravados antes da transferência.
-      try {
-        await updateBeforeArchiveAsync({
-          id: rowId,
-          ...payload,
-          services: servicesToArchive,
-        });
-      } catch {
-        // Se o save falhar (validação leve), o archive ainda resolve serviços no servidor.
-      }
-
       const result = await archiveRowAsync({
         id: rowId,
         services: servicesToArchive,
@@ -214,9 +201,27 @@ export function AcompanhamentoEditSheet({
         if (!current?.rows || !rowId) {
           return current;
         }
+        const archivedName = form.name.trim() || data?.row?.name || "";
+        const archivedGroup = form.group.trim() || data?.row?.group || "";
         return {
           ...current,
-          rows: current.rows.filter((row) => row.id !== rowId),
+          rows: current.rows.filter((row) => {
+            if (result.removedIds?.includes(row.id)) {
+              return false;
+            }
+            if (row.id === rowId) {
+              return false;
+            }
+            if (
+              archivedName &&
+              archivedGroup &&
+              row.name.trim().toLowerCase() === archivedName.toLowerCase() &&
+              row.group.trim().toLowerCase() === archivedGroup.toLowerCase()
+            ) {
+              return false;
+            }
+            return true;
+          }),
         };
       });
 

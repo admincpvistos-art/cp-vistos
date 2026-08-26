@@ -5,6 +5,7 @@ import prisma from "@/lib/prisma";
 import {
   ACOMPANHAMENTO_HEADERS,
   OPERATIONS_SYNC_PAUSED,
+  archiveNameGroupKey,
   servicesFromSignupFlags,
 } from "@/server/acompanhamento-sheet";
 
@@ -56,13 +57,23 @@ async function ensureAcompanhamentoRowForUser(user: {
     return;
   }
 
-  // Já foi para Arquivados — não devolver ao Acompanhamento (mesmo após delete da linha).
+  const nameGroupKey = archiveNameGroupKey(user.name, user.group ?? "");
+
+  // Já foi para Arquivados — não devolver ao Acompanhamento.
   const archived = await prisma.arquivadoClient.findFirst({
     where: {
       OR: [
         { sourceUserId: user.id },
         ...(user.email?.trim()
           ? [{ email: user.email.trim(), name: user.name }]
+          : []),
+        ...(nameGroupKey
+          ? [
+              {
+                name: user.name,
+                group: user.group ?? "",
+              },
+            ]
           : []),
       ],
     },
