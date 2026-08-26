@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   BudgetPaid,
   Category,
+  NotificationStatusForm,
   PaymentStatus,
   Role,
   StatusDS,
@@ -1032,6 +1033,17 @@ export const clientRouter = router({
         data: {
           statusForm: StatusForm.filled,
           formLocked: true,
+        },
+      });
+
+      await prisma.notification.create({
+        data: {
+          statusForm: NotificationStatusForm.filled,
+          profile: {
+            connect: {
+              id: opts.input.profileId,
+            },
+          },
         },
       });
 

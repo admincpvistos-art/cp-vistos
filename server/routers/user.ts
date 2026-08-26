@@ -4,6 +4,7 @@ import {
   BudgetPaid,
   Category,
   ETAStatus,
+  NotificationStatusForm,
   PaymentStatus,
   Role,
   ScheduleAccount,
@@ -159,6 +160,8 @@ async function createActiveProfile(params: {
       },
     });
   }
+
+  return profile;
 }
 
 async function createClientWithFinanceAndProfile(params: {
@@ -226,22 +229,38 @@ async function createClientWithFinanceAndProfile(params: {
 
   // Passaporte entra imediatamente em Clientes Ativos.
   // Visto americano entra como prospect até o cliente enviar o formulário.
+  const createdProfiles = [];
+
   if (params.wantsPassport) {
-    await createActiveProfile({
-      userId: account.id,
-      name,
-      cpf: params.cpf,
-      category: Category.passport,
-    });
+    createdProfiles.push(
+      await createActiveProfile({
+        userId: account.id,
+        name,
+        cpf: params.cpf,
+        category: Category.passport,
+      }),
+    );
   }
 
   if (params.wantsAmericanVisa) {
-    await createActiveProfile({
-      userId: account.id,
-      name,
-      cpf: params.cpf,
-      category: Category.american_visa,
-      status: Status.prospect,
+    createdProfiles.push(
+      await createActiveProfile({
+        userId: account.id,
+        name,
+        cpf: params.cpf,
+        category: Category.american_visa,
+        status: Status.prospect,
+      }),
+    );
+  }
+
+  // Uma notificação compartilhada por perfil criado (cadastro).
+  for (const profile of createdProfiles) {
+    await prisma.notification.create({
+      data: {
+        statusForm: NotificationStatusForm.registered,
+        profile: { connect: { id: profile.id } },
+      },
     });
   }
 

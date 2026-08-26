@@ -1,15 +1,20 @@
 {
   "manifest_version": 3,
   "name": "CP Vistos — CEAC Transferir DS-160",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Abre o CEAC ao lado do DS-160 e transfere os dados da página atual para os campos oficiais. Uso interno CP Vistos.",
   "permissions": ["sidePanel", "windows", "tabs", "scripting", "storage"],
   "host_permissions": [
     "https://www.cpvistos.com.br/*",
     "https://cpvistos.com.br/*",
+    "https://*.cpvistos.com.br/*",
     "https://*.vercel.app/*",
     "http://localhost/*",
+    "http://localhost:*/*",
     "http://127.0.0.1/*",
+    "http://127.0.0.1:*/*",
+    "https://localhost:*/*",
+    "https://127.0.0.1:*/*",
     "https://ceac.state.gov/*",
     "https://*.state.gov/*"
   ],
@@ -27,9 +32,14 @@
       "matches": [
         "https://www.cpvistos.com.br/*",
         "https://cpvistos.com.br/*",
+        "https://*.cpvistos.com.br/*",
         "https://*.vercel.app/*",
+        "http://localhost/*",
         "http://localhost:*/*",
-        "http://127.0.0.1:*/*"
+        "http://127.0.0.1/*",
+        "http://127.0.0.1:*/*",
+        "https://localhost:*/*",
+        "https://127.0.0.1:*/*"
       ],
       "js": ["content-admin.js"],
       "run_at": "document_start"

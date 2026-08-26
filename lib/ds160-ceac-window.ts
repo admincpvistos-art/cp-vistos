@@ -17,10 +17,14 @@ export function openCeacOverElement(
   options?: { useExtension?: boolean },
 ) {
   const rect = element.getBoundingClientRect();
+  const chromeTop =
+    window.outerHeight > window.innerHeight
+      ? Math.round(window.outerHeight - window.innerHeight)
+      : 0;
   const left = Math.max(0, Math.round(window.screenX + rect.left));
-  const top = Math.max(0, Math.round(window.screenY + rect.top));
-  const width = Math.max(480, Math.round(rect.width));
-  const height = Math.max(520, Math.round(rect.height));
+  const top = Math.max(0, Math.round(window.screenY + chromeTop + rect.top));
+  const width = Math.max(420, Math.round(rect.width));
+  const height = Math.max(400, Math.round(rect.height));
 
   const useExtension = Boolean(options?.useExtension || isCeacExtensionPresent());
 
@@ -71,6 +75,24 @@ export function closeCeacWindow() {
 
 /** Abre o CEAC em janela do navegador (popup), não em nova aba. */
 export function openCeacInBrowserWindow() {
+  if (isCeacExtensionPresent()) {
+    const width = Math.min(1280, Math.round((window.screen.availWidth || 1280) * 0.9));
+    const height = Math.min(900, Math.round((window.screen.availHeight || 900) * 0.9));
+    const left = Math.max(0, Math.round(((window.screen.availWidth || width) - width) / 2));
+    const top = Math.max(0, Math.round(((window.screen.availHeight || height) - height) / 2));
+    window.postMessage(
+      {
+        type: "CP_VISTOS_OPEN_CEAC_WINDOW",
+        left,
+        top,
+        width,
+        height,
+      },
+      "*",
+    );
+    return null;
+  }
+
   const width = Math.min(1280, Math.round((window.screen.availWidth || 1280) * 0.9));
   const height = Math.min(900, Math.round((window.screen.availHeight || 900) * 0.9));
   const left = Math.max(0, Math.round(((window.screen.availWidth || width) - width) / 2));
@@ -79,13 +101,12 @@ export function openCeacInBrowserWindow() {
   return window.open(
     CEAC_URL,
     "cp-vistos-ceac-external",
-    `popup=yes,width=${width},height=${height},left=${left},top=${top},noopener,noreferrer`,
+    `popup=yes,width=${width},height=${height},left=${left},top=${top}`,
   );
 }
 
 export function focusCeacWindow() {
-  // Várias tentativas: o clique no CP Vistos tira o foco da janela do CEAC.
-  for (const ms of [0, 50, 150, 400, 800]) {
+  for (const ms of [0, 120, 350]) {
     window.setTimeout(() => {
       window.postMessage({ type: "CP_VISTOS_FOCUS_CEAC" }, "*");
       const target = getCeacWindow();
@@ -95,7 +116,7 @@ export function focusCeacWindow() {
       try {
         target.focus();
       } catch {
-        // o browser pode bloquear focus em outra janela
+        // ignore
       }
     }, ms);
   }
@@ -106,6 +127,13 @@ export function isCeacExtensionPresent() {
     return false;
   }
   return Boolean(document.documentElement.getAttribute("data-cp-vistos-ceac-ext"));
+}
+
+export function getCeacExtensionVersion() {
+  if (typeof document === "undefined") {
+    return null;
+  }
+  return document.documentElement.getAttribute("data-cp-vistos-ceac-ext");
 }
 
 export type CeacTransferField = {
@@ -127,6 +155,16 @@ export function transferFieldsToCeac(input: {
   pageId: string;
   pageTitle: string;
 }): Promise<CeacTransferResult> {
+  if (!isCeacExtensionPresent()) {
+    return Promise.resolve({
+      ok: false,
+      filled: 0,
+      skipped: 0,
+      error:
+        "Extensão CP Vistos não detectada. Instale/atualize extensions/ceac-frame, recarregue a extensão e dê Ctrl+F5 nesta página.",
+    });
+  }
+
   const requestId = `ceac-transfer-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
   return new Promise((resolve) => {
@@ -137,9 +175,9 @@ export function transferFieldsToCeac(input: {
         filled: 0,
         skipped: 0,
         error:
-          "Extensão não respondeu. Instale/recarregue a extensão CP Vistos e abra o CEAC.",
+          "Extensão não respondeu. Recarregue a extensão CP Vistos (chrome://extensions) e esta página, e abra o CEAC.",
       });
-    }, 12000);
+    }, 15000);
 
     function onMessage(event: MessageEvent) {
       if (event.source !== window) {

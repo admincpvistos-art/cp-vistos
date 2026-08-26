@@ -166,44 +166,50 @@ export function AcompanhamentoEditSheet({
       },
     });
 
-  const { mutate: archiveRow, isPending: isArchiving } =
-    trpc.acompanhamentoRouter.archiveRow.useMutation({
-      onSuccess: async (result) => {
-        const tabs = result.labels.join(", ");
-        toast.success(
-          result.labels.length > 1
-            ? `Cliente arquivado em: ${tabs}`
-            : `Cliente arquivado em Arquivados — ${tabs}`,
-        );
-        setArchiveConfirmOpen(false);
+  const { mutateAsync: archiveRowAsync, isPending: isArchiving } =
+    trpc.acompanhamentoRouter.archiveRow.useMutation();
 
-        // Atualiza a lista imediatamente (remove o cliente do Acompanhamento).
-        utils.acompanhamentoRouter.getClientesSheet.setData(undefined, (current) => {
-          if (!current?.rows || !rowId) {
-            return current;
-          }
-          return {
-            ...current,
-            rows: current.rows.filter((row) => row.id !== rowId),
-          };
-        });
+  async function confirmArchive() {
+    if (!rowId) {
+      return;
+    }
+    try {
+      const result = await archiveRowAsync({
+        id: rowId,
+        services: selectedServices,
+      });
+      const tabs = result.labels.join(", ");
+      toast.success(
+        result.labels.length > 1
+          ? `Cliente arquivado em: ${tabs}`
+          : `Cliente arquivado em Arquivados — ${tabs}`,
+      );
+      setArchiveConfirmOpen(false);
 
-        window.setTimeout(() => {
-          document.body.style.pointerEvents = "";
-          document.body.style.overflow = "";
-          onClose();
-          void utils.acompanhamentoRouter.getClientesSheet.invalidate();
-          void utils.arquivadosRouter.getSheet.invalidate();
-        }, 50);
-      },
-      onError: (error) => {
-        setArchiveConfirmOpen(false);
-        window.setTimeout(() => {
-          document.body.style.pointerEvents = "";
-        }, 50);
-        toast.error(error.message || "Não foi possível arquivar");
-      },
-    });
+      utils.acompanhamentoRouter.getClientesSheet.setData(undefined, (current) => {
+        if (!current?.rows || !rowId) {
+          return current;
+        }
+        return {
+          ...current,
+          rows: current.rows.filter((row) => row.id !== rowId),
+        };
+      });
+
+      document.body.style.pointerEvents = "";
+      document.body.style.overflow = "";
+      onClose();
+      await utils.acompanhamentoRouter.getClientesSheet.invalidate();
+      await utils.arquivadosRouter.getSheet.invalidate();
+      await utils.acompanhamentoRouter.getClientesSheet.refetch();
+    } catch (error) {
+      setArchiveConfirmOpen(false);
+      document.body.style.pointerEvents = "";
+      toast.error(
+        error instanceof Error ? error.message : "Não foi possível arquivar",
+      );
+    }
+  }
 
   function releaseBodyLock() {
     document.body.style.pointerEvents = "";
@@ -351,19 +357,7 @@ export function AcompanhamentoEditSheet({
     if (!validateBeforeSave()) {
       return;
     }
-    // Serviços vazios na UI: o servidor ainda deriva de wants*/perfis do cadastro.
     setArchiveConfirmOpen(true);
-  }
-
-  function confirmArchive() {
-    if (!rowId) {
-      return;
-    }
-    // Payload mínimo: o servidor resolve serviços do cadastro se a lista vier vazia.
-    archiveRow({
-      id: rowId,
-      services: selectedServices,
-    });
   }
 
   return (
@@ -697,7 +691,7 @@ export function AcompanhamentoEditSheet({
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             onClick={(event) => {
               event.preventDefault();
-              confirmArchive();
+              void confirmArchive();
             }}
           >
             {isArchiving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Arquivar"}

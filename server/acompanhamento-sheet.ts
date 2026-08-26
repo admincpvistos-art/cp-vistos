@@ -358,10 +358,23 @@ export async function seedImportedAcompanhamentoRows() {
         in: [ACOMPANHAMENTO_ACTIVE_SOURCE, ACOMPANHAMENTO_ARCHIVED_SOURCE, "imported", "archived"],
       },
     },
-    select: { cells: true },
+    select: {
+      cells: true,
+      source: true,
+      user: { select: { name: true } },
+    },
   });
   const fingerprints = new Set(
-    existing.map((row) => `${cell(row.cells, COL.name)}|${cell(row.cells, COL.barcode)}`.toLowerCase()),
+    existing.flatMap((row) => {
+      const keys = [
+        `${cell(row.cells, COL.name)}|${cell(row.cells, COL.barcode)}`.toLowerCase(),
+      ];
+      if (row.user?.name) {
+        keys.push(`${row.user.name.trim()}|${cell(row.cells, COL.barcode)}`.toLowerCase());
+        keys.push(`${row.user.name.trim()}|`.toLowerCase());
+      }
+      return keys;
+    }),
   );
 
   for (const cells of rows) {
@@ -749,7 +762,10 @@ export async function getOperationsSyncStatus() {
  * isso quebrava o botão Arquivar (eles voltavam na próxima listagem).
  */
 export async function restoreAcompanhamentoFromExcel() {
-  await seedImportedAcompanhamentoRows();
+  // Com sync pausado, não reimportar Excel: recriar linhas desfazia o Arquivar.
+  if (!OPERATIONS_SYNC_PAUSED) {
+    await seedImportedAcompanhamentoRows();
+  }
   await purgeCadastroAcompanhamentoRows();
   return getOperationsSyncStatus();
 }

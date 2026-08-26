@@ -1,9 +1,9 @@
 /**
  * Ponte entre o painel DS-160 (cpvistos) e o service worker da extensão.
- * v1.4.0 — handshake via DOM attribute + postMessage, respostas sempre garantidas.
+ * v1.4.1 — handshake via DOM attribute + postMessage, respostas sempre garantidas.
  */
 
-const EXT_VERSION = "1.4.0";
+const EXT_VERSION = "1.4.1";
 
 function markReady() {
   try {

@@ -12,7 +12,7 @@ import {
   type CeacPageId,
   type Ds160Packet,
 } from "@/lib/ds160-ceac";
-import { focusCeacWindow, transferFieldsToCeac } from "@/lib/ds160-ceac-window";
+import { focusCeacWindow, isCeacExtensionPresent, transferFieldsToCeac } from "@/lib/ds160-ceac-window";
 
 interface Props {
   packet: Ds160Packet;
@@ -41,7 +41,6 @@ export function CeacFormPanel({
       return;
     }
 
-    focusCeacWindow();
     await navigator.clipboard.writeText(value);
     setCopiedId(id);
     setActiveId(id);
@@ -50,6 +49,7 @@ export function CeacFormPanel({
     if (next) {
       setActiveId(next.id);
     }
+    // Foco no CEAC só depois de copiar — evita tempestade de focus.
     focusCeacWindow();
   }
 
@@ -67,7 +67,13 @@ export function CeacFormPanel({
       return;
     }
 
-    focusCeacWindow();
+    if (!isCeacExtensionPresent()) {
+      toast.error(
+        "Extensão CP Vistos não detectada. Atualize para v1.4.1, recarregue a extensão e dê Ctrl+F5.",
+      );
+      return;
+    }
+
     setTransferring(true);
     try {
       const pageTitle = CEAC_PAGES.find((page) => page.id === pageId)?.title ?? pageId;
@@ -79,7 +85,6 @@ export function CeacFormPanel({
 
       if (!result.ok) {
         toast.error(result.error || "Não foi possível transferir para o CEAC");
-        focusCeacWindow();
         return;
       }
 
@@ -90,7 +95,6 @@ export function CeacFormPanel({
       focusCeacWindow();
     } finally {
       setTransferring(false);
-      focusCeacWindow();
     }
   }
 

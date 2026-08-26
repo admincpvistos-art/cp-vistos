@@ -80,6 +80,7 @@ enum NotificationStatusForm {
   filling
   filled
   updated
+  registered
 }
 
 enum Category {

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 
-import { adminProcedure, acompanhamentoStaffProcedure, router } from "../trpc";
+import { acompanhamentoStaffProcedure, router } from "../trpc";
 import prisma from "@/lib/prisma";
 import {
   archiveAcompanhamentoClient,
@@ -162,7 +162,7 @@ export const acompanhamentoRouter = router({
         });
       }
     }),
-  archiveRow: adminProcedure
+  archiveRow: acompanhamentoStaffProcedure
     .input(
       z.object({
         id: z.string().min(1),
@@ -170,7 +170,7 @@ export const acompanhamentoRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      if (!canArchiveAcompanhamento(ctx.admin.role, ctx.admin.email)) {
+      if (!canArchiveAcompanhamento(ctx.staff.role, ctx.staff.email)) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "Sua conta não pode arquivar clientes",
@@ -178,7 +178,6 @@ export const acompanhamentoRouter = router({
       }
 
       try {
-        // Arquiva direto — sem update completo antes (evitava gravar / mascarava falhas).
         const result = await archiveAcompanhamentoClient(input.id, input.services ?? []);
         if (!result) {
           throw new TRPCError({
@@ -197,6 +196,7 @@ export const acompanhamentoRouter = router({
         if (error instanceof TRPCError) {
           throw error;
         }
+        console.error("[acompanhamento] archiveRow failed", error);
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: error instanceof Error ? error.message : "Não foi possível arquivar o cliente",

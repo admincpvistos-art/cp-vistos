@@ -4,6 +4,7 @@ import { Bell, CheckCheck, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistance } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -16,8 +17,57 @@ import { trpc } from "@/lib/trpc-client";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
+type NotificationItem = {
+  id: string;
+  statusForm: string;
+  createdAt: Date | string;
+  profile: { name: string };
+};
+
+function notificationLabel(statusForm: string, profileName: string) {
+  if (statusForm === "registered") {
+    return (
+      <>
+        <strong className="text-sm text-foreground font-semibold">{profileName}</strong>{" "}
+        se cadastrou no sistema
+      </>
+    );
+  }
+  if (statusForm === "filling") {
+    return (
+      <>
+        <strong className="text-sm text-foreground font-semibold">{profileName}</strong>{" "}
+        começou a{" "}
+        <strong className="text-sm text-foreground font-semibold">preencher</strong>{" "}
+        o formulário
+      </>
+    );
+  }
+  if (statusForm === "filled") {
+    return (
+      <>
+        <strong className="text-sm text-foreground font-semibold">{`${profileName} preencheu`}</strong>{" "}
+        o formulário
+      </>
+    );
+  }
+  if (statusForm === "updated") {
+    return (
+      <>
+        <strong className="text-sm text-foreground font-semibold">{`${profileName} atualizou`}</strong>{" "}
+        o formulário
+      </>
+    );
+  }
+  return (
+    <strong className="text-sm text-foreground font-semibold">{profileName}</strong>
+  );
+}
+
 export function NotificationHeaderMenu({ onBrand = false }: { onBrand?: boolean }) {
   const { openModal } = useNotificationStore();
+  const markedOpenRef = useRef(false);
+  const [openList, setOpenList] = useState<NotificationItem[] | null>(null);
   const { data: me } = trpc.userRouter.getMe.useQuery(undefined, {
     retry: false,
   });
@@ -26,7 +76,7 @@ export function NotificationHeaderMenu({ onBrand = false }: { onBrand?: boolean 
 
   const utils = trpc.useUtils();
 
-  const { data } = trpc.notificationRouter.getNotifications.useQuery(
+  const { data, isLoading } = trpc.notificationRouter.getNotifications.useQuery(
     undefined,
     { enabled: canLoadNotifications },
   );
@@ -45,9 +95,11 @@ export function NotificationHeaderMenu({ onBrand = false }: { onBrand?: boolean 
   const { mutate: viewAllNotifications, isPending: isPendingAll } =
     trpc.notificationRouter.updateViewAllNotifications.useMutation({
       onSuccess: () => {
-        utils.notificationRouter.getNotifications.invalidate();
         utils.notificationRouter.getAllNotifications.invalidate();
-        toast.success("Todas as notificações foram marcadas como lidas");
+        // Não invalida getNotifications enquanto o popover está aberto (lista some).
+        if (!markedOpenRef.current) {
+          utils.notificationRouter.getNotifications.invalidate();
+        }
       },
       onError: (error) => {
         console.error(error);
@@ -55,10 +107,26 @@ export function NotificationHeaderMenu({ onBrand = false }: { onBrand?: boolean 
       },
     });
 
-  const hasUnread = (data?.notifications.length ?? 0) > 0;
+  const liveUnread = data?.notifications ?? [];
+  const hasUnread = liveUnread.length > 0;
+  const listNotifications = openList ?? liveUnread;
+
+  function onOpenChange(open: boolean) {
+    if (open) {
+      setOpenList(liveUnread);
+      if (liveUnread.length > 0 && !markedOpenRef.current) {
+        markedOpenRef.current = true;
+        viewAllNotifications();
+      }
+      return;
+    }
+    markedOpenRef.current = false;
+    setOpenList(null);
+    void utils.notificationRouter.getNotifications.invalidate();
+  }
 
   return (
-    <Popover>
+    <Popover onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -73,7 +141,7 @@ export function NotificationHeaderMenu({ onBrand = false }: { onBrand?: boolean 
 
           {hasUnread && (
             <div className="size-6 flex items-center justify-center bg-rose-500 rounded-full absolute top-0.5 right-1 text-white font-medium text-sm !leading-none">
-              {data!.notifications.length}
+              {liveUnread.length}
             </div>
           )}
         </Button>
@@ -85,7 +153,7 @@ export function NotificationHeaderMenu({ onBrand = false }: { onBrand?: boolean 
             Notificações
           </h4>
 
-          {hasUnread && (
+          {listNotifications.length > 0 && (
             <Button
               type="button"
               variant="ghost"
@@ -109,42 +177,22 @@ export function NotificationHeaderMenu({ onBrand = false }: { onBrand?: boolean 
         <div className="w-full flex flex-col gap-6">
           <ScrollArea className="w-full h-[300px]">
             <div className="w-full flex flex-col gap-2">
-              {data !== undefined ? (
-                data.notifications.length > 0 ? (
-                  data.notifications.map((notification) => (
+              {!isLoading || openList ? (
+                listNotifications.length > 0 ? (
+                  listNotifications.map((notification) => (
                     <div key={notification.id} className=" w-full h-fit">
                       <div className="relative w-full overflow-hidden group">
                         <div className="bg-primary/15 rounded-2xl p-4 w-full flex items-end justify-between gap-4">
                           <span className="text-sm text-foreground">
-                            {notification.statusForm === "filling" && (
-                              <>
-                                <strong className="text-sm text-foreground font-semibold">
-                                  {notification.profile.name}
-                                </strong>{" "}
-                                começou a{" "}
-                                <strong className="text-sm text-foreground font-semibold">
-                                  preencher
-                                </strong>{" "}
-                                o formulário
-                              </>
-                            )}
-                            {notification.statusForm === "filled" && (
-                              <>
-                                <strong className="text-sm text-foreground font-semibold">{`${notification.profile.name} preencheu`}</strong>{" "}
-                                o formulário
-                              </>
-                            )}
-                            {notification.statusForm === "updated" && (
-                              <>
-                                <strong className="text-sm text-foreground font-semibold">{`${notification.profile.name} atualizou`}</strong>{" "}
-                                o formulário
-                              </>
+                            {notificationLabel(
+                              notification.statusForm,
+                              notification.profile.name,
                             )}
                           </span>
 
                           <span className="text-[12px] text-right text-foreground/50 font-medium">
                             {formatDistance(
-                              notification.createdAt,
+                              new Date(notification.createdAt),
                               new Date(),
                               {
                                 locale: ptBR,

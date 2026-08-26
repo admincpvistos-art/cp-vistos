@@ -69,42 +69,42 @@ async function bringCeacToFront(tab) {
 
   await rememberWindowId(tab.windowId);
 
-  // Várias tentativas: o clique no CP Vistos tira o foco; o SO às vezes atrasa o raise.
-  for (const delay of [0, 60, 180, 400]) {
-    if (delay) {
-      await new Promise((resolve) => setTimeout(resolve, delay));
+  try {
+    await chrome.windows.update(tab.windowId, {
+      focused: true,
+      drawAttention: true,
+      state: "normal",
+    });
+    if (tab.id != null) {
+      await chrome.tabs.update(tab.id, { active: true });
     }
-    try {
-      await chrome.windows.update(tab.windowId, {
-        focused: true,
-        drawAttention: true,
-        state: "normal",
-      });
-      if (tab.id != null) {
-        await chrome.tabs.update(tab.id, { active: true });
-      }
-    } catch {
-      // tenta de novo
-    }
+    // Segunda tentativa curta — o clique no CP Vistos tira o foco.
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    await chrome.windows.update(tab.windowId, { focused: true, drawAttention: true });
+    return { ok: true };
+  } catch {
+    return { ok: false };
   }
-
-  return { ok: true };
 }
 
 async function openCeacWindow(bounds) {
   await loadStoredWindowId();
 
+  const applyBounds = {
+    focused: true,
+    drawAttention: true,
+    state: "normal",
+    left: bounds.left,
+    top: bounds.top,
+    width: bounds.width,
+    height: bounds.height,
+  };
+
   if (ceacWindowId != null) {
     try {
-      await chrome.windows.update(ceacWindowId, {
-        focused: true,
-        drawAttention: true,
-        state: "normal",
-        left: bounds.left,
-        top: bounds.top,
-        width: bounds.width,
-        height: bounds.height,
-      });
+      await chrome.windows.update(ceacWindowId, applyBounds);
+      // Chrome às vezes ignora o primeiro resize — reaplica.
+      await chrome.windows.update(ceacWindowId, applyBounds);
       const tab = await findCeacTab();
       if (tab) {
         await bringCeacToFront(tab);
@@ -117,7 +117,7 @@ async function openCeacWindow(bounds) {
 
   const created = await chrome.windows.create({
     url: CEAC_URL,
-    type: "popup",
+    type: "normal",
     focused: true,
     left: bounds.left,
     top: bounds.top,
@@ -126,6 +126,13 @@ async function openCeacWindow(bounds) {
   });
 
   await rememberWindowId(created?.id ?? null);
+  if (ceacWindowId != null) {
+    try {
+      await chrome.windows.update(ceacWindowId, applyBounds);
+    } catch {
+      // ignore
+    }
+  }
   return { ok: Boolean(ceacWindowId) };
 }
 

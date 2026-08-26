@@ -74,6 +74,14 @@ export function NotificationModal() {
                         className="bg-primary/15 p-4 w-full flex items-end justify-between gap-6"
                       >
                         <span className="text-lg text-left text-foreground">
+                          {notification.statusForm === "registered" && (
+                            <>
+                              <strong className="font-semibold">
+                                {notification.profile.name}
+                              </strong>{" "}
+                              se cadastrou no sistema
+                            </>
+                          )}
                           {notification.statusForm === "filling" && (
                             <>
                               <strong className="font-semibold">

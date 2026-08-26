@@ -51,10 +51,11 @@ export default function PreencherDs160Page({
   }, [profileId]);
 
   useEffect(() => {
-    if (!showCeacPane) {
+    // Não fecha o CEAC ao redimensionar — só ao sair da página.
+    return () => {
       closeCeacWindow();
-    }
-  }, [showCeacPane]);
+    };
+  }, []);
 
   if (isPending || !data) {
     return (
