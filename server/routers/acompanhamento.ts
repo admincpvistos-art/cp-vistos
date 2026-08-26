@@ -166,7 +166,7 @@ export const acompanhamentoRouter = router({
     .input(
       z.object({
         id: z.string().min(1),
-        services: z.array(z.enum(serviceValues)).min(1),
+        services: z.array(z.enum(serviceValues)).optional().default([]),
         name: z.string().optional(),
         barcode: z.string().optional(),
         barcodeIssued: z.string().optional(),
@@ -203,6 +203,12 @@ export const acompanhamentoRouter = router({
       }
 
       try {
+        const existingRow = await getAcompanhamentoRecord(input.id);
+        const servicesToArchive =
+          input.services?.length > 0
+            ? input.services
+            : (existingRow?.services ?? []);
+
         // Salva o que der — falha de update não impede arquivar se já há serviços.
         if (input.name != null) {
           try {
@@ -232,7 +238,7 @@ export const acompanhamentoRouter = router({
               status: input.status ?? "",
               barcodeDone: input.barcodeDone ?? false,
               sheetComment: input.sheetComment ?? "",
-              services: input.services,
+              services: servicesToArchive,
               accountFields: input.accountFields,
             });
           } catch (saveError) {
@@ -240,7 +246,7 @@ export const acompanhamentoRouter = router({
           }
         }
 
-        const result = await archiveAcompanhamentoClient(input.id, input.services);
+        const result = await archiveAcompanhamentoClient(input.id, servicesToArchive);
         if (!result) {
           throw new TRPCError({
             code: "NOT_FOUND",
@@ -343,9 +349,11 @@ export const acompanhamentoRouter = router({
 
       await prisma.interviewDocument.delete({ where: { id: doc.id } });
 
-      if (doc.fileKey) {
+      if (doc.fileKey && !doc.fileKey.startsWith("inline:")) {
         const { UTApi } = await import("uploadthing/server");
-        const utapi = new UTApi();
+        const utapi = new UTApi({
+          token: process.env.UPLOADTHING_TOKEN,
+        });
         utapi.deleteFiles(doc.fileKey).catch((error) => {
           console.error("[interview-doc] falha ao apagar arquivo", error);
         });

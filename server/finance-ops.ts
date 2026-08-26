@@ -5,6 +5,7 @@ import prisma from "@/lib/prisma";
 import {
   ACOMPANHAMENTO_HEADERS,
   OPERATIONS_SYNC_PAUSED,
+  servicesFromSignupFlags,
 } from "@/server/acompanhamento-sheet";
 
 export const ACERTO_DE_CAIXA_EMAIL = "ops.acerto-de-caixa@manual.cpvistos";
@@ -60,12 +61,20 @@ async function ensureAcompanhamentoRowForUser(user: {
   cells[17] = user.cel ?? "";
   cells[19] = user.group ?? "";
 
+  const fullUser = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { wantsAmericanVisa: true, wantsPassport: true },
+  });
   await prisma.acompanhamentoClient.create({
     data: {
       source: "imported",
       userId: user.id,
       cells,
       statusLabel: "ATIVO",
+      services: servicesFromSignupFlags({
+        wantsAmericanVisa: fullUser?.wantsAmericanVisa,
+        wantsPassport: fullUser?.wantsPassport,
+      }),
     },
   });
 }

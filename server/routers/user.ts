@@ -31,6 +31,7 @@ import { tripPriorityFromDate } from "@/lib/trip-priority";
 import {
   ACOMPANHAMENTO_HEADERS,
   linkImportedFamilyGroups,
+  servicesFromSignupFlags,
 } from "@/server/acompanhamento-sheet";
 import { expireDateFromIssued } from "@/lib/barcode-validity";
 import { isCadastroFrom2025, purgeCadastroClientsFrom2025 } from "@/server/client-year-ops";
@@ -208,6 +209,10 @@ async function createClientWithFinanceAndProfile(params: {
       userId: account.id,
       cells,
       statusLabel: "ATIVO",
+      services: servicesFromSignupFlags({
+        wantsAmericanVisa: params.wantsAmericanVisa,
+        wantsPassport: params.wantsPassport,
+      }),
     },
   });
 

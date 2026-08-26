@@ -233,6 +233,7 @@ export function AcompanhamentoEditSheet({
 
     setForm({
       ...rest,
+      services: Array.isArray(rest.services) ? rest.services : [],
       accountFields: accountFields ?? emptyAccountFields({
         email: rest.email,
         cel: rest.phone,
@@ -317,7 +318,13 @@ export function AcompanhamentoEditSheet({
     accountFields: form.accountFields,
   };
 
-  const selectedServices = form.services ?? [];
+  // Form first; se ainda vazio (race/cadastro antigo), usa o que a API já resolveu do cliente.
+  const selectedServices =
+    form.services?.length > 0
+      ? form.services
+      : data?.row?.services?.length
+        ? data.row.services
+        : [];
 
   const archiveDestinations = selectedServices.map((service) => ({
     service,
@@ -329,23 +336,15 @@ export function AcompanhamentoEditSheet({
     if (!rowId || creating) {
       return;
     }
-    if (!selectedServices.length) {
-      toast.error(
-        "Marque ao menos um item em Serviços contratados (1º visto, Renovação, Passaporte ou ESTA/eTA)",
-      );
-      return;
-    }
     if (!validateBeforeSave()) {
       return;
     }
+    // Serviços vazios na UI: o servidor ainda deriva de wants*/perfis do cadastro.
     setArchiveConfirmOpen(true);
   }
 
   function confirmArchive() {
-    if (!rowId || !selectedServices.length) {
-      toast.error(
-        "Marque ao menos um item em Serviços contratados (1º visto, Renovação, Passaporte ou ESTA/eTA)",
-      );
+    if (!rowId) {
       return;
     }
     archiveRow({
@@ -684,11 +683,18 @@ export function AcompanhamentoEditSheet({
                 :
               </p>
               <ul className="list-disc pl-5 space-y-1">
-                {archiveDestinations.map((item) => (
-                  <li key={item.service}>
-                    {item.serviceLabel} → Arquivados — {item.label}
+                {archiveDestinations.length ? (
+                  archiveDestinations.map((item) => (
+                    <li key={item.service}>
+                      {item.serviceLabel} → Arquivados — {item.label}
+                    </li>
+                  ))
+                ) : (
+                  <li>
+                    Destino pelas opções do cadastro (visto / passaporte) se as caixas
+                    estiverem vazias na tela.
                   </li>
-                ))}
+                )}
               </ul>
               {archiveDestinations.length > 1 ? (
                 <p>Com vários serviços, o cliente é replicado em cada aba.</p>

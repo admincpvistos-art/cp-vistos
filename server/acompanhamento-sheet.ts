@@ -1031,10 +1031,13 @@ function deriveServicesFromUser(
 
   for (const profile of user.profiles ?? []) {
     if (profile.category === Category.american_visa) {
-      services.push("primeiro_visto");
+      services.push(profile.visaType === VisaType.renovacao ? "renovacao" : "primeiro_visto");
     }
     if (profile.category === Category.passport) {
       services.push("passaporte");
+    }
+    if (profile.category === Category.e_ta) {
+      services.push("esta");
     }
   }
 
@@ -1046,6 +1049,32 @@ function deriveServicesFromUser(
   }
 
   return Array.from(new Set(services));
+}
+
+/** Preferência: serviços gravados na ficha; se vazios, deriva do cadastro/perfis. */
+function resolveServices(
+  stored: string[] | undefined | null,
+  user: (User & { profiles: Profile[]; wantsAmericanVisa?: boolean | null; wantsPassport?: boolean | null }) | null,
+): AcompanhamentoService[] {
+  const fromSheet = normalizeServices(stored);
+  if (fromSheet.length) {
+    return fromSheet;
+  }
+  return deriveServicesFromUser(user);
+}
+
+export function servicesFromSignupFlags(params: {
+  wantsAmericanVisa?: boolean | null;
+  wantsPassport?: boolean | null;
+}): AcompanhamentoService[] {
+  const services: AcompanhamentoService[] = [];
+  if (params.wantsAmericanVisa) {
+    services.push("primeiro_visto");
+  }
+  if (params.wantsPassport) {
+    services.push("passaporte");
+  }
+  return services;
 }
 
 function buildRecord(
@@ -1115,13 +1144,7 @@ function buildRecord(
       statusHint: record.statusLabel || cell(cells, COL.status),
     }),
     sheetComment: record.sheetComment ?? "",
-    services: (() => {
-      const stored = normalizeServices(record.services);
-      if (stored.length) {
-        return stored;
-      }
-      return deriveServicesFromUser(user);
-    })(),
+    services: resolveServices(record.services, user),
     registeredAt,
     accountFields: buildAccountFields(user),
   };
@@ -1233,6 +1256,16 @@ export async function getAcompanhamentoRecord(id: string) {
 
   if (!record) {
     return null;
+  }
+
+  const resolved = resolveServices(record.services, record.user);
+  // Backfill: cadastro antigo sem services[] gravado — persiste o que o cliente já escolheu.
+  if (resolved.length && normalizeServices(record.services).length === 0) {
+    await prisma.acompanhamentoClient.update({
+      where: { id: record.id },
+      data: { services: resolved },
+    });
+    return buildRecord({ ...record, services: resolved });
   }
 
   return buildRecord(record);
@@ -1459,6 +1492,11 @@ export async function updateAcompanhamentoRecord(input: AcompanhamentoUpdateInpu
   const expire = issued ? expireDateFromIssued(issued) : profile?.DSValid;
   const taxPaid = input.tax.toUpperCase().includes("PAGO");
 
+  const normalizedInput = normalizeServices(input.services);
+  const services = normalizedInput.length
+    ? normalizedInput
+    : resolveServices(fresh.services, fresh.user);
+
   await prisma.user.update({
     where: { id: fresh.user.id },
     data: {
@@ -1466,6 +1504,9 @@ export async function updateAcompanhamentoRecord(input: AcompanhamentoUpdateInpu
       group: input.group.trim() || null,
       cel: input.phone.trim() || null,
       emailScheduleAccount: input.account.trim() || null,
+      wantsAmericanVisa:
+        services.includes("primeiro_visto") || services.includes("renovacao"),
+      wantsPassport: services.includes("passaporte"),
       ...(!isPlaceholderEmail(fresh.user.email) || input.email.trim()
         ? {
             email: isPlaceholderEmail(fresh.user.email) && input.email.trim()
@@ -1521,7 +1562,6 @@ export async function updateAcompanhamentoRecord(input: AcompanhamentoUpdateInpu
     statusHint: input.status,
   });
   const nextCells = cellsFromInput({ ...input, status: derivedStatus });
-  const services = normalizeServices(input.services);
 
   await prisma.acompanhamentoClient.update({
     where: { id: input.id },
@@ -1551,15 +1591,15 @@ export async function updateAcompanhamentoRecord(input: AcompanhamentoUpdateInpu
  */
 export async function archiveAcompanhamentoClient(
   id: string,
-  servicesInput: AcompanhamentoService[],
+  servicesInput?: AcompanhamentoService[] | null,
 ) {
-  const services = normalizeServices(servicesInput);
-  if (!services.length) {
-    throw new Error("Marque ao menos um serviço para definir as abas de Arquivados");
-  }
-
   const existing = await prisma.acompanhamentoClient.findUnique({
     where: { id },
+    include: {
+      user: {
+        include: { profiles: true },
+      },
+    },
   });
 
   if (!existing) {
@@ -1568,6 +1608,15 @@ export async function archiveAcompanhamentoClient(
 
   if (existing.source === ACOMPANHAMENTO_ARCHIVED_SOURCE || existing.archivedAt) {
     throw new Error("Este cliente já foi arquivado");
+  }
+
+  // Aceita o que veio da UI; se vazio, usa ficha + cadastro (wants*/perfis).
+  let services = normalizeServices(servicesInput);
+  if (!services.length) {
+    services = resolveServices(existing.services, existing.user);
+  }
+  if (!services.length) {
+    throw new Error("Marque ao menos um serviço para definir as abas de Arquivados");
   }
 
   const row = await getAcompanhamentoRecord(id);
