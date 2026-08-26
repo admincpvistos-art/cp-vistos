@@ -199,15 +199,19 @@ export function AcompanhamentoEditSheet({
       document.body.style.pointerEvents = "";
       document.body.style.overflow = "";
       onClose();
-      await utils.acompanhamentoRouter.getClientesSheet.invalidate();
-      await utils.arquivadosRouter.getSheet.invalidate();
+      await Promise.all([
+        utils.acompanhamentoRouter.getClientesSheet.invalidate(),
+        utils.arquivadosRouter.getSheet.invalidate(),
+      ]);
       await utils.acompanhamentoRouter.getClientesSheet.refetch();
     } catch (error) {
       setArchiveConfirmOpen(false);
       document.body.style.pointerEvents = "";
-      toast.error(
-        error instanceof Error ? error.message : "Não foi possível arquivar",
-      );
+      const message =
+        error && typeof error === "object" && "message" in error
+          ? String((error as { message?: unknown }).message || "")
+          : "";
+      toast.error(message || "Não foi possível arquivar");
     }
   }
 

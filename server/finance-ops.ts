@@ -49,9 +49,19 @@ async function ensureAcompanhamentoRowForUser(user: {
 }) {
   const existing = await prisma.acompanhamentoClient.findFirst({
     where: { userId: user.id },
+    select: { id: true, source: true },
+  });
+  // Já tem linha (ativa ou arquivada) — não recria no Acompanhamento.
+  if (existing) {
+    return;
+  }
+
+  // Já foi para Arquivados — não devolver ao Acompanhamento.
+  const archived = await prisma.arquivadoClient.findFirst({
+    where: { sourceUserId: user.id },
     select: { id: true },
   });
-  if (existing) {
+  if (archived) {
     return;
   }
 

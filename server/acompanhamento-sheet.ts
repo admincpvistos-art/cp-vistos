@@ -377,6 +377,16 @@ export async function seedImportedAcompanhamentoRows() {
     }),
   );
 
+  // Também bloqueia recriação de quem já está em Arquivados (snapshot).
+  const arquivados = await prisma.arquivadoClient.findMany({
+    select: { name: true, barcode: true, email: true },
+    take: 5000,
+  });
+  for (const row of arquivados) {
+    fingerprints.add(`${(row.name ?? "").trim()}|${(row.barcode ?? "").trim()}`.toLowerCase());
+    fingerprints.add(`${(row.name ?? "").trim()}|`.toLowerCase());
+  }
+
   for (const cells of rows) {
     const key = `${(cells[COL.name] ?? "").trim()}|${(cells[COL.barcode] ?? "").trim()}`.toLowerCase();
     if (fingerprints.has(key)) {
@@ -1831,6 +1841,7 @@ export async function updateAcompanhamentoRecord(input: AcompanhamentoUpdateInpu
 /**
  * Move client out of Acompanhamento and copy into Arquivados tabs
  * matching each selected service (one row per service / intentional duplicates).
+ * Also archives sibling duplicate rows (same user / same name+email+barcode).
  */
 export async function archiveAcompanhamentoClient(
   id: string,
@@ -1853,7 +1864,6 @@ export async function archiveAcompanhamentoClient(
     throw new Error("Este cliente já foi arquivado");
   }
 
-  // Aceita o que veio da UI; se vazio, usa ficha + cadastro (wants*/perfis).
   let services = normalizeServices(servicesInput);
   if (!services.length) {
     services = resolveServices(existing.services, existing.user);
@@ -1871,8 +1881,10 @@ export async function archiveAcompanhamentoClient(
 
   for (const service of services) {
     const category = SERVICE_TO_ARQUIVADOS_CATEGORY[service];
+    if (!category) {
+      throw new Error(`Serviço inválido para arquivar: ${service}`);
+    }
 
-    // Evita duplicar se o admin confirmar duas vezes rápido.
     const already = await prisma.arquivadoClient.findFirst({
       where: {
         sourceAcompanhamentoId: id,
@@ -1909,17 +1921,70 @@ export async function archiveAcompanhamentoClient(
   }
 
   const archivedAt = new Date();
+  const archiveData = {
+    services,
+    archivedAt,
+    source: ACOMPANHAMENTO_ARCHIVED_SOURCE,
+    statusLabel: "FINALIZADO",
+  };
+
+  // Linha principal.
   await prisma.acompanhamentoClient.update({
     where: { id },
-    data: {
-      services,
-      archivedAt,
-      source: ACOMPANHAMENTO_ARCHIVED_SOURCE,
-      statusLabel: "FINALIZADO",
-    },
+    data: archiveData,
   });
 
-  // Confirma persistência — se falhar, não mente para a UI.
+  // Irmãs ativas do mesmo userId (evita “voltar” por duplicata ligada).
+  if (existing.userId) {
+    await prisma.acompanhamentoClient.updateMany({
+      where: {
+        userId: existing.userId,
+        source: ACOMPANHAMENTO_ACTIVE_SOURCE,
+        NOT: { id },
+      },
+      data: archiveData,
+    });
+  }
+
+  // Irmãs órfãs com mesma impressão (nome + e-mail + barcode).
+  const targetFp = archiveFingerprint(
+    row.name,
+    row.email,
+    row.barcode,
+  );
+  if (targetFp) {
+    const activeSiblings = await prisma.acompanhamentoClient.findMany({
+      where: {
+        source: ACOMPANHAMENTO_ACTIVE_SOURCE,
+        NOT: { id },
+      },
+      include: {
+        user: { select: { name: true, email: true } },
+      },
+      take: 500,
+    });
+
+    const siblingIds = activeSiblings
+      .filter((sibling) => {
+        const name =
+          sibling.user?.name || cell(sibling.cells, COL.name);
+        const email =
+          sibling.user && !isPlaceholderEmail(sibling.user.email)
+            ? sibling.user.email
+            : cell(sibling.cells, COL.email);
+        const barcode = cell(sibling.cells, COL.barcode);
+        return archiveFingerprint(name, email, barcode) === targetFp;
+      })
+      .map((sibling) => sibling.id);
+
+    if (siblingIds.length) {
+      await prisma.acompanhamentoClient.updateMany({
+        where: { id: { in: siblingIds } },
+        data: archiveData,
+      });
+    }
+  }
+
   const verify = await prisma.acompanhamentoClient.findUnique({
     where: { id },
     select: { source: true, archivedAt: true },
@@ -1932,6 +1997,13 @@ export async function archiveAcompanhamentoClient(
     throw new Error("Arquivamento não foi gravado. Tente novamente.");
   }
 
+  const stillActive = await prisma.arquivadoClient.count({
+    where: { sourceAcompanhamentoId: id },
+  });
+  if (!stillActive) {
+    throw new Error("Cliente não apareceu em Arquivados. Tente novamente.");
+  }
+
   return {
     categories,
     labels: categories.map(
@@ -1940,4 +2012,19 @@ export async function archiveAcompanhamentoClient(
         category,
     ),
   };
+}
+
+function archiveFingerprint(name: string, email: string, barcode: string) {
+  const n = name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "")
+    .trim();
+  const e = email.trim().toLowerCase();
+  const b = barcode.trim().toLowerCase();
+  if (!n && !e && !b) {
+    return "";
+  }
+  return `${n}|${e}|${b}`;
 }
