@@ -42,6 +42,7 @@ export const ACOMPANHAMENTO_ACTIVE_SOURCE = "imported";
 export const ACOMPANHAMENTO_ARCHIVED_SOURCE = "archived";
 
 export function whereActiveAcompanhamento() {
+  // Somente source — archivedAt: null no Mongo exclui docs sem o campo e esvazia a planilha.
   return { source: ACOMPANHAMENTO_ACTIVE_SOURCE };
 }
 
@@ -1186,16 +1187,172 @@ export function visibleCells(row: AcompanhamentoRecord) {
   });
 }
 
+export async function uppercaseExistingClientRecords(limit = 250) {
+  const users = await prisma.user.findMany({
+    where: { role: Role.CLIENT },
+    take: limit,
+    orderBy: { updatedAt: "asc" },
+    select: {
+      id: true,
+      name: true,
+      group: true,
+      address: true,
+    },
+  });
+
+  for (const user of users) {
+    const name = toUpperDisplay(user.name);
+    const group = user.group ? toUpperDisplay(user.group) : null;
+    const address = user.address ? toUpperDisplay(user.address) : null;
+
+    if (name !== user.name || group !== (user.group ?? null) || address !== (user.address ?? null)) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          name,
+          group,
+          address,
+        },
+      });
+    }
+  }
+
+  const profiles = await prisma.profile.findMany({
+    take: limit,
+    orderBy: { updatedAt: "asc" },
+    select: { id: true, name: true, passport: true },
+  });
+
+  for (const profile of profiles) {
+    const name = toUpperDisplay(profile.name);
+    const passport = profile.passport ? toUpperDisplay(profile.passport) : null;
+    if (name !== profile.name || passport !== (profile.passport ?? null)) {
+      await prisma.profile.update({
+        where: { id: profile.id },
+        data: { name, passport },
+      });
+    }
+  }
+
+  const sheets = await prisma.acompanhamentoClient.findMany({
+    take: limit,
+    orderBy: { updatedAt: "asc" },
+    select: {
+      id: true,
+      cells: true,
+      resp: true,
+      alimto: true,
+      obs: true,
+      pagto: true,
+      sheetComment: true,
+    },
+  });
+
+  for (const row of sheets) {
+    const cells = [...row.cells];
+    const textIndexes = [
+      COL.name,
+      COL.barcode,
+      COL.shipping,
+      COL.tipo,
+      COL.resp,
+      COL.tax,
+      COL.ds160,
+      COL.alimto,
+      COL.obs,
+      COL.passport,
+      COL.account,
+      COL.group,
+      COL.pagto,
+      COL.status,
+    ] as const;
+
+    let cellsChanged = false;
+    for (const index of textIndexes) {
+      const current = cells[index] ?? "";
+      const next = toUpperDisplayOrEmpty(current);
+      if (next !== current) {
+        cells[index] = next;
+        cellsChanged = true;
+      }
+    }
+
+    const resp = row.resp ? toUpperDisplay(row.resp) : null;
+    const alimto = row.alimto ? toUpperDisplay(row.alimto) : null;
+    const obs = row.obs ? toUpperDisplay(row.obs) : null;
+    const pagto = row.pagto ? toUpperDisplay(row.pagto) : null;
+    const sheetComment = row.sheetComment ? toUpperDisplay(row.sheetComment) : null;
+
+    const metaChanged =
+      resp !== (row.resp ?? null) ||
+      alimto !== (row.alimto ?? null) ||
+      obs !== (row.obs ?? null) ||
+      pagto !== (row.pagto ?? null) ||
+      sheetComment !== (row.sheetComment ?? null);
+
+    if (cellsChanged || metaChanged) {
+      await prisma.acompanhamentoClient.update({
+        where: { id: row.id },
+        data: {
+          ...(cellsChanged ? { cells } : {}),
+          resp,
+          alimto,
+          obs,
+          pagto,
+          sheetComment,
+        },
+      });
+    }
+  }
+
+  const arquivados = await prisma.arquivadoClient.findMany({
+    take: limit,
+    orderBy: { updatedAt: "asc" },
+    select: {
+      id: true,
+      name: true,
+      group: true,
+      barcode: true,
+      passport: true,
+      sheetComment: true,
+      tax: true,
+      status: true,
+    },
+  });
+
+  for (const row of arquivados) {
+    const name = toUpperDisplay(row.name);
+    const group = toUpperDisplayOrEmpty(row.group);
+    const barcode = toUpperDisplayOrEmpty(row.barcode);
+    const passport = toUpperDisplayOrEmpty(row.passport);
+    const sheetComment = toUpperDisplayOrEmpty(row.sheetComment);
+    const tax = toUpperDisplayOrEmpty(row.tax);
+    const status = toUpperDisplayOrEmpty(row.status);
+
+    if (
+      name !== row.name ||
+      group !== row.group ||
+      barcode !== row.barcode ||
+      passport !== row.passport ||
+      sheetComment !== row.sheetComment ||
+      tax !== row.tax ||
+      status !== row.status
+    ) {
+      await prisma.arquivadoClient.update({
+        where: { id: row.id },
+        data: { name, group, barcode, passport, sheetComment, tax, status },
+      });
+    }
+  }
+}
+
 export async function listAcompanhamentoSheet() {
   await restoreAcompanhamentoFromExcel();
+  await uppercaseExistingClientRecords(250);
   const sync = await getOperationsSyncStatus();
 
-  // Ativos = source imported E sem archivedAt (cinto e suspensório).
   const records = await prisma.acompanhamentoClient.findMany({
-    where: {
-      source: ACOMPANHAMENTO_ACTIVE_SOURCE,
-      archivedAt: null,
-    },
+    where: whereActiveAcompanhamento(),
     include: {
       user: {
         include: {

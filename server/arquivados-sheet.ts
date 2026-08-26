@@ -4,6 +4,7 @@ import type { AcompanhamentoService } from "@/lib/acompanhamento-types";
 import { isAcompanhamentoService } from "@/lib/acompanhamento-types";
 import type { ArquivadosSheetCategory } from "@/lib/arquivados-categories";
 import prisma from "@/lib/prisma";
+import { uppercaseExistingClientRecords } from "@/server/acompanhamento-sheet";
 
 export type { ArquivadosSheetCategory } from "@/lib/arquivados-categories";
 
@@ -226,6 +227,7 @@ function mapDbArquivado(row: {
 export async function listArquivadosSheet(
   category: ArquivadosSheetCategory,
 ): Promise<SheetClientRow[]> {
+  await uppercaseExistingClientRecords(100);
   const excelRows = listExcelArquivadosSheet(category);
 
   const dbRows = await prisma.arquivadoClient.findMany({
