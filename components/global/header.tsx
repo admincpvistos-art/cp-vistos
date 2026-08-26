@@ -10,6 +10,7 @@ import { signOut, useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
 
 import { MobileMenu } from "./mobile-menu";
+import { HeaderBrandLogo } from "./header-brand-logo";
 import { Button } from "@/components/ui/button";
 import { usePathname } from "next/navigation";
 
@@ -29,14 +30,7 @@ export function Header() {
         )}
       />
 
-      <Link href="/" className="relative w-20 h-20 z-40">
-        <Image
-          src="/assets/images/cp-vistos-logo-azul.png"
-          alt="CP Vistos Logo"
-          fill
-          className="object-center object-contain"
-        />
-      </Link>
+      <HeaderBrandLogo />
 
       <MobileMenu session={session} pathname={pathname} />
 

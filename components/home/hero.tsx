@@ -6,26 +6,69 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
-import { HeroCarouselItem } from "./hero-carousel-item";
+
+const HERO_SLIDES = [
+  {
+    src: "/assets/images/hero-1.webp",
+    title: "Disneyland",
+    location: "Orlando",
+  },
+  {
+    src: "/assets/images/hero-2.jpg",
+    title: "Estátua da Liberdade",
+    location: "Nova Iorque",
+  },
+  {
+    src: "/assets/images/hero-3.jpg",
+    title: "Bellagio",
+    location: "Las Vegas",
+  },
+  {
+    src: "/assets/images/hero-usa/hero-grand-canyon.jpg",
+    title: "Grand Canyon",
+    location: "Arizona",
+  },
+  {
+    src: "/assets/images/hero-usa/hero-golden-gate.jpg",
+    title: "Golden Gate",
+    location: "São Francisco",
+  },
+  {
+    src: "/assets/images/hero-usa/hero-miami.jpg",
+    title: "Miami Beach",
+    location: "Flórida",
+  },
+  {
+    src: "/assets/images/hero-usa/hero-niagara.jpg",
+    title: "Niagara Falls",
+    location: "Nova Iorque",
+  },
+  {
+    src: "/assets/images/hero-usa/hero-washington.jpg",
+    title: "Lincoln Memorial",
+    location: "Washington, D.C.",
+  },
+  {
+    src: "/assets/images/hero-usa/hero-chicago.jpg",
+    title: "Skyline de Chicago",
+    location: "Illinois",
+  },
+] as const;
 
 export function Hero() {
-  const [bannerShowing, setBannerShowing] = useState<number>(0);
+  const [bannerShowing, setBannerShowing] = useState(0);
 
   useEffect(() => {
     const timeout = setInterval(() => {
-      if (bannerShowing === 2) {
-        setBannerShowing(0);
-
-        return;
-      }
-
-      setBannerShowing((prev) => prev + 1);
-    }, 10000);
+      setBannerShowing((prev) => (prev + 1) % HERO_SLIDES.length);
+    }, 8000);
 
     return () => {
       clearTimeout(timeout);
     };
-  }, [bannerShowing]);
+  }, []);
+
+  const slide = HERO_SLIDES[bannerShowing];
 
   return (
     <main className="w-full relative pt-28 bg-mobile-hero bg-no-repeat bg-[length:100%_100%] sm:pt-40 sm:bg-tablet-hero lg:pt-44 lg:bg-desktop-hero">
@@ -159,127 +202,40 @@ export function Hero() {
           </div>
         </div>
 
-        <AnimatePresence>
-          <motion.div className="hidden lg:block lg:absolute lg:top-44 lg:right-0 lg:w-2/5 lg:h-[700px]">
-            <AnimatePresence mode="popLayout">
-              {bannerShowing === 0 && (
-                <motion.div
-                  key="hero-image-1"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 1, ease: "easeInOut" }}
-                  className="w-full h-full"
-                >
-                  <Image
-                    src="/assets/images/hero-1.webp"
-                    alt="Disneyland"
-                    fill
-                    className="object-center object-cover rounded-l-[60px]"
-                    priority
-                  />
-                </motion.div>
-              )}
+        <div className="hidden lg:block lg:absolute lg:top-44 lg:right-0 lg:w-2/5 lg:h-[700px]">
+          <AnimatePresence mode="popLayout">
+            <motion.div
+              key={slide.src}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 1, ease: "easeInOut" }}
+              className="absolute inset-0"
+            >
+              <Image
+                src={slide.src}
+                alt={slide.title}
+                fill
+                className="object-center object-cover rounded-l-[60px]"
+                priority={bannerShowing < 3}
+              />
+            </motion.div>
+          </AnimatePresence>
 
-              {bannerShowing === 1 && (
-                <motion.div
-                  key="hero-image-2"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 1, ease: "easeInOut" }}
-                  className="w-full h-full"
-                >
-                  <Image
-                    src="/assets/images/hero-2.jpg"
-                    alt="Estátua da Liberdade"
-                    fill
-                    className="object-center object-cover rounded-l-[60px]"
-                    priority
-                  />
-                </motion.div>
-              )}
-
-              {bannerShowing === 2 && (
-                <motion.div
-                  key="hero-image-3"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 1, ease: "easeInOut" }}
-                  className="w-full h-full"
-                >
-                  <Image
-                    src="/assets/images/hero-3.jpg"
-                    alt="Bellagio"
-                    fill
-                    className="object-center object-cover rounded-l-[60px]"
-                    priority
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <AnimatePresence mode="wait">
-              {bannerShowing === 0 && (
-                <motion.div
-                  key="hero-desc-1"
-                  initial={{ x: 50, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  exit={{ x: 50, opacity: 0 }}
-                  transition={{ delay: 0.4, duration: 0.6, ease: "easeOut" }}
-                  className="px-6 py-4 rounded-l-[30px] bg-white border border-r-0 border-secondary flex flex-col absolute z-10 -bottom-8 right-0"
-                >
-                  <h3 className="text-2xl font-semibold text-foreground">
-                    Disneyland
-                  </h3>
-
-                  <p className="text-base font-medium text-foreground/70">
-                    Orlando
-                  </p>
-                </motion.div>
-              )}
-
-              {bannerShowing === 1 && (
-                <motion.div
-                  key="hero-desc-2"
-                  initial={{ x: 50, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  exit={{ x: 50, opacity: 0 }}
-                  transition={{ delay: 0.4, duration: 0.6, ease: "easeOut" }}
-                  className="px-6 py-4 rounded-l-[30px] bg-white border border-r-0 border-secondary flex flex-col absolute z-10 -bottom-8 right-0"
-                >
-                  <h3 className="text-2xl font-semibold text-foreground">
-                    Estátua da Liberdade
-                  </h3>
-
-                  <p className="text-base font-medium text-foreground/70">
-                    Nova Iorque
-                  </p>
-                </motion.div>
-              )}
-
-              {bannerShowing === 2 && (
-                <motion.div
-                  key="hero-desc-3"
-                  initial={{ x: 50, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  exit={{ x: 50, opacity: 0 }}
-                  transition={{ delay: 0.4, duration: 0.6, ease: "easeOut" }}
-                  className="px-6 py-4 rounded-l-[30px] bg-white border border-r-0 border-secondary flex flex-col absolute z-10 -bottom-8 right-0"
-                >
-                  <h3 className="text-2xl font-semibold text-foreground">
-                    Bellagio
-                  </h3>
-
-                  <p className="text-base font-medium text-foreground/70">
-                    Las Vegas
-                  </p>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
-        </AnimatePresence>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={`${slide.title}-${slide.location}`}
+              initial={{ x: 50, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: 50, opacity: 0 }}
+              transition={{ delay: 0.35, duration: 0.55, ease: "easeOut" }}
+              className="px-6 py-4 rounded-l-[30px] bg-white border border-r-0 border-secondary flex flex-col absolute z-10 -bottom-8 right-0"
+            >
+              <h3 className="text-2xl font-semibold text-foreground">{slide.title}</h3>
+              <p className="text-base font-medium text-foreground/70">{slide.location}</p>
+            </motion.div>
+          </AnimatePresence>
+        </div>
       </Element>
     </main>
   );
