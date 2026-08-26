@@ -50,8 +50,8 @@ export function CeacOfficialPane() {
         <h2 className="mt-2 text-xl font-semibold">CEAC oficial</h2>
         <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-[#314060]">
           O site do governo bloqueia iframe, então ele não pode viver <em>dentro</em> deste
-          quadro. A janela oficial abre exatamente em cima deste quadrado e, ao clicar em
-          Copiar, volta para a frente para você colar.
+          quadro. Com a extensão CP Vistos, a janela oficial abre sobre este quadrado e o botão
+          <strong> Transferir para o CEAC</strong> preenche os campos da página atual.
         </p>
       </div>
 
@@ -72,9 +72,9 @@ export function CeacOfficialPane() {
       </div>
 
       <p className="max-w-md text-xs text-[#6b7280]">
-        O painel do Chrome (extensão v1.2) fica na mesma janela e não some ao copiar. Sem a
-        extensão, use <strong>Abrir CEAC neste quadro</strong>: depois de Copiar, o CEAC volta
-        sozinho para colar com Ctrl+V.
+        Extensão v1.3: use <strong>Transferir para o CEAC</strong> no painel esquerdo após abrir
+        o site oficial. Captcha e avanço de páginas continuam manuais. Sem a extensão, use
+        Copiar + Ctrl+V.
       </p>
     </div>
   );

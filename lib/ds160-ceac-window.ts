@@ -97,3 +97,71 @@ export function focusCeacWindow() {
     }
   }, 80);
 }
+
+export type CeacTransferField = {
+  id: string;
+  label: string;
+  value: string;
+};
+
+export type CeacTransferResult = {
+  ok: boolean;
+  filled: number;
+  skipped: number;
+  error?: string | null;
+};
+
+/** Envia os campos da página atual para a extensão preencher no CEAC aberto. */
+export function transferFieldsToCeac(input: {
+  fields: CeacTransferField[];
+  pageId: string;
+  pageTitle: string;
+}): Promise<CeacTransferResult> {
+  const requestId = `ceac-transfer-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+  return new Promise((resolve) => {
+    const timeout = window.setTimeout(() => {
+      window.removeEventListener("message", onMessage);
+      resolve({
+        ok: false,
+        filled: 0,
+        skipped: 0,
+        error:
+          "Extensão não respondeu. Instale/recarregue a extensão CP Vistos e abra o CEAC.",
+      });
+    }, 12000);
+
+    function onMessage(event: MessageEvent) {
+      if (event.source !== window) {
+        return;
+      }
+      if (event.data?.type !== "CP_VISTOS_TRANSFER_CEAC_RESULT") {
+        return;
+      }
+      if (event.data.requestId && event.data.requestId !== requestId) {
+        return;
+      }
+
+      window.clearTimeout(timeout);
+      window.removeEventListener("message", onMessage);
+      resolve({
+        ok: Boolean(event.data.ok),
+        filled: Number(event.data.filled) || 0,
+        skipped: Number(event.data.skipped) || 0,
+        error: event.data.error ?? null,
+      });
+    }
+
+    window.addEventListener("message", onMessage);
+    window.postMessage(
+      {
+        type: "CP_VISTOS_TRANSFER_CEAC",
+        requestId,
+        fields: input.fields,
+        pageId: input.pageId,
+        pageTitle: input.pageTitle,
+      },
+      "*",
+    );
+  });
+}

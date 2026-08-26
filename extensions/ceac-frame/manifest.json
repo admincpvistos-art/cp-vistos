@@ -1,14 +1,16 @@
 {
   "manifest_version": 3,
-  "name": "CP Vistos — CEAC ao lado do DS-160",
-  "version": "1.2.0",
-  "description": "Abre o CEAC como página normal sobre o quadro do DS-160 e devolve o foco ao copiar. Uso interno.",
-  "permissions": ["sidePanel", "windows"],
+  "name": "CP Vistos — CEAC Transferir DS-160",
+  "version": "1.3.0",
+  "description": "Abre o CEAC ao lado do DS-160 e transfere os dados da página atual para os campos oficiais. Uso interno CP Vistos.",
+  "permissions": ["sidePanel", "windows", "tabs", "scripting"],
   "host_permissions": [
     "https://www.cpvistos.com.br/*",
     "https://cpvistos.com.br/*",
     "http://localhost/*",
-    "http://127.0.0.1/*"
+    "http://127.0.0.1/*",
+    "https://ceac.state.gov/*",
+    "https://*.state.gov/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -17,7 +19,7 @@
     "default_path": "sidepanel.html"
   },
   "action": {
-    "default_title": "Abrir CEAC"
+    "default_title": "CP Vistos CEAC"
   },
   "content_scripts": [
     {
@@ -27,7 +29,15 @@
         "http://localhost:*/*",
         "http://127.0.0.1:*/*"
       ],
-      "js": ["content.js"],
+      "js": ["content-admin.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://ceac.state.gov/*",
+        "https://*.state.gov/*"
+      ],
+      "js": ["content-ceac.js"],
       "run_at": "document_idle"
     }
   ]

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Check, Copy, Loader2 } from "lucide-react";
+import { Check, Copy, Loader2, Send } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -12,7 +12,7 @@ import {
   type CeacPageId,
   type Ds160Packet,
 } from "@/lib/ds160-ceac";
-import { focusCeacWindow } from "@/lib/ds160-ceac-window";
+import { focusCeacWindow, transferFieldsToCeac } from "@/lib/ds160-ceac-window";
 
 interface Props {
   packet: Ds160Packet;
@@ -33,6 +33,7 @@ export function CeacFormPanel({
   const fields = pages[pageId] ?? [];
   const [activeId, setActiveId] = useState(fields[0]?.id ?? "");
   const [copiedId, setCopiedId] = useState("");
+  const [transferring, setTransferring] = useState(false);
 
   async function copyValue(id: string, value: string) {
     if (!value) {
@@ -51,17 +52,77 @@ export function CeacFormPanel({
     focusCeacWindow();
   }
 
+  async function transferPage() {
+    const payload = fields
+      .filter((field) => field.value && field.value !== "—")
+      .map((field) => ({
+        id: field.id,
+        label: field.label,
+        value: field.value,
+      }));
+
+    if (!payload.length) {
+      toast.error("Nenhum valor para transferir nesta página");
+      return;
+    }
+
+    setTransferring(true);
+    try {
+      const pageTitle = CEAC_PAGES.find((page) => page.id === pageId)?.title ?? pageId;
+      const result = await transferFieldsToCeac({
+        fields: payload,
+        pageId,
+        pageTitle,
+      });
+
+      if (!result.ok) {
+        toast.error(result.error || "Não foi possível transferir para o CEAC");
+        return;
+      }
+
+      toast.success(
+        `${result.filled} campo(s) preenchido(s) no CEAC` +
+          (result.skipped ? ` · ${result.skipped} sem correspondência` : ""),
+      );
+      focusCeacWindow();
+    } finally {
+      setTransferring(false);
+    }
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-[#f4f1ea] text-[#1b2a4a]">
       <div className="border-b border-[#c5c1b7] bg-[#0b3a6e] px-4 py-3 text-white">
         <p className="text-[11px] uppercase tracking-[0.18em] text-white/70">
           Online Nonimmigrant Visa Application (DS-160)
         </p>
-        <h2 className="text-lg font-semibold">
-          {CEAC_PAGES.find((page) => page.id === pageId)?.title}
-        </h2>
-        <p className="text-xs text-white/80">
-          {packet.user.name} · {packet.profile.name}
+        <div className="mt-1 flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h2 className="text-lg font-semibold">
+              {CEAC_PAGES.find((page) => page.id === pageId)?.title}
+            </h2>
+            <p className="text-xs text-white/80">
+              {packet.user.name} · {packet.profile.name}
+            </p>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            className="h-9 shrink-0 bg-white text-[#0b3a6e] hover:bg-white/90"
+            disabled={transferring || !fields.length}
+            onClick={() => void transferPage()}
+          >
+            {transferring ? (
+              <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+            ) : (
+              <Send className="mr-1.5 size-3.5" />
+            )}
+            Transferir para o CEAC
+          </Button>
+        </div>
+        <p className="mt-2 text-[11px] text-white/75">
+          Você avança as páginas e resolve o captcha. O botão só preenche os campos desta
+          página no site oficial (requer extensão CP Vistos).
         </p>
       </div>
 
