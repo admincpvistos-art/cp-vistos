@@ -148,7 +148,7 @@ function pinCeacWindow(ms = 8000) {
   if (pinTimer == null) {
     pinTimer = setInterval(() => {
       void pinTick();
-    }, 350);
+    }, 900);
   }
   void pinTick();
   return { ok: true };
@@ -219,9 +219,8 @@ async function focusCeacWindow() {
   if (!tab) {
     return { ok: false };
   }
-  // Raise rápido + reforço curto (clique no CP Vistos compete).
-  await bringCeacToFront(tab, { persistent: true });
-  return { ok: true };
+  // Raise único — persistent aqui competia com o Transferir.
+  return bringCeacToFront(tab, { persistent: false });
 }
 
 async function closeCeacWindow() {
@@ -284,8 +283,8 @@ async function transferToCeac(payload) {
     };
   }
 
-  await bringCeacToFront(tab, { persistent: true });
-  await new Promise((resolve) => setTimeout(resolve, 120));
+  await bringCeacToFront(tab, { persistent: false });
+  await new Promise((resolve) => setTimeout(resolve, 80));
 
   const message = {
     type: "fill-ceac-fields",
@@ -341,6 +340,24 @@ async function transferToCeac(payload) {
   }
 
   async function sendFill(frameId) {
+    try {
+      const direct = await chrome.scripting.executeScript({
+        target: { tabId: tab.id, frameIds: [frameId] },
+        func: (payload) => {
+          if (typeof window.__cpVistosRunFill === "function") {
+            return window.__cpVistosRunFill(payload);
+          }
+          return null;
+        },
+        args: [message],
+      });
+      const result = direct?.[0]?.result;
+      if (result && typeof result === "object") {
+        return result;
+      }
+    } catch {
+      // cai no sendMessage
+    }
     return chrome.tabs.sendMessage(tab.id, message, { frameId });
   }
 
@@ -357,7 +374,7 @@ async function transferToCeac(payload) {
     }
 
     pinCeacWindow(60000);
-    await bringCeacToFront(tab, { persistent: true });
+    await bringCeacToFront(tab, { persistent: false });
 
     if (!response) {
       return { ok: false, error: "Sem resposta do CEAC" };
@@ -375,7 +392,7 @@ async function transferToCeac(payload) {
     return response;
   } catch (error) {
     pinCeacWindow(60000);
-    await bringCeacToFront(tab, { persistent: true });
+    await bringCeacToFront(tab, { persistent: false });
     return {
       ok: false,
       error:

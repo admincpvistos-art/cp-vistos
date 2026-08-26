@@ -118,6 +118,18 @@ export function focusCeacWindow() {
 }
 
 let alwaysOnTopStop: (() => void) | null = null;
+let transferQuietUntil = 0;
+
+/** Pausa o pin/foco para o Transferir não perder a resposta da extensão. */
+export function pauseCeacPinForTransfer(ms = 25000) {
+  transferQuietUntil = Date.now() + ms;
+  window.postMessage({ type: "CP_VISTOS_UNPIN_CEAC" }, "*");
+}
+
+export function resumeCeacPinAfterTransfer() {
+  transferQuietUntil = 0;
+  window.postMessage({ type: "CP_VISTOS_PIN_CEAC" }, "*");
+}
 
 /**
  * Mantém a janela do CEAC na frente enquanto o DS-160 estiver aberto.
@@ -133,13 +145,19 @@ export function startCeacAlwaysOnTop() {
 
   let lastRaise = 0;
   function raise(force = false) {
+    if (Date.now() < transferQuietUntil) {
+      return;
+    }
     const now = Date.now();
-    if (!force && now - lastRaise < 80) {
+    if (!force && now - lastRaise < 250) {
       return;
     }
     lastRaise = now;
+    // Pin mantém o loop leve; focus só no clique (evita flood no service worker).
     window.postMessage({ type: "CP_VISTOS_PIN_CEAC" }, "*");
-    focusCeacWindow();
+    if (force) {
+      focusCeacWindow();
+    }
   }
 
   function onInteract() {
@@ -149,21 +167,21 @@ export function startCeacAlwaysOnTop() {
   window.postMessage({ type: "CP_VISTOS_PIN_CEAC" }, "*");
   raise(true);
 
-  // Capture: qualquer clique/toque na página (Copiar, Transferir, campos, etc.).
   document.addEventListener("pointerdown", onInteract, true);
   document.addEventListener("mousedown", onInteract, true);
-  document.addEventListener("keydown", onInteract, true);
   window.addEventListener("focus", onInteract);
 
+  // Intervalo só renova o pin — sem tempestade de FOCUS.
   const keepAlive = window.setInterval(() => {
+    if (Date.now() < transferQuietUntil) {
+      return;
+    }
     window.postMessage({ type: "CP_VISTOS_PIN_CEAC" }, "*");
-    raise(false);
-  }, 400);
+  }, 1500);
 
   alwaysOnTopStop = () => {
     document.removeEventListener("pointerdown", onInteract, true);
     document.removeEventListener("mousedown", onInteract, true);
-    document.removeEventListener("keydown", onInteract, true);
     window.removeEventListener("focus", onInteract);
     window.clearInterval(keepAlive);
     window.postMessage({ type: "CP_VISTOS_UNPIN_CEAC" }, "*");
@@ -222,19 +240,21 @@ export function transferFieldsToCeac(input: {
     });
   }
 
+  pauseCeacPinForTransfer(25000);
   const requestId = `ceac-transfer-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
   return new Promise((resolve) => {
     const timeout = window.setTimeout(() => {
       window.removeEventListener("message", onMessage);
+      resumeCeacPinAfterTransfer();
       resolve({
         ok: false,
         filled: 0,
         skipped: 0,
         error:
-          "Extensão não respondeu. Recarregue a extensão CP Vistos (chrome://extensions) e esta página, e abra o CEAC.",
+          "Extensão não respondeu. Recarregue a extensão CP Vistos (chrome://extensions → Atualizar) para v1.5.1, dê Ctrl+F5 nesta página e abra o CEAC.",
       });
-    }, 15000);
+    }, 25000);
 
     function onMessage(event: MessageEvent) {
       if (event.source !== window) {
@@ -249,6 +269,7 @@ export function transferFieldsToCeac(input: {
 
       window.clearTimeout(timeout);
       window.removeEventListener("message", onMessage);
+      resumeCeacPinAfterTransfer();
       resolve({
         ok: Boolean(event.data.ok),
         filled: Number(event.data.filled) || 0,
@@ -258,15 +279,18 @@ export function transferFieldsToCeac(input: {
     }
 
     window.addEventListener("message", onMessage);
-    window.postMessage(
-      {
-        type: "CP_VISTOS_TRANSFER_CEAC",
-        requestId,
-        fields: input.fields,
-        pageId: input.pageId,
-        pageTitle: input.pageTitle,
-      },
-      "*",
-    );
+    // Pequeno atraso para o unpin chegar antes do transfer no service worker.
+    window.setTimeout(() => {
+      window.postMessage(
+        {
+          type: "CP_VISTOS_TRANSFER_CEAC",
+          requestId,
+          fields: input.fields,
+          pageId: input.pageId,
+          pageTitle: input.pageTitle,
+        },
+        "*",
+      );
+    }, 60);
   });
 }

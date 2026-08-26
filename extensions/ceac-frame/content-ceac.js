@@ -4,7 +4,7 @@
  * Não avança páginas e não toca em captcha.
  */
 
-if (window.__cpVistosCeacFillV15) {
+if (window.__cpVistosCeacFillV15 && typeof window.__cpVistosRunFill === "function") {
   // já carregado neste frame
 } else {
   window.__cpVistosCeacFillV15 = true;
@@ -651,6 +651,8 @@ if (window.__cpVistosCeacFillV15) {
       controlCount: controls.length,
     };
   }
+
+  window.__cpVistosRunFill = runFill;
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message?.type === "ceac-probe") {

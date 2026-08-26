@@ -72,7 +72,7 @@ export function CeacFormPanel({
 
     if (!isCeacExtensionPresent()) {
       toast.error(
-        "Extensão CP Vistos não detectada. Atualize para v1.5.0, recarregue a extensão e dê Ctrl+F5.",
+        "Extensão CP Vistos não detectada. Atualize para v1.5.1, recarregue a extensão e dê Ctrl+F5.",
       );
       return;
     }

@@ -1,9 +1,9 @@
 /**
  * Ponte entre o painel DS-160 (cpvistos) e o service worker da extensão.
- * v1.5.0 — pin à frente + Transferir robusto (aliases, frames, retry).
+ * v1.5.1 — pin pausado no Transferir; fill direto via executeScript.
  */
 
-const EXT_VERSION = "1.5.0";
+const EXT_VERSION = "1.5.1";
 
 function markReady() {
   try {
@@ -105,12 +105,16 @@ window.addEventListener("message", (event) => {
 
   if (data.type === "CP_VISTOS_TRANSFER_CEAC") {
     const requestId = data.requestId || null;
-    void sendRuntime({
-      type: "transfer-ceac-fields",
-      fields: data.fields || [],
-      pageId: data.pageId || "",
-      pageTitle: data.pageTitle || "",
-    })
+    void sendRuntime({ type: "unpin-ceac-window" })
+      .catch(() => {})
+      .then(() =>
+        sendRuntime({
+          type: "transfer-ceac-fields",
+          fields: data.fields || [],
+          pageId: data.pageId || "",
+          pageTitle: data.pageTitle || "",
+        }),
+      )
       .then((response) => {
         postTransferResult(requestId, {
           ok: Boolean(response?.ok),
@@ -120,7 +124,6 @@ window.addEventListener("message", (event) => {
           error: response?.error || null,
         });
         void sendRuntime({ type: "pin-ceac-window", ms: 15000 }).catch(() => {});
-        void sendRuntime({ type: "focus-ceac-window" }).catch(() => {});
       })
       .catch((error) => {
         postTransferResult(requestId, {
@@ -132,6 +135,7 @@ window.addEventListener("message", (event) => {
               ? error.message
               : "Extensão não respondeu. Recarregue a extensão CP Vistos (chrome://extensions) e esta página.",
         });
+        void sendRuntime({ type: "pin-ceac-window", ms: 15000 }).catch(() => {});
       });
   }
 });
