@@ -1,9 +1,9 @@
 /**
  * Ponte entre o painel DS-160 (cpvistos) e o service worker da extensão.
- * v1.5.2 — transfer com timeout/retry; pin pausado; fill via executeScript.
+ * v1.5.3 — janela no tamanho do quadro; transfer fail-fast ~8s; pin pausado.
  */
 
-const EXT_VERSION = "1.5.2";
+const EXT_VERSION = "1.5.3";
 
 function markReady() {
   try {
@@ -33,7 +33,7 @@ function postTransferResult(requestId, payload) {
   );
 }
 
-function sendRuntime(message, timeoutMs = 12000) {
+function sendRuntime(message, timeoutMs = 8000) {
   return new Promise((resolve, reject) => {
     let settled = false;
     const timer = setTimeout(() => {
@@ -73,10 +73,10 @@ async function sendRuntimeWithRetry(message, attempts = 2) {
   let lastError = null;
   for (let i = 0; i < attempts; i += 1) {
     try {
-      return await sendRuntime(message, 14000);
+      return await sendRuntime(message, 8000);
     } catch (error) {
       lastError = error;
-      await new Promise((resolve) => setTimeout(resolve, 200 + i * 300));
+      await new Promise((resolve) => setTimeout(resolve, 150 + i * 200));
     }
   }
   throw lastError instanceof Error

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Check, Copy, Loader2, Send } from "lucide-react";
 
@@ -12,7 +12,13 @@ import {
   type CeacPageId,
   type Ds160Packet,
 } from "@/lib/ds160-ceac";
-import { focusCeacWindow, isCeacExtensionPresent, transferFieldsToCeac } from "@/lib/ds160-ceac-window";
+import {
+  CEAC_EXTENSION_EXPECTED_VERSION,
+  focusCeacWindow,
+  getCeacExtensionVersion,
+  isCeacExtensionPresent,
+  transferFieldsToCeac,
+} from "@/lib/ds160-ceac-window";
 
 interface Props {
   packet: Ds160Packet;
@@ -34,6 +40,42 @@ export function CeacFormPanel({
   const [activeId, setActiveId] = useState(fields[0]?.id ?? "");
   const [copiedId, setCopiedId] = useState("");
   const [transferring, setTransferring] = useState(false);
+  const [extensionReady, setExtensionReady] = useState(false);
+  const [extVersion, setExtVersion] = useState<string | null>(null);
+
+  useEffect(() => {
+    function syncReady() {
+      const version = getCeacExtensionVersion();
+      const present = Boolean(version) || isCeacExtensionPresent();
+      setExtensionReady(present);
+      setExtVersion(version);
+    }
+
+    function onMessage(event: MessageEvent) {
+      if (event.source !== window) {
+        return;
+      }
+      if (event.data?.type === "CP_VISTOS_CEAC_EXT" && event.data.ready) {
+        setExtensionReady(true);
+        if (typeof event.data.version === "string") {
+          setExtVersion(event.data.version);
+        }
+      }
+    }
+
+    window.addEventListener("message", onMessage);
+    syncReady();
+    window.postMessage({ type: "CP_VISTOS_CEAC_EXT_PING" }, "*");
+    const timer = window.setInterval(() => {
+      syncReady();
+      window.postMessage({ type: "CP_VISTOS_CEAC_EXT_PING" }, "*");
+    }, 2000);
+
+    return () => {
+      window.removeEventListener("message", onMessage);
+      window.clearInterval(timer);
+    };
+  }, []);
 
   async function copyValue(id: string, value: string) {
     if (!value) {
@@ -41,19 +83,19 @@ export function CeacFormPanel({
       return;
     }
 
-    // O clique em Copiar traz o CP Vistos à frente e esconde o CEAC —
-    // pede o raise imediatamente e de novo após o clipboard/re-render.
-    focusCeacWindow();
     try {
       await navigator.clipboard.writeText(value);
-    } finally {
-      focusCeacWindow();
+    } catch {
+      toast.error("Não foi possível copiar");
+      return;
     }
+
     setCopiedId(id);
     const index = fields.findIndex((field) => field.id === id);
     const next = fields[index + 1];
     setActiveId(next?.id ?? id);
-    requestAnimationFrame(() => focusCeacWindow());
+    // Um único raise após o clipboard — evita tempestade de foco.
+    focusCeacWindow();
   }
 
   async function transferPage() {
@@ -70,9 +112,9 @@ export function CeacFormPanel({
       return;
     }
 
-    if (!isCeacExtensionPresent()) {
+    if (!extensionReady && !isCeacExtensionPresent()) {
       toast.error(
-        "Extensão CP Vistos não detectada. Atualize para v1.5.1, recarregue a extensão e dê Ctrl+F5.",
+        `Extensão CP Vistos não detectada. Atualize para v${CEAC_EXTENSION_EXPECTED_VERSION}, recarregue a extensão e dê Ctrl+F5.`,
       );
       return;
     }
@@ -86,6 +128,9 @@ export function CeacFormPanel({
         pageTitle,
       });
 
+      // Foco uma vez após o resultado (sucesso ou falha útil).
+      focusCeacWindow();
+
       if (!result.ok) {
         toast.error(result.error || "Não foi possível transferir para o CEAC");
         return;
@@ -95,11 +140,12 @@ export function CeacFormPanel({
         `${result.filled} campo(s) preenchido(s) no CEAC` +
           (result.skipped ? ` · ${result.skipped} sem correspondência` : ""),
       );
-      focusCeacWindow();
     } finally {
       setTransferring(false);
     }
   }
+
+  const canTransfer = extensionReady || isCeacExtensionPresent();
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-[#f4f1ea] text-[#1b2a4a]">
@@ -120,7 +166,12 @@ export function CeacFormPanel({
             type="button"
             size="sm"
             className="h-9 shrink-0 bg-white text-[#0b3a6e] hover:bg-white/90"
-            disabled={transferring || !fields.length}
+            disabled={transferring || !fields.length || !canTransfer}
+            title={
+              canTransfer
+                ? undefined
+                : `Instale a extensão v${CEAC_EXTENSION_EXPECTED_VERSION} e dê Ctrl+F5`
+            }
             onClick={() => void transferPage()}
           >
             {transferring ? (
@@ -133,7 +184,10 @@ export function CeacFormPanel({
         </div>
         <p className="mt-2 text-[11px] text-white/75">
           Você avança as páginas e resolve o captcha. O botão só preenche os campos desta
-          página no site oficial (requer extensão CP Vistos).
+          página no site oficial
+          {extVersion
+            ? ` (extensão v${extVersion}).`
+            : ` (requer extensão CP Vistos v${CEAC_EXTENSION_EXPECTED_VERSION}).`}
         </p>
       </div>
 

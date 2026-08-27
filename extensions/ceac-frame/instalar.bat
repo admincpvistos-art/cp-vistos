@@ -7,16 +7,16 @@ if errorlevel 1 start "" "%ProgramFiles(x86)%\Google\Chrome\Application\chrome.e
 if errorlevel 1 start "" "%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe" "edge://extensions"
 echo.
 echo ========================================
-echo  CP Vistos — CEAC Transferir (v1.5.2)
+echo  CP Vistos — CEAC Transferir (v1.5.3)
 echo ========================================
 echo.
 echo 1. Ative "Modo do desenvolvedor" (canto superior direito).
 echo 2. Remova a versao antiga da extensao CP Vistos, se houver.
-echo 3. Clique em "Carregar sem compactacao".
+echo 3. Clique em "Carregar sem compactacao" OU "Atualizar".
 echo 4. Selecione ESTA pasta:
 echo    %EXT%
 echo.
-echo Depois: recarregue Preencher DS-160 no site e use
+echo Depois: Ctrl+F5 em Preencher DS-160 e use
 echo "Transferir para o CEAC" no painel esquerdo.
 echo.
 pause

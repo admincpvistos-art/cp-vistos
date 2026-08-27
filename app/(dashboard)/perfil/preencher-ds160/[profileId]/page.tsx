@@ -54,9 +54,12 @@ export default function PreencherDs160Page({
     const stopPin = startCeacAlwaysOnTop();
     return () => {
       stopPin();
+      // Fecha só ao sair da página — não no resize que esconde o quadro.
       closeCeacWindow();
     };
   }, []);
+
+  // Resize só alterna o quadro visual; a janela CEAC permanece aberta.
 
   if (isPending || !data) {
     return (

@@ -4,7 +4,12 @@ import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { CEAC_URL } from "@/lib/ds160-ceac";
-import { getCeacExtensionVersion, isCeacExtensionPresent, openCeacOverElement } from "@/lib/ds160-ceac-window";
+import {
+  CEAC_EXTENSION_EXPECTED_VERSION,
+  getCeacExtensionVersion,
+  isCeacExtensionPresent,
+  openCeacOverElement,
+} from "@/lib/ds160-ceac-window";
 
 export function CeacOfficialPane() {
   const paneRef = useRef<HTMLDivElement>(null);
@@ -51,14 +56,22 @@ export function CeacOfficialPane() {
       return;
     }
 
-    openCeacOverElement(paneRef.current, {
-      useExtension: extensionReady || isCeacExtensionPresent(),
+    const target = paneRef.current;
+    // Duplo rAF: bounds do quadro direito após layout estável.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        openCeacOverElement(target, {
+          useExtension: extensionReady || isCeacExtensionPresent(),
+        });
+      });
     });
   }
 
   function openPanel() {
     window.postMessage({ type: "CP_VISTOS_OPEN_CEAC_PANEL" }, "*");
   }
+
+  const versionOk = extVersion === CEAC_EXTENSION_EXPECTED_VERSION;
 
   return (
     <div
@@ -94,8 +107,10 @@ export function CeacOfficialPane() {
       </div>
 
       <p className="max-w-md text-xs text-[#6b7280]">
-        Extensão {extVersion ? `v${extVersion}` : "não detectada"}
-        {extVersion && extVersion !== "1.5.1" ? " (atualize para 1.5.1)" : ""}
+        Extensão{" "}
+        {extVersion
+          ? `v${extVersion}${versionOk ? "" : ` (atualize para v${CEAC_EXTENSION_EXPECTED_VERSION})`}`
+          : "não detectada"}
         : use <strong> Transferir para o CEAC</strong> no painel esquerdo após abrir
         o site oficial. Captcha e avanço de páginas continuam manuais. Sem a extensão, use
         Copiar + Ctrl+V.

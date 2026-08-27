@@ -2,6 +2,9 @@ import { CEAC_URL } from "@/lib/ds160-ceac";
 
 const CEAC_WINDOW_NAME = "cp-vistos-ceac";
 
+/** Versão esperada da extensão (manifest / content-admin). */
+export const CEAC_EXTENSION_EXPECTED_VERSION = "1.5.3";
+
 let ceacWindow: Window | null = null;
 
 export function getCeacWindow() {
@@ -12,29 +15,35 @@ export function getCeacWindow() {
   return ceacWindow;
 }
 
-export function openCeacOverElement(
-  element: HTMLElement,
-  options?: { useExtension?: boolean },
-) {
+function measurePaneBounds(element: HTMLElement) {
   const rect = element.getBoundingClientRect();
+  const screenX = window.screenX ?? (window as Window & { screenLeft?: number }).screenLeft ?? 0;
+  const screenY = window.screenY ?? (window as Window & { screenTop?: number }).screenTop ?? 0;
   const chromeTop =
     window.outerHeight > window.innerHeight
       ? Math.round(window.outerHeight - window.innerHeight)
       : 0;
-  const left = Math.max(0, Math.round(window.screenX + rect.left));
-  const top = Math.max(0, Math.round(window.screenY + chromeTop + rect.top));
-  const width = Math.max(420, Math.round(rect.width));
-  const height = Math.max(400, Math.round(rect.height));
 
+  // Bounds reais do quadro direito — piso só de segurança, sem forçar 520px.
+  return {
+    left: Math.max(0, Math.round(screenX + rect.left)),
+    top: Math.max(0, Math.round(screenY + chromeTop + rect.top)),
+    width: Math.max(320, Math.round(rect.width)),
+    height: Math.max(320, Math.round(rect.height)),
+  };
+}
+
+export function openCeacOverElement(
+  element: HTMLElement,
+  options?: { useExtension?: boolean },
+) {
+  const bounds = measurePaneBounds(element);
   const useExtension = Boolean(options?.useExtension || isCeacExtensionPresent());
 
   window.postMessage(
     {
       type: "CP_VISTOS_OPEN_CEAC_WINDOW",
-      left,
-      top,
-      width,
-      height,
+      ...bounds,
     },
     "*",
   );
@@ -52,7 +61,7 @@ export function openCeacOverElement(
   ceacWindow = window.open(
     CEAC_URL,
     CEAC_WINDOW_NAME,
-    `width=${width},height=${height},left=${left},top=${top}`,
+    `width=${bounds.width},height=${bounds.height},left=${bounds.left},top=${bounds.top}`,
   );
 
   return ceacWindow;
@@ -235,15 +244,15 @@ export function transferFieldsToCeac(input: {
       ok: false,
       filled: 0,
       skipped: 0,
-      error:
-        "Extensão CP Vistos não detectada. Instale/atualize extensions/ceac-frame, recarregue a extensão e dê Ctrl+F5 nesta página.",
+      error: `Extensão CP Vistos não detectada. Instale/atualize extensions/ceac-frame para v${CEAC_EXTENSION_EXPECTED_VERSION}, recarregue a extensão e dê Ctrl+F5 nesta página.`,
     });
   }
 
-  pauseCeacPinForTransfer(45000);
+  pauseCeacPinForTransfer(20000);
   const requestId = `ceac-transfer-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
   return new Promise((resolve) => {
+    // Fail-fast relativo: content-admin usa ~8s; UI não espera 40s.
     const timeout = window.setTimeout(() => {
       window.removeEventListener("message", onMessage);
       resumeCeacPinAfterTransfer();
@@ -251,10 +260,9 @@ export function transferFieldsToCeac(input: {
         ok: false,
         filled: 0,
         skipped: 0,
-        error:
-          "Extensão não respondeu. Recarregue a extensão CP Vistos (chrome://extensions → Atualizar) para v1.5.2, dê Ctrl+F5 nesta página e abra o CEAC.",
+        error: `Extensão não respondeu. Recarregue a extensão CP Vistos (chrome://extensions → Atualizar) para v${CEAC_EXTENSION_EXPECTED_VERSION}, dê Ctrl+F5 nesta página e abra o CEAC.`,
       });
-    }, 40000);
+    }, 16000);
 
     function onMessage(event: MessageEvent) {
       if (event.source !== window) {

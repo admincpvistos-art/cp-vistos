@@ -12,24 +12,27 @@ const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ext = path.join(root, "extensions/ceac-frame");
 
 const manifest = JSON.parse(fs.readFileSync(path.join(ext, "manifest.json"), "utf8"));
-assert.strictEqual(manifest.version, "1.5.2");
+assert.strictEqual(manifest.version, "1.5.3");
 assert.ok(manifest.permissions.includes("scripting"));
 assert.ok(manifest.host_permissions.some((h) => h.includes("cpvistos.com.br")));
 assert.ok(manifest.host_permissions.some((h) => h.includes("ceac.state.gov")));
 
 const admin = fs.readFileSync(path.join(ext, "content-admin.js"), "utf8");
-assert.ok(admin.includes('EXT_VERSION = "1.5.2"'));
+assert.ok(admin.includes('EXT_VERSION = "1.5.3"'));
 assert.ok(admin.includes("sendRuntimeWithRetry"));
 assert.ok(admin.includes("CP_VISTOS_TRANSFER_CEAC"));
 assert.ok(admin.includes("CP_VISTOS_TRANSFER_CEAC_RESULT"));
 assert.ok(admin.includes("unpin-ceac-window"));
 assert.ok(admin.includes("transfer-ceac-fields"));
 assert.ok(admin.includes("pin-ceac-window"));
+assert.ok(admin.includes("8000"));
 
 const bg = fs.readFileSync(path.join(ext, "background.js"), "utf8");
 assert.ok(bg.includes("transfer-ceac-fields"));
 assert.ok(bg.includes("__cpVistosRunFill") || bg.includes("fill-ceac-fields"));
 assert.ok(bg.includes("executeScript"));
+assert.ok(bg.includes('type: "normal"'));
+assert.ok(!bg.includes("Math.max(520"));
 
 const ceac = fs.readFileSync(path.join(ext, "content-ceac.js"), "utf8");
 assert.ok(ceac.includes("__cpVistosRunFill"));
@@ -38,8 +41,9 @@ const win = fs.readFileSync(path.join(root, "lib/ds160-ceac-window.ts"), "utf8")
 assert.ok(win.includes("pauseCeacPinForTransfer"));
 assert.ok(win.includes("resumeCeacPinAfterTransfer"));
 assert.ok(win.includes("CP_VISTOS_TRANSFER_CEAC"));
-assert.ok(win.includes("40000"));
-assert.ok(win.includes("v1.5.2"));
+assert.ok(win.includes("16000"));
+assert.ok(win.includes("1.5.3"));
+assert.ok(win.includes("CEAC_EXTENSION_EXPECTED_VERSION"));
 
 // Simula handshake página ↔ content-script
 function simulateTransferHandshake({ extensionPresent, workerResponds, delayMs = 0 }) {
@@ -50,7 +54,7 @@ function simulateTransferHandshake({ extensionPresent, workerResponds, delayMs =
     };
   }
 
-  const TIMEOUT = 40000;
+  const TIMEOUT = 16000;
   if (!workerResponds) {
     return {
       ok: false,
@@ -76,4 +80,4 @@ assert.deepStrictEqual(
   { ok: true, filled: 3, skipped: 1, error: null },
 );
 
-console.log("OK test-ceac-transfer-unit: protocolo v1.5.2 + handshake simulado");
+console.log("OK test-ceac-transfer-unit: protocolo v1.5.3 + handshake simulado");

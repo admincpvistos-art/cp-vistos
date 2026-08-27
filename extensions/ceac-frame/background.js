@@ -166,23 +166,37 @@ function unpinCeacWindow() {
 async function openCeacWindow(bounds) {
   await loadStoredWindowId();
 
+  const left = Math.round(Number(bounds.left) || 0);
+  const top = Math.round(Number(bounds.top) || 0);
+  // Usa o tamanho real do quadro direito; piso baixo só evita janela inválida.
+  const width = Math.max(320, Math.round(Number(bounds.width) || 800));
+  const height = Math.max(320, Math.round(Number(bounds.height) || 800));
+
   const applyBounds = {
     focused: true,
     drawAttention: true,
     state: "normal",
-    left: bounds.left,
-    top: bounds.top,
-    width: bounds.width,
-    height: bounds.height,
+    left,
+    top,
+    width,
+    height,
   };
+
+  async function reapplyBounds(windowId) {
+    try {
+      await chrome.windows.update(windowId, applyBounds);
+      await chrome.windows.update(windowId, applyBounds);
+    } catch {
+      // ignore
+    }
+  }
 
   if (ceacWindowId != null) {
     try {
-      await chrome.windows.update(ceacWindowId, applyBounds);
-      await chrome.windows.update(ceacWindowId, applyBounds);
+      await reapplyBounds(ceacWindowId);
       const tab = await findCeacTab();
       if (tab) {
-        await bringCeacToFront(tab, { persistent: true });
+        await bringCeacToFront(tab, { persistent: false });
       }
       pinCeacWindow(60000);
       return { ok: true };
@@ -193,21 +207,18 @@ async function openCeacWindow(bounds) {
 
   const created = await chrome.windows.create({
     url: CEAC_URL,
-    type: "popup",
+    type: "normal",
     focused: true,
-    left: bounds.left,
-    top: bounds.top,
-    width: bounds.width,
-    height: bounds.height,
+    state: "normal",
+    left,
+    top,
+    width,
+    height,
   });
 
   await rememberWindowId(created?.id ?? null);
   if (ceacWindowId != null) {
-    try {
-      await chrome.windows.update(ceacWindowId, applyBounds);
-    } catch {
-      // ignore
-    }
+    await reapplyBounds(ceacWindowId);
   }
   pinCeacWindow(60000);
   return { ok: Boolean(ceacWindowId) };
@@ -410,8 +421,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     openCeacWindow({
       left: Number(message.left) || 0,
       top: Number(message.top) || 0,
-      width: Math.max(480, Number(message.width) || 800),
-      height: Math.max(520, Number(message.height) || 800),
+      width: Number(message.width) || 800,
+      height: Number(message.height) || 800,
     }).then(sendResponse, () => sendResponse({ ok: false }));
     return true;
   }
