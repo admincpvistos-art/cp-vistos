@@ -35,6 +35,7 @@ import {
 import { formatRegistrationSignature } from "@/lib/staff-access";
 import { InterviewDocsPanel } from "./interview-docs-panel";
 import { AcompanhamentoArchiveAction } from "./acompanhamento-archive-action";
+import { AcompanhamentoDependentsBatch } from "./acompanhamento-dependents-batch";
 
 type SheetForm = Omit<
   AcompanhamentoRecord,
@@ -546,6 +547,14 @@ export function AcompanhamentoEditSheet({
               </Button>
             </div>
           </form>
+
+          {!creating && data?.row?.userId ? (
+            <AcompanhamentoDependentsBatch
+              group={form.group || data.row.group || ""}
+              titularName={form.name || data.row.name || ""}
+              titularUserId={data.row.userId}
+            />
+          ) : null}
 
           {!creating && rowId && canArchive ? (
             <AcompanhamentoArchiveAction

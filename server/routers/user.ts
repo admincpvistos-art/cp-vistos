@@ -667,6 +667,128 @@ export const userRouter = router({
       return { message: "Cliente adicionado ao grupo" };
     }),
 
+  /** Inclui vários dependentes de uma vez no grupo do titular (área do cliente). */
+  addDependentsBatch: collaboratorProcedure
+    .input(
+      z.object({
+        titularUserId: z.string().min(1).optional(),
+        group: z.string().trim().min(1, { message: "Grupo do titular é obrigatório" }),
+        dependents: z
+          .array(
+            z
+              .object({
+                name: z
+                  .string()
+                  .trim()
+                  .min(4, { message: "Nome precisa ter no mínimo 4 caracteres" }),
+                cpf: z.string().refine((val) => val.length === 14, {
+                  message: "CPF inválido",
+                }),
+                wantsAmericanVisa: z.boolean(),
+                wantsPassport: z.boolean(),
+              })
+              .refine((person) => person.wantsAmericanVisa || person.wantsPassport, {
+                message: "Selecione pelo menos um serviço",
+                path: ["wantsAmericanVisa"],
+              }),
+          )
+          .min(1, { message: "Inclua ao menos um dependente" }),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const group = toUpperDisplay(input.group);
+
+      let titular =
+        input.titularUserId
+          ? await prisma.user.findUnique({
+              where: { id: input.titularUserId },
+              select: { id: true, group: true, payerUserId: true, createdByEmail: true, role: true },
+            })
+          : null;
+
+      if (titular?.payerUserId) {
+        titular = await prisma.user.findUnique({
+          where: { id: titular.payerUserId },
+          select: { id: true, group: true, payerUserId: true, createdByEmail: true, role: true },
+        });
+      }
+
+      if (!titular || titular.role !== Role.CLIENT || titular.payerUserId) {
+        titular = await prisma.user.findFirst({
+          where: {
+            role: Role.CLIENT,
+            group,
+            payerUserId: null,
+          },
+          select: { id: true, group: true, payerUserId: true, createdByEmail: true, role: true },
+        });
+      }
+
+      if (!titular) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Titular do grupo não encontrado. Salve o grupo do titular primeiro.",
+        });
+      }
+
+      if (!titular.group || toUpperDisplay(titular.group) !== group) {
+        await prisma.user.update({
+          where: { id: titular.id },
+          data: { group },
+        });
+      }
+
+      const createdByEmail =
+        ctx.collaborator.email?.toLowerCase() || titular.createdByEmail || null;
+
+      const allCpfs = input.dependents.map((person) => person.cpf);
+      const seen = new Set<string>();
+      for (const cpf of allCpfs) {
+        const digits = cpfDigits(cpf);
+        if (seen.has(digits)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `CPF repetido na lista: ${cpf}`,
+          });
+        }
+        seen.add(digits);
+      }
+
+      const existing = await prisma.user.findMany({
+        where: { cpf: { in: allCpfs } },
+        select: { cpf: true, name: true },
+      });
+      if (existing.length) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: `CPF já cadastrado: ${existing.map((row) => row.cpf).join(", ")}`,
+        });
+      }
+
+      const created: string[] = [];
+      for (const person of input.dependents) {
+        const digits = cpfDigits(person.cpf);
+        const member = await createClientWithFinanceAndProfile({
+          name: person.name,
+          email: `dependente.${digits}.${titular.id}.${Date.now()}@grupo.cpvistos`,
+          password: `dep-${titular.id}-${digits}-${Date.now()}`,
+          cpf: person.cpf,
+          group,
+          payerUserId: titular.id,
+          wantsAmericanVisa: person.wantsAmericanVisa,
+          wantsPassport: person.wantsPassport,
+          createdByEmail,
+        });
+        created.push(member.name);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+      }
+
+      return {
+        message: `${created.length} dependente(s) incluído(s) no grupo`,
+        names: created,
+      };
+    }),
+
   createClient: collaboratorProcedure
     .input(
       z.object({

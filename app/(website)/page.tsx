@@ -6,8 +6,11 @@ import { Services } from "@/components/home/services";
 import { Testimonial } from "@/components/home/testimonial";
 import { Features } from "@/components/home/features";
 import { Footer } from "@/components/global/footer";
+import { getGoogleReviews } from "@/lib/google-reviews";
 
-export default function Home() {
+export default async function Home() {
+  const google = await getGoogleReviews();
+
   return (
     <>
       <Hero />
@@ -16,7 +19,14 @@ export default function Home() {
       <Banner />
       <Services />
       <div className="w-full bg-mobile-testimonial bg-no-repeat bg-[length:100%_80%] bg-bottom sm:bg-tablet-testimonial lg:bg-desktop-testimonial">
-        <Testimonial />
+        <Testimonial
+          reviews={google.reviews}
+          rating={google.rating}
+          ratingLabel={google.ratingLabel}
+          reviewCount={google.reviewCount}
+          writeReviewUrl={google.writeReviewUrl || "/avaliar"}
+          mapsUrl={google.mapsUrl}
+        />
         <Features />
       </div>
       <Footer />

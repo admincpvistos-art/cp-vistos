@@ -11,37 +11,7 @@ import { Carousel, CarouselApi, CarouselContent, CarouselItem, CarouselNext, Car
 import { CardContent, CardHeader, Card } from "../ui/card";
 
 import { cn } from "@/lib/utils";
-
-const REVIEWS = [
-  {
-    profileImage: "/assets/images/testimonial-1.png",
-    name: "Claudio Monteiro",
-    date: new Date("2024-10-16"),
-    grades: 5,
-    desc: "Tudo impecável! Do início ao fim. Equipe super atenciosa, cuidadosa e, principalmente, ágil. Meu visto saiu em 1 semana. Já indiquei o serviço para alguns amigos e seguirei indicando.",
-  },
-  {
-    profileImage: "/assets/images/testimonial-2.png",
-    name: "Vitoria Barros",
-    date: new Date("2024-10-23"),
-    grades: 5,
-    desc: "Acompanhamento excelente, nos sentimos confiante em cada parte do processo! Super indico, conseguimos emitir e finalizar tudo em 12 dias. 🇺🇸🙏🏻❤️💙",
-  },
-  {
-    profileImage: "/assets/images/testimonial-3.png",
-    name: "Tamires Brito",
-    date: new Date("2024-08-21"),
-    grades: 5,
-    desc: "Investimento super válido, uma empresa de confiança, a Camila nos atendeu super bem, sempre solicita a todo tempo esclarecendo todas as nossas dúvidas e,  principalmente nos orientou muito bem desde o princípio ao fim de todo o processo. Graças a Deus, e o trabalho de assessoria dela tivemos a aprovação do visto Americano!🙏🏼😅",
-  },
-  {
-    profileImage: "/assets/images/testimonial-4.png",
-    name: "Daniel Vilela",
-    date: new Date("2024-08-18"),
-    grades: 5,
-    desc: "Excelente! A Camila me atendeu super bem, extremamente atenciosa. Foram cerca de 20 dias desde o primeiro contato até estar com o visto em mãos. Muito competente!!",
-  },
-];
+import type { GoogleReviewItem } from "@/lib/google-reviews";
 
 const containerAnimation = {
   hidden: {
@@ -114,10 +84,35 @@ const googleItemAnimation = {
   },
 };
 
-export function Testimonial() {
+type TestimonialProps = {
+  reviews: GoogleReviewItem[];
+  ratingLabel?: string;
+  reviewCount?: number | null;
+  rating?: number | null;
+  writeReviewUrl?: string | null;
+  mapsUrl?: string | null;
+};
+
+function starCount(rating: number | null | undefined) {
+  if (rating == null) return 5;
+  return Math.max(1, Math.min(5, Math.round(rating)));
+}
+
+export function Testimonial({
+  reviews,
+  ratingLabel = "Excelente",
+  reviewCount = null,
+  rating = null,
+  writeReviewUrl = "/avaliar",
+  mapsUrl = null,
+}: TestimonialProps) {
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
   const [count, setCount] = useState(0);
+  const items = reviews.length ? reviews : [];
+  const googleHref = mapsUrl || writeReviewUrl || "/avaliar";
+  const reviewHref = writeReviewUrl || "/avaliar";
+  const summaryStars = starCount(rating);
 
   useEffect(() => {
     if (!api) {
@@ -169,8 +164,8 @@ export function Testimonial() {
                     <CarouselPrevious className="left-0 top-1/2 -translate-y-1/2 z-10 h-[calc(100%+1px)] bg-transparent bg-gradient-to-r from-white from-60% to-transparent hover:bg-gradient-to-r hover:from-white hover:from-60% hover:to-transparent hover:bg-transparent rounded-none text-secondary" />
 
                     <CarouselContent className="sm:-ml-9">
-                      {REVIEWS.map((review, index) => (
-                        <CarouselItem key={index} className="sm:pl-9 basis-[75%] sm:basis-1/2">
+                      {items.map((review, index) => (
+                        <CarouselItem key={`${review.name}-${index}`} className="sm:pl-9 basis-[75%] sm:basis-1/2">
                           <Card className="w-full h-full relative">
                             <CardHeader className="w-full flex flex-row items-center justify-between">
                               <div className="flex items-center gap-4">
@@ -179,6 +174,7 @@ export function Testimonial() {
                                   alt="Perfil"
                                   width={26}
                                   height={26}
+                                  unoptimized={review.profileImage.startsWith("http")}
                                   className="min-h-[26px] min-w-[26px] rounded-full object-cover object-center shrink-0"
                                 />
 
@@ -186,7 +182,7 @@ export function Testimonial() {
                                   <span className="text-base font-semibold text-destructive">{review.name}</span>
 
                                   <span className="text-[10px] font-medium text-foreground/70">
-                                    {format(review.date, "dd/MM/yyyy")}
+                                    {format(new Date(review.date), "dd/MM/yyyy")}
                                   </span>
                                 </div>
                               </div>
@@ -203,13 +199,13 @@ export function Testimonial() {
                             <CardContent className="w-full flex flex-col gap-4">
                               <div className="flex items-center gap-4">
                                 <div className="flex items-center gap-[2px]">
-                                  {Array.from({ length: review.grades }).map((_, index) => (
+                                  {Array.from({ length: review.grades }).map((_, starIndex) => (
                                     <Image
                                       src="/assets/icons/star.svg"
                                       alt="Nota"
                                       width={18}
                                       height={18}
-                                      key={index}
+                                      key={starIndex}
                                       className="object-contain object-center"
                                     />
                                   ))}
@@ -264,54 +260,32 @@ export function Testimonial() {
                   variants={googleItemAnimation}
                   className="text-4xl font-semibold text-foreground text-center"
                 >
-                  Excelente
+                  {ratingLabel}
                 </motion.span>
 
                 <motion.div variants={googleItemAnimation} className="flex items-center gap-[2px]">
-                  <Image
-                    src="/assets/icons/star.svg"
-                    alt="Nota"
-                    width={30}
-                    height={30}
-                    className="object-contain object-center"
-                  />
-                  <Image
-                    src="/assets/icons/star.svg"
-                    alt="Nota"
-                    width={30}
-                    height={30}
-                    className="object-contain object-center"
-                  />
-                  <Image
-                    src="/assets/icons/star.svg"
-                    alt="Nota"
-                    width={30}
-                    height={30}
-                    className="object-contain object-center"
-                  />
-                  <Image
-                    src="/assets/icons/star.svg"
-                    alt="Nota"
-                    width={30}
-                    height={30}
-                    className="object-contain object-center"
-                  />
-                  <Image
-                    src="/assets/icons/star.svg"
-                    alt="Nota"
-                    width={30}
-                    height={30}
-                    className="object-contain object-center"
-                  />
+                  {Array.from({ length: summaryStars }).map((_, index) => (
+                    <Image
+                      key={index}
+                      src="/assets/icons/star.svg"
+                      alt="Nota"
+                      width={30}
+                      height={30}
+                      className="object-contain object-center"
+                    />
+                  ))}
                 </motion.div>
 
                 <motion.span variants={googleItemAnimation} className="text-base text-foreground text-center">
-                  Com Base Em <strong className="font-semibold">16 avaliações</strong>
+                  Com Base Em{" "}
+                  <strong className="font-semibold">
+                    {reviewCount != null ? `${reviewCount} avaliações` : "avaliações no Google"}
+                  </strong>
                 </motion.span>
 
                 <motion.a
                   variants={googleItemAnimation}
-                  href="https://www.google.com/search?q=cp+vistos&rlz=1C1GCEA_enBR1090BR1090&oq=cp+vistos&gs_lcrp=EgZjaHJvbWUqDAgAECMYJxiABBiKBTIMCAAQIxgnGIAEGIoFMhAIARAuGK8BGMcBGIAEGI4FMgoIAhAAGIAEGKIEMgoIAxAAGIAEGKIEMgoIBBAAGIAEGKIEMgYIBRBFGDwyBggGEEUYPDIGCAcQRRg80gEIMTk1MGowajeoAgCwAgA&sourceid=chrome&ie=UTF-8"
+                  href={googleHref}
                   target="_blank"
                   rel="noreferrer noopener"
                   className="block"
@@ -323,6 +297,16 @@ export function Testimonial() {
                     height={47}
                     className="object-contain object-center"
                   />
+                </motion.a>
+
+                <motion.a
+                  variants={googleItemAnimation}
+                  href={reviewHref}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="mt-2 text-sm font-medium text-primary underline"
+                >
+                  Deixe sua avaliação no Google
                 </motion.a>
               </motion.div>
             </div>
