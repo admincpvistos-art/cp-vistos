@@ -149,7 +149,7 @@ export function AcompanhamentoEditSheet({
       },
     });
 
-  const { mutate: updateRow, isPending: isUpdating, mutateAsync: updateRowAsync } =
+  const { mutate: updateRow, isPending: isUpdating } =
     trpc.acompanhamentoRouter.updateRow.useMutation({
       onSuccess: () => {
         utils.acompanhamentoRouter.getClientesSheet.invalidate();
@@ -165,6 +165,10 @@ export function AcompanhamentoEditSheet({
         toast.error(error.message || "Não foi possível salvar");
       },
     });
+
+  // Mutação separada: NÃO fecha o sheet no onSuccess (senão o arquivar nunca roda).
+  const { mutateAsync: saveBeforeArchiveAsync, isPending: isSavingBeforeArchive } =
+    trpc.acompanhamentoRouter.updateRow.useMutation();
 
   const { mutateAsync: archiveRowAsync, isPending: isArchiving } =
     trpc.acompanhamentoRouter.archiveRow.useMutation();
@@ -189,8 +193,8 @@ export function AcompanhamentoEditSheet({
         setArchiveConfirmOpen(false);
         return;
       }
-      // Passo do admin: salvar classificação de serviços antes de arquivar.
-      await updateRowAsync({ id: rowId, ...payload });
+      // Salva serviços/dados sem fechar o painel; só depois arquiva.
+      await saveBeforeArchiveAsync({ id: rowId, ...payload });
       const result = await archiveRowAsync({
         id: rowId,
         services: servicesToArchive,
@@ -369,7 +373,7 @@ export function AcompanhamentoEditSheet({
     return true;
   }
 
-  const isPending = isCreating || isUpdating || isArchiving;
+  const isPending = isCreating || isUpdating || isArchiving || isSavingBeforeArchive;
   const payload = {
     ...form,
     accountFields: form.accountFields,

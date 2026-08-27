@@ -4,7 +4,12 @@ import type { AcompanhamentoService } from "@/lib/acompanhamento-types";
 import { isAcompanhamentoService } from "@/lib/acompanhamento-types";
 import type { ArquivadosSheetCategory } from "@/lib/arquivados-categories";
 import prisma from "@/lib/prisma";
-import { uppercaseExistingClientRecords } from "@/server/acompanhamento-sheet";
+import {
+  ACOMPANHAMENTO_HEADERS,
+  ACOMPANHAMENTO_ACTIVE_SOURCE,
+  archiveNameGroupKey,
+  uppercaseExistingClientRecords,
+} from "@/server/acompanhamento-sheet";
 
 export type { ArquivadosSheetCategory } from "@/lib/arquivados-categories";
 
@@ -237,4 +242,168 @@ export async function listArquivadosSheet(
 
   const appRows = dbRows.map(mapDbArquivado);
   return [...appRows, ...excelRows];
+}
+
+function parseArquivadoDbId(rowId: string) {
+  if (rowId.startsWith("db:")) {
+    return rowId.slice(3);
+  }
+  return null;
+}
+
+/**
+ * Desarquiva: remove snapshots de Arquivados (todas as abas do cliente)
+ * e recria a linha no Acompanhamento como ATIVO.
+ */
+export async function unarchiveArquivadoClient(rowId: string) {
+  const dbId = parseArquivadoDbId(rowId);
+  if (!dbId) {
+    throw new Error(
+      "Este registro veio da planilha legada e não pode ser desarquivado por aqui.",
+    );
+  }
+
+  const snapshot = await prisma.arquivadoClient.findUnique({
+    where: { id: dbId },
+  });
+  if (!snapshot) {
+    throw new Error("Cliente arquivado não encontrado");
+  }
+
+  const nameGroupKey = archiveNameGroupKey(snapshot.name, snapshot.group);
+  const related = await prisma.arquivadoClient.findMany({
+    where: {
+      OR: [
+        ...(snapshot.sourceUserId
+          ? [{ sourceUserId: snapshot.sourceUserId }]
+          : []),
+        ...(snapshot.sourceAcompanhamentoId
+          ? [{ sourceAcompanhamentoId: snapshot.sourceAcompanhamentoId }]
+          : []),
+        {
+          name: snapshot.name,
+          group: snapshot.group,
+        },
+      ],
+    },
+  });
+
+  const services = Array.from(
+    new Set(
+      related
+        .flatMap((row) => row.services)
+        .filter(isAcompanhamentoService),
+    ),
+  );
+  if (!services.length && snapshot.services.length) {
+    services.push(
+      ...snapshot.services.filter(isAcompanhamentoService),
+    );
+  }
+  if (!services.length) {
+    // Fallback: categoria da aba atual → serviço mínimo para poder arquivar de novo.
+    const fromCategory: Partial<Record<string, AcompanhamentoService>> = {
+      american_visa: "primeiro_visto",
+      renovacao: "renovacao",
+      passport: "passaporte",
+      e_ta: "esta",
+    };
+    const fallback = fromCategory[snapshot.category];
+    if (fallback) {
+      services.push(fallback);
+    }
+  }
+
+  // Já existe linha ativa no Acompanhamento? Só limpa Arquivados.
+  if (snapshot.sourceUserId) {
+    const existingActive = await prisma.acompanhamentoClient.findFirst({
+      where: {
+        userId: snapshot.sourceUserId,
+        source: ACOMPANHAMENTO_ACTIVE_SOURCE,
+      },
+      select: { id: true },
+    });
+    if (existingActive) {
+      await prisma.arquivadoClient.deleteMany({
+        where: { id: { in: related.map((row) => row.id) } },
+      });
+      return {
+        acompanhamentoId: existingActive.id,
+        services,
+        removedArquivadoIds: related.map((row) => row.id),
+      };
+    }
+  }
+
+  if (nameGroupKey) {
+    const activeRows = await prisma.acompanhamentoClient.findMany({
+      where: { source: ACOMPANHAMENTO_ACTIVE_SOURCE },
+      include: { user: { select: { name: true, group: true } } },
+      take: 2000,
+    });
+    const match = activeRows.find((row) => {
+      const name = row.user?.name || row.cells[0] || "";
+      const group = row.user?.group || row.cells[19] || "";
+      return archiveNameGroupKey(name, group) === nameGroupKey;
+    });
+    if (match) {
+      await prisma.arquivadoClient.deleteMany({
+        where: { id: { in: related.map((row) => row.id) } },
+      });
+      return {
+        acompanhamentoId: match.id,
+        services,
+        removedArquivadoIds: related.map((row) => row.id),
+      };
+    }
+  }
+
+  const cells = Array.from({ length: ACOMPANHAMENTO_HEADERS.length }, () => "");
+  cells[0] = snapshot.name;
+  cells[1] = snapshot.barcode;
+  cells[2] = snapshot.barcodeIssued;
+  cells[3] = snapshot.casv;
+  cells[4] = snapshot.interview;
+  cells[5] = snapshot.meeting;
+  cells[9] = snapshot.tax;
+  cells[13] = snapshot.dob;
+  cells[14] = snapshot.passport;
+  cells[16] = snapshot.email;
+  cells[18] = snapshot.entryDate;
+  cells[19] = snapshot.group;
+  cells[21] = "ATIVO";
+
+  // userId é @unique — só vincula se não houver outra linha (ativa ou arquivada soft).
+  let userId: string | null = snapshot.sourceUserId;
+  if (userId) {
+    const taken = await prisma.acompanhamentoClient.findFirst({
+      where: { userId },
+      select: { id: true },
+    });
+    if (taken) {
+      userId = null;
+    }
+  }
+
+  const created = await prisma.acompanhamentoClient.create({
+    data: {
+      source: ACOMPANHAMENTO_ACTIVE_SOURCE,
+      cells,
+      statusLabel: "ATIVO",
+      extraDate: snapshot.barcodeDone ? "done" : null,
+      sheetComment: snapshot.sheetComment || null,
+      services,
+      ...(userId ? { userId } : {}),
+    },
+  });
+
+  await prisma.arquivadoClient.deleteMany({
+    where: { id: { in: related.map((row) => row.id) } },
+  });
+
+  return {
+    acompanhamentoId: created.id,
+    services,
+    removedArquivadoIds: related.map((row) => row.id),
+  };
 }

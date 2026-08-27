@@ -1,7 +1,16 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import { AlertTriangle, ArrowDownAZ, ArrowUpAZ, CheckCircle2, CircleAlert, Search } from "lucide-react";
+import {
+  AlertTriangle,
+  ArchiveRestore,
+  ArrowDownAZ,
+  ArrowUpAZ,
+  CheckCircle2,
+  CircleAlert,
+  Loader2,
+  Search,
+} from "lucide-react";
 import { isValid, parse } from "date-fns";
 import { toast } from "sonner";
 
@@ -140,10 +149,16 @@ function NameCell({
   row,
   onSaveComment,
   commentPending,
+  canUnarchive,
+  unarchivePending,
+  onUnarchive,
 }: {
   row: SheetClientRow;
   onSaveComment?: (rowId: string, comment: string) => Promise<void>;
   commentPending?: boolean;
+  canUnarchive?: boolean;
+  unarchivePending?: boolean;
+  onUnarchive?: (row: SheetClientRow) => void;
 }) {
   return (
     <div className="flex items-center gap-1.5 min-w-0">
@@ -161,6 +176,29 @@ function NameCell({
         }}
       />
       <span className="text-primary hover:underline truncate">{row.name || "—"}</span>
+      {canUnarchive && onUnarchive && row.id.startsWith("db:") ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 shrink-0 px-2 text-xs text-muted-foreground hover:text-foreground"
+          disabled={unarchivePending}
+          title="Desarquivar — voltar ao Acompanhamento"
+          onClick={(event) => {
+            event.stopPropagation();
+            onUnarchive(row);
+          }}
+        >
+          {unarchivePending ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <>
+              <ArchiveRestore className="h-3.5 w-3.5 mr-1" />
+              Desarquivar
+            </>
+          )}
+        </Button>
+      ) : null}
     </div>
   );
 }
@@ -193,6 +231,9 @@ export function SheetClientsTable({
   banner,
   isLoading,
   errorMessage,
+  canUnarchive,
+  onUnarchive,
+  unarchivePendingId,
 }: {
   rows: SheetClientRow[];
   emptyMessage?: string;
@@ -205,6 +246,9 @@ export function SheetClientsTable({
   banner?: ReactNode;
   isLoading?: boolean;
   errorMessage?: string | null;
+  canUnarchive?: boolean;
+  onUnarchive?: (row: SheetClientRow) => void;
+  unarchivePendingId?: string | null;
 }) {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<"desc" | "asc">("desc");
@@ -339,6 +383,9 @@ export function SheetClientsTable({
                             row={row}
                             onSaveComment={onSaveComment}
                             commentPending={commentPending}
+                            canUnarchive={canUnarchive}
+                            unarchivePending={unarchivePendingId === row.id}
+                            onUnarchive={onUnarchive}
                           />
                         ) : column.key === "services" ? (
                           <ServicesCell services={row.services ?? []} />
