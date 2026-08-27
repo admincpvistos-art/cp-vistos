@@ -166,10 +166,7 @@ export function AcompanhamentoEditSheet({
       },
     });
 
-  // Mutação separada: NÃO fecha o sheet no onSuccess (senão o arquivar nunca roda).
-  const { mutateAsync: saveBeforeArchiveAsync, isPending: isSavingBeforeArchive } =
-    trpc.acompanhamentoRouter.updateRow.useMutation();
-
+  // Só archiveRow — NÃO chama updateRow (o Salvar fecha o painel e abortava o arquivar).
   const { mutateAsync: archiveRowAsync, isPending: isArchiving } =
     trpc.acompanhamentoRouter.archiveRow.useMutation();
 
@@ -189,12 +186,7 @@ export function AcompanhamentoEditSheet({
       return;
     }
     try {
-      if (!validateBeforeSave()) {
-        setArchiveConfirmOpen(false);
-        return;
-      }
-      // Salva serviços/dados sem fechar o painel; só depois arquiva.
-      await saveBeforeArchiveAsync({ id: rowId, ...payload });
+      // Serviços vão direto no archiveRow; o servidor persiste e cria os snapshots.
       const result = await archiveRowAsync({
         id: rowId,
         services: servicesToArchive,
@@ -373,7 +365,7 @@ export function AcompanhamentoEditSheet({
     return true;
   }
 
-  const isPending = isCreating || isUpdating || isArchiving || isSavingBeforeArchive;
+  const isPending = isCreating || isUpdating || isArchiving;
   const payload = {
     ...form,
     accountFields: form.accountFields,
@@ -397,9 +389,7 @@ export function AcompanhamentoEditSheet({
     if (!rowId || creating) {
       return;
     }
-    if (!validateBeforeSave()) {
-      return;
-    }
+    // Não usa validateBeforeSave (senha/CPF do Salvar) — só exige serviço marcado.
     if (!selectedServices.length) {
       toast.error("Marque ao menos um serviço antes de arquivar");
       return;
