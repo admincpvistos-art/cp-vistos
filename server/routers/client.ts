@@ -21,6 +21,7 @@ import {
   ACOMPANHAMENTO_HEADERS,
   servicesFromSignupFlags,
 } from "@/server/acompanhamento-sheet";
+import { REGISTRATION_CREATED_BY_SELF } from "@/lib/staff-access";
 
 async function assertTitularPassportIdentity(
   profileId: string,
@@ -712,6 +713,7 @@ export const clientRouter = router({
           payerUserId: account.id,
           wantsAmericanVisa: categoryEnum === Category.american_visa,
           wantsPassport: categoryEnum === Category.passport,
+          createdByEmail: account.createdByEmail || REGISTRATION_CREATED_BY_SELF,
         },
       });
 
@@ -739,6 +741,7 @@ export const clientRouter = router({
           userId: member.id,
           cells,
           statusLabel: "ATIVO",
+          createdByEmail: account.createdByEmail || REGISTRATION_CREATED_BY_SELF,
           services: servicesFromSignupFlags({
             wantsAmericanVisa: categoryEnum === Category.american_visa,
             wantsPassport: categoryEnum === Category.passport,

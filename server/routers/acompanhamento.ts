@@ -94,7 +94,7 @@ export const acompanhamentoRouter = router({
 
       return { row };
     }),
-  createRow: acompanhamentoStaffProcedure.input(rowFieldsSchema).mutation(async ({ input }) => {
+  createRow: acompanhamentoStaffProcedure.input(rowFieldsSchema).mutation(async ({ input, ctx }) => {
     if (!input.name.trim()) {
       throw new TRPCError({
         code: "BAD_REQUEST",
@@ -103,7 +103,10 @@ export const acompanhamentoRouter = router({
     }
 
     try {
-      const row = await createAcompanhamentoRecord(input);
+      const row = await createAcompanhamentoRecord({
+        ...input,
+        createdByEmail: ctx.staff.email,
+      });
       return { row };
     } catch (error) {
       throw new TRPCError({

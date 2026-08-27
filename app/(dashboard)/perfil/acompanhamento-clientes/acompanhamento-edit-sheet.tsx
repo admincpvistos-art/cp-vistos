@@ -32,12 +32,13 @@ import {
   type AcompanhamentoRecord,
   type AcompanhamentoService,
 } from "@/lib/acompanhamento-types";
+import { formatRegistrationSignature } from "@/lib/staff-access";
 import { InterviewDocsPanel } from "./interview-docs-panel";
 import { AcompanhamentoArchiveAction } from "./acompanhamento-archive-action";
 
 type SheetForm = Omit<
   AcompanhamentoRecord,
-  "id" | "userId" | "profileId" | "formStep" | "accountFields" | "registeredAt"
+  "id" | "userId" | "profileId" | "formStep" | "accountFields" | "registeredAt" | "createdByEmail"
 > & {
   accountFields: AcompanhamentoAccountFields;
 };
@@ -187,6 +188,7 @@ export function AcompanhamentoEditSheet({
       profileId: _profileId,
       formStep: _formStep,
       registeredAt: _registeredAt,
+      createdByEmail: _createdByEmail,
       accountFields,
       ...rest
     } = data.row;
@@ -556,6 +558,15 @@ export function AcompanhamentoEditSheet({
                 onClose();
               }}
             />
+          ) : null}
+
+          {!creating && data?.row ? (
+            <div className="mt-4 border-t pt-3 text-xs text-muted-foreground">
+              <p className="font-medium text-foreground/80">Assinatura de cadastro</p>
+              <p className="mt-0.5 select-none" aria-readonly="true">
+                {formatRegistrationSignature(data.row.createdByEmail)}
+              </p>
+            </div>
           ) : null}
           </>
         )}

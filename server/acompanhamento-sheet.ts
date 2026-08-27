@@ -30,6 +30,7 @@ import {
   SERVICE_TO_ARQUIVADOS_CATEGORY,
 } from "@/lib/arquivados-categories";
 import { toUpperDisplay, toUpperDisplayOrEmpty } from "@/lib/uppercase";
+import { REGISTRATION_CREATED_BY_SYSTEM } from "@/lib/staff-access";
 
 /** Sync em lote pausado — importação Excel desligada; cadastro manual nas planilhas. */
 export const OPERATIONS_SYNC_PAUSED = true;
@@ -479,6 +480,12 @@ async function registerImportedRow(
   const cells = record.cells;
   const name = cell(cells, COL.name) || "Cliente importado";
   const barcode = cell(cells, COL.barcode);
+  const rowMeta = await prisma.acompanhamentoClient.findUnique({
+    where: { id: record.id },
+    select: { createdByEmail: true },
+  });
+  const createdByEmail =
+    rowMeta?.createdByEmail?.trim().toLowerCase() || REGISTRATION_CREATED_BY_SYSTEM;
 
   // Reaproveita usuário órfão de tentativas anteriores (mesmo e-mail import.{id}).
   const importEmail = `import.${record.id}@acompanhamento.cpvistos`;
@@ -527,6 +534,7 @@ async function registerImportedRow(
         cel: cell(cells, COL.phone) || null,
         emailScheduleAccount: cell(cells, COL.account) || null,
         wantsAmericanVisa: true,
+        createdByEmail,
         createdAt: entryDate ?? new Date(),
       },
     });
@@ -1127,9 +1135,14 @@ function buildRecord(
     extraDate?: string | null;
     sheetComment?: string | null;
     services?: string[] | null;
+    createdByEmail?: string | null;
     createdAt?: Date | null;
     userId: string | null;
-    user: (User & { profiles: Profile[]; payerEmail?: string }) | null;
+    user: (User & {
+      profiles: Profile[];
+      payerEmail?: string;
+      createdByEmail?: string | null;
+    }) | null;
   },
 ): AcompanhamentoRecord {
   const cells = record.cells;
@@ -1184,6 +1197,7 @@ function buildRecord(
     sheetComment: record.sheetComment ?? "",
     services: resolveServices(record.services, user),
     registeredAt,
+    createdByEmail: record.createdByEmail || user?.createdByEmail || null,
     accountFields: buildAccountFields(user),
   };
 }
@@ -1532,7 +1546,9 @@ export type AcompanhamentoUpdateInput = {
   accountFields?: AcompanhamentoAccountFields | null;
 };
 
-export type AcompanhamentoCreateInput = Omit<AcompanhamentoUpdateInput, "id">;
+export type AcompanhamentoCreateInput = Omit<AcompanhamentoUpdateInput, "id"> & {
+  createdByEmail?: string | null;
+};
 
 function cellsFromInput(input: AcompanhamentoCreateInput) {
   return [
@@ -1675,6 +1691,7 @@ export async function createAcompanhamentoRecord(input: AcompanhamentoCreateInpu
       extraDate: normalizedInput.barcodeDone ? "done" : null,
       sheetComment: normalizedInput.sheetComment.trim() || null,
       services,
+      createdByEmail: normalizedInput.createdByEmail?.trim().toLowerCase() || null,
     },
   });
 

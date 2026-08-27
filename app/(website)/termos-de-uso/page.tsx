@@ -2,166 +2,240 @@ export default function TermsPage() {
   return (
     <section className="w-full pt-[calc(80px+100px)] bg-privacy-policy-mobile bg-no-repeat bg-[length:100%_100%] pb-36 sm:pt-[calc(112px+100px)] sm:bg-privacy-policy-tablet lg:bg-privacy-policy-desktop">
       <div className="w-full px-6 flex flex-col gap-6 mb-12 sm:px-16 lg:container lg:mx-auto">
-        <h3 className="text-2xl font-semibold lg:text-3xl">1. Termos</h3>
+        <h2 className="text-3xl font-bold lg:text-5xl">Termos de Uso</h2>
+        <p className="text-base text-foreground/70 sm:text-xl">
+          Última atualização: 27 de agosto de 2026. Ao acessar o site, a área do
+          cliente ou qualquer serviço digital da CP Vistos (também referida como
+          &quot;CP Assessoria de Vistos&quot;), você declara ter lido, compreendido
+          e aceito estes Termos de Uso. Se não concordar, não utilize nossos
+          canais nem contrate nossos serviços.
+        </p>
+      </div>
 
+      <div className="w-full px-6 flex flex-col gap-6 mb-12 sm:px-16 lg:container lg:mx-auto">
+        <h3 className="text-2xl font-semibold lg:text-3xl">1. Objeto e serviços</h3>
         <div className="w-full flex flex-col gap-4">
           <p className="text-base text-foreground/70 sm:text-xl">
-            Ao acessar o site CP Vistos, você concorda em cumprir estes termos
-            de serviço, todas as leis e regulamentos aplicáveis e declara ser
-            responsável pelo cumprimento de todas as leis locais pertinentes.
-            Caso não concorde com algum destes termos, você está proibido de
-            utilizar ou acessar este site. Os materiais contidos neste site são
-            protegidos pelas leis de direitos autorais e marcas comerciais
-            aplicáveis.
+            A CP Vistos presta assessoria e suporte administrativo relacionados a
+            processos de documentação e viagem, incluindo, de forma exemplificativa
+            e não exaustiva:
+          </p>
+          <ul className="w-full flex flex-col gap-3 list-disc pl-6">
+            <li className="text-base text-foreground/70 sm:text-xl">
+              Visto americano (primeiro visto e renovação);
+            </li>
+            <li className="text-base text-foreground/70 sm:text-xl">
+              Autorização ESTA e autorização E-TA;
+            </li>
+            <li className="text-base text-foreground/70 sm:text-xl">
+              Auxílio e acompanhamento para emissão de passaporte brasileiro;
+            </li>
+            <li className="text-base text-foreground/70 sm:text-xl">
+              Monitoramento e orientação relacionados a passaporte português,
+              quando contratado;
+            </li>
+            <li className="text-base text-foreground/70 sm:text-xl">
+              Orientação no preenchimento de formulários (incluindo DS-160),
+              organização de documentos, acompanhamento de prazos e comunicação
+              operacional com o cliente.
+            </li>
+          </ul>
+          <p className="text-base text-foreground/70 sm:text-xl">
+            Os serviços são de natureza consultiva e operacional. A CP Vistos{" "}
+            <strong>não é órgão governamental</strong>, consulados, embaixadas ou
+            autoridade emigratória, e{" "}
+            <strong>não garante aprovação</strong> de vistos, autorizações,
+            passaportes ou qualquer decisão oficial.
+          </p>
+        </div>
+      </div>
+
+      <div className="w-full px-6 flex flex-col gap-6 mb-12 sm:px-16 lg:container lg:mx-auto">
+        <h3 className="text-2xl font-semibold lg:text-3xl">2. Cadastro e conta</h3>
+        <div className="w-full flex flex-col gap-4">
+          <p className="text-base text-foreground/70 sm:text-xl">
+            O uso da área do cliente exige cadastro com dados verdadeiros,
+            completos e atualizados. Você é responsável por manter a
+            confidencialidade de senhas e credenciais, bem como por toda
+            atividade realizada sob sua conta. Comunicamos imediatamente qualquer
+            uso não autorizado.
+          </p>
+          <p className="text-base text-foreground/70 sm:text-xl">
+            Contas podem ser criadas pelo próprio cliente ou pela equipe da CP
+            Vistos, para fins de prestação do serviço contratado. O cadastro não
+            substitui contratos, orçamentos ou confirmações comerciais específicas
+            de cada atendimento.
           </p>
         </div>
       </div>
 
       <div className="w-full px-6 flex flex-col gap-6 mb-12 sm:px-16 lg:container lg:mx-auto">
         <h3 className="text-2xl font-semibold lg:text-3xl">
-          2. Uso de Licença
+          3. Obrigações e veracidade das informações
         </h3>
-
         <div className="w-full flex flex-col gap-4">
           <p className="text-base text-foreground/70 sm:text-xl">
-            É concedida permissão para baixar temporariamente uma cópia dos
-            materiais (informações ou software) disponibilizados no site CP
-            Vistos, apenas para visualização pessoal e não comercial. Esta é uma
-            concessão de licença, não uma transferência de propriedade. Sob esta
-            licença, você não pode:
+            O cliente declara e garante que todas as informações, documentos e
+            declarações fornecidos à CP Vistos são verdadeiros, legítimos e
+            atualizados. A CP Vistos não se responsabiliza por atrasos, indeferimentos,
+            cancelamentos, multas, impedimentos de viagem ou quaisquer prejuízos
+            decorrentes de dados incompletos, inconsistentes, falsos, omitidos ou
+            desatualizados fornecidos pelo cliente ou por terceiros por ele
+            autorizados.
           </p>
-
-          <ol className="w-full flex flex-col gap-4 list-decimal pl-6" type="1">
-            <li className="text-base text-foreground/70 sm:text-xl">
-              Modificar ou copiar os materiais;
-            </li>
-
-            <li className="text-base text-foreground/70 sm:text-xl">
-              Utilizar os materiais para qualquer finalidade comercial ou
-              exibição pública (comercial ou não comercial);
-            </li>
-
-            <li className="text-base text-foreground/70 sm:text-xl">
-              Tentar descompilar ou realizar engenharia reversa de qualquer
-              software contido no site CP Vistos;
-            </li>
-
-            <li className="text-base text-foreground/70 sm:text-xl">
-              Remover quaisquer direitos autorais ou outras indicações de
-              propriedade dos materiais;
-            </li>
-
-            <li className="text-base text-foreground/70 sm:text-xl">
-              Transferir os materiais para outra pessoa ou &apos;espelhar&apos;
-              os materiais em qualquer outro servidor.
-            </li>
-          </ol>
-
           <p className="text-base text-foreground/70 sm:text-xl">
-            Esta licença será automaticamente rescindida caso você viole alguma
-            dessas restrições e poderá ser encerrada pela CP Vistos a qualquer
-            momento. Ao encerrar a visualização desses materiais ou ao término
-            da licença, você deve apagar todos os materiais baixados em sua
-            posse, tanto em formato eletrônico quanto impresso.
+            É vedado utilizar a plataforma ou os serviços para fins ilícitos,
+            fraudulentos, para fraudar autoridades, terceiros ou a própria CP
+            Vistos, ou para qualquer mal uso dos canais digitais, formulários,
+            documentos e informações disponibilizadas.
           </p>
         </div>
       </div>
 
       <div className="w-full px-6 flex flex-col gap-6 mb-12 sm:px-16 lg:container lg:mx-auto">
         <h3 className="text-2xl font-semibold lg:text-3xl">
-          3. Isenção de responsabilidade
+          4. Natureza da assessoria e isenção de responsabilidade
         </h3>
-
         <div className="w-full flex flex-col gap-4">
           <p className="text-base text-foreground/70 sm:text-xl">
-            Os materiais no site da CP Vistos são fornecidos &quot;como
-            estão&quot;. A CP Vistos não oferece garantias, expressas ou
-            implícitas, e, por meio deste termo, isenta e nega todas as outras
-            garantias, incluindo, sem limitação, garantias implícitas de
-            comercialização, adequação a um propósito específico ou não violação
-            de propriedade intelectual ou outros direitos.
+            A CP Vistos atua como assessoria privada. Decisões sobre concessão,
+            renovação, validade, exigência de documentos adicionais, entrevistas,
+            taxas oficiais, prazos e demais atos administrativos cabem
+            exclusivamente às autoridades competentes (incluindo, sem limitação,
+            consulados, embaixadas, departamentos de imigração e órgãos emissores
+            de documentos).
           </p>
-
           <p className="text-base text-foreground/70 sm:text-xl">
-            Além disso, a CP Vistos não garante ou faz qualquer representação
-            quanto à precisão, resultados prováveis ou confiabilidade do uso dos
-            materiais disponibilizados em seu site ou em sites vinculados a ele.
+            Na máxima extensão permitida pela legislação aplicável, a CP Vistos,
+            seus sócios, colaboradores e prestadores{" "}
+            <strong>não respondem</strong> por:
+          </p>
+          <ul className="w-full flex flex-col gap-3 list-disc pl-6">
+            <li className="text-base text-foreground/70 sm:text-xl">
+              Indeferimento, atraso, cancelamento ou condicionamento de vistos,
+              ESTA, E-TA, passaportes ou quaisquer autorizações;
+            </li>
+            <li className="text-base text-foreground/70 sm:text-xl">
+              Mudanças de regras, sistemas, taxas ou procedimentos oficiais;
+            </li>
+            <li className="text-base text-foreground/70 sm:text-xl">
+              Perda de voos, hospedagens, compromissos comerciais ou lucros
+              cessantes;
+            </li>
+            <li className="text-base text-foreground/70 sm:text-xl">
+              Uso indevido da conta do cliente, compartilhamento de senhas ou
+              acesso por terceiros;
+            </li>
+            <li className="text-base text-foreground/70 sm:text-xl">
+              Conteúdo de sites de terceiros, sistemas oficiais (incluindo CEAC,
+              formulários governamentais e portais de agendamento) e falhas
+              técnicas fora do controle da CP Vistos;
+            </li>
+            <li className="text-base text-foreground/70 sm:text-xl">
+              Danos decorrentes de mal uso, conduta ilícita ou violação destes
+              Termos pelo usuário.
+            </li>
+          </ul>
+          <p className="text-base text-foreground/70 sm:text-xl">
+            Os materiais e conteúdos do site são fornecidos &quot;como estão&quot;,
+            sem garantia de disponibilidade ininterrupta, ausência de erros ou
+            adequação a finalidade específica.
           </p>
         </div>
       </div>
 
       <div className="w-full px-6 flex flex-col gap-6 mb-12 sm:px-16 lg:container lg:mx-auto">
-        <h3 className="text-2xl font-semibold lg:text-3xl">4. Limitações</h3>
-
+        <h3 className="text-2xl font-semibold lg:text-3xl">5. Pagamentos e valores</h3>
         <div className="w-full flex flex-col gap-4">
           <p className="text-base text-foreground/70 sm:text-xl">
-            Em nenhum caso a CP Vistos ou seus fornecedores serão responsáveis
-            por quaisquer danos (incluindo, sem limitação, danos por perda de
-            dados, lucros ou interrupção de negócios) resultantes do uso ou da
-            incapacidade de uso dos materiais no site, mesmo que a CP Vistos ou
-            um representante autorizado tenha sido notificado, verbalmente ou
-            por escrito, sobre a possibilidade de tais danos.
+            Valores de honorários da CP Vistos, condições de pagamento e escopo
+            contratado são definidos no atendimento comercial e/ou na área
+            interna de serviços e custos, quando aplicável. Taxas oficiais
+            cobradas por autoridades (consulares, emissoras de documentos etc.)
+            são de responsabilidade do cliente, salvo disposição expressa em
+            contrário.
           </p>
-
           <p className="text-base text-foreground/70 sm:text-xl">
-            Como algumas jurisdições não permitem limitações de garantias
-            implícitas ou de responsabilidade por danos consequentes ou
-            incidentais, essas restrições podem não se aplicar a você.
+            A falta de pagamento pode suspender ou encerrar o atendimento, sem
+            prejuízo da cobrança de valores já devidos pelos serviços prestados.
           </p>
         </div>
       </div>
 
       <div className="w-full px-6 flex flex-col gap-6 mb-12 sm:px-16 lg:container lg:mx-auto">
-        <h3 className="text-2xl font-semibold lg:text-3xl">
-          5. Precisão dos materiais
-        </h3>
-
+        <h3 className="text-2xl font-semibold lg:text-3xl">6. Propriedade intelectual</h3>
         <div className="w-full flex flex-col gap-4">
           <p className="text-base text-foreground/70 sm:text-xl">
-            Os materiais exibidos no site da CP Vistos podem conter erros
-            técnicos, tipográficos ou fotográficos. A CP Vistos não garante que
-            qualquer material disponibilizado seja preciso, completo ou
-            atualizado. A CP Vistos pode fazer alterações nos materiais a
-            qualquer momento, sem aviso prévio, mas não se compromete a
-            atualizá-los regularmente.
+            Marcas, logotipos, textos, layouts, softwares e demais conteúdos da
+            CP Vistos são protegidos por direitos de propriedade intelectual. É
+            vedado copiar, modificar, redistribuir, fazer engenharia reversa ou
+            explorar comercialmente tais materiais sem autorização prévia e por
+            escrito.
           </p>
         </div>
       </div>
 
       <div className="w-full px-6 flex flex-col gap-6 mb-12 sm:px-16 lg:container lg:mx-auto">
-        <h3 className="text-2xl font-semibold lg:text-3xl">6. Links</h3>
-
+        <h3 className="text-2xl font-semibold lg:text-3xl">7. Conduta proibida</h3>
         <div className="w-full flex flex-col gap-4">
           <p className="text-base text-foreground/70 sm:text-xl">
-            A CP Vistos não revisou todos os sites vinculados ao seu site e não
-            se responsabiliza pelo conteúdo de quaisquer sites externos. A
-            inclusão de um link não implica endosso ou associação por parte da
-            CP Vistos. O uso de qualquer site vinculado é de exclusiva
-            responsabilidade do usuário.
+            Sem prejuízo de outras vedações legais, o usuário não pode: (a)
+            praticar atos ilícitos ou contrários à boa-fé; (b) tentar obter
+            acesso não autorizado a sistemas, dados ou contas de terceiros; (c)
+            introduzir malware ou comprometer a segurança da plataforma; (d)
+            utilizar informações obtidas no atendimento para fins diversos do
+            serviço contratado; (e) prestar informações falsas a autoridades ou
+            à CP Vistos.
           </p>
         </div>
       </div>
 
       <div className="w-full px-6 flex flex-col gap-6 mb-12 sm:px-16 lg:container lg:mx-auto">
-        <h3 className="text-2xl font-semibold lg:text-3xl">Modificações</h3>
-
+        <h3 className="text-2xl font-semibold lg:text-3xl">8. Links e terceiros</h3>
         <div className="w-full flex flex-col gap-4">
           <p className="text-base text-foreground/70 sm:text-xl">
-            A CP Vistos pode revisar estes termos de serviço a qualquer momento,
-            sem aviso prévio. Ao continuar utilizando o site, você concorda em
-            cumprir a versão mais recente destes termos.
+            O site pode conter links para portais oficiais e sites de terceiros.
+            A CP Vistos não controla nem endossa o conteúdo desses sites e não se
+            responsabiliza por suas práticas, disponibilidade ou políticas.
           </p>
         </div>
       </div>
 
       <div className="w-full px-6 flex flex-col gap-6 mb-12 sm:px-16 lg:container lg:mx-auto">
-        <h3 className="text-2xl font-semibold lg:text-3xl">Lei aplicável</h3>
-
+        <h3 className="text-2xl font-semibold lg:text-3xl">9. Suspensão e encerramento</h3>
         <div className="w-full flex flex-col gap-4">
           <p className="text-base text-foreground/70 sm:text-xl">
-            Estes termos e condições são regidos e interpretados de acordo com
-            as leis brasileiras, e você se submete irrevogavelmente à jurisdição
-            exclusiva dos tribunais do Brasil.
+            A CP Vistos pode suspender ou encerrar o acesso à plataforma e/ou o
+            atendimento em caso de violação destes Termos, suspeita de fraude,
+            risco à segurança, inadimplência ou determinação legal, sem prejuízo
+            das medidas cabíveis.
+          </p>
+        </div>
+      </div>
+
+      <div className="w-full px-6 flex flex-col gap-6 mb-12 sm:px-16 lg:container lg:mx-auto">
+        <h3 className="text-2xl font-semibold lg:text-3xl">10. Modificações</h3>
+        <div className="w-full flex flex-col gap-4">
+          <p className="text-base text-foreground/70 sm:text-xl">
+            Estes Termos podem ser atualizados a qualquer momento. A versão
+            vigente será publicada nesta página. O uso contínuo dos serviços após
+            a publicação constitui aceite da versão atualizada.
+          </p>
+        </div>
+      </div>
+
+      <div className="w-full px-6 flex flex-col gap-6 mb-12 sm:px-16 lg:container lg:mx-auto">
+        <h3 className="text-2xl font-semibold lg:text-3xl">11. Lei aplicável e foro</h3>
+        <div className="w-full flex flex-col gap-4">
+          <p className="text-base text-foreground/70 sm:text-xl">
+            Estes Termos são regidos pelas leis da República Federativa do Brasil.
+            Fica eleito o foro da comarca do estabelecimento principal da CP
+            Vistos, com renúncia a qualquer outro, por mais privilegiado que seja,
+            salvo disposição legal imperativa em contrário.
+          </p>
+          <p className="text-base text-foreground/70 sm:text-xl">
+            Dúvidas: entre em contato pelos canais oficiais indicados no site
+            (incluindo cpassessoriavistos@gmail.com).
           </p>
         </div>
       </div>

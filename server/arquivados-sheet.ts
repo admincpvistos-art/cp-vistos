@@ -375,6 +375,7 @@ export async function unarchiveArquivadoClient(rowId: string) {
 
   // userId é @unique — só vincula se não houver outra linha (ativa ou arquivada soft).
   let userId: string | null = snapshot.sourceUserId;
+  let createdByEmail: string | null = null;
   if (userId) {
     const taken = await prisma.acompanhamentoClient.findFirst({
       where: { userId },
@@ -382,6 +383,12 @@ export async function unarchiveArquivadoClient(rowId: string) {
     });
     if (taken) {
       userId = null;
+    } else {
+      const linkedUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { createdByEmail: true },
+      });
+      createdByEmail = linkedUser?.createdByEmail ?? null;
     }
   }
 
@@ -393,6 +400,7 @@ export async function unarchiveArquivadoClient(rowId: string) {
       extraDate: snapshot.barcodeDone ? "done" : null,
       sheetComment: snapshot.sheetComment || null,
       services,
+      createdByEmail,
       ...(userId ? { userId } : {}),
     },
   });

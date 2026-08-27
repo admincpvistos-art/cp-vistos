@@ -27,7 +27,7 @@ import {
   router,
 } from "../trpc";
 import prisma from "@/lib/prisma";
-import { canCreateClientAccounts } from "@/lib/staff-access";
+import { canCreateClientAccounts, REGISTRATION_CREATED_BY_SELF } from "@/lib/staff-access";
 import { tripPriorityFromDate } from "@/lib/trip-priority";
 import {
   ACOMPANHAMENTO_HEADERS,
@@ -173,9 +173,11 @@ async function createClientWithFinanceAndProfile(params: {
   payerUserId?: string;
   wantsAmericanVisa: boolean;
   wantsPassport: boolean;
+  createdByEmail?: string | null;
 }) {
   const name = toUpperDisplay(params.name);
   const group = toUpperDisplay(params.group || params.name);
+  const createdByEmail = params.createdByEmail?.trim().toLowerCase() || null;
 
   const account = await prisma.user.create({
     data: {
@@ -188,6 +190,7 @@ async function createClientWithFinanceAndProfile(params: {
       payerUserId: params.payerUserId,
       wantsAmericanVisa: params.wantsAmericanVisa,
       wantsPassport: params.wantsPassport,
+      createdByEmail,
     },
   });
 
@@ -216,6 +219,7 @@ async function createClientWithFinanceAndProfile(params: {
       userId: account.id,
       cells,
       statusLabel: "ATIVO",
+      createdByEmail,
       services: servicesFromSignupFlags({
         wantsAmericanVisa: params.wantsAmericanVisa,
         wantsPassport: params.wantsPassport,
@@ -464,6 +468,7 @@ export const userRouter = router({
         group: input.name,
         wantsAmericanVisa: input.wantsAmericanVisa,
         wantsPassport: input.wantsPassport,
+        createdByEmail: REGISTRATION_CREATED_BY_SELF,
       });
 
       for (const person of additionalPeople) {
@@ -477,6 +482,7 @@ export const userRouter = router({
           payerUserId: titular.id,
           wantsAmericanVisa: person.wantsAmericanVisa,
           wantsPassport: person.wantsPassport,
+          createdByEmail: REGISTRATION_CREATED_BY_SELF,
         });
       }
 
@@ -542,7 +548,8 @@ export const userRouter = router({
         ETAStatus: z.enum(["analysis", "approved", "disapproved"]).optional(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async (opts) => {
+      const { input } = opts;
       const name = toUpperDisplay(input.name);
       const group = toUpperDisplay(input.group);
       const category =
@@ -642,6 +649,7 @@ export const userRouter = router({
         payerUserId: titular.id,
         wantsAmericanVisa: category === Category.american_visa,
         wantsPassport: category === Category.passport,
+        createdByEmail: opts.ctx.collaborator.email,
       });
 
       await prisma.profile.updateMany({
@@ -963,6 +971,7 @@ export const userRouter = router({
           cpf: input.cpf,
           cel: input.cel,
           scheduleAccount,
+          createdByEmail: opts.ctx.collaborator.email.toLowerCase(),
         },
       });
 

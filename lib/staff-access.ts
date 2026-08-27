@@ -9,8 +9,33 @@ export const OFFICE_COLLABORATOR_EMAILS = [
   "cpassessoriavistos3@gmail.com",
 ] as const;
 
+/** Marcadores especiais em createdByEmail (além de e-mails da equipe). */
+export const REGISTRATION_CREATED_BY_SELF = "self";
+export const REGISTRATION_CREATED_BY_SYSTEM = "system";
+
 export function normalizeEmail(email?: string | null) {
   return email?.trim().toLowerCase() ?? "";
+}
+
+/** Texto imutável de “assinatura de cadastro” para exibição. */
+export function formatRegistrationSignature(createdByEmail?: string | null) {
+  const value = normalizeEmail(createdByEmail);
+  if (!value) {
+    return "Não identificado (cadastro anterior)";
+  }
+  if (value === REGISTRATION_CREATED_BY_SELF) {
+    return "Cadastro pelo próprio cliente";
+  }
+  if (value === REGISTRATION_CREATED_BY_SYSTEM) {
+    return "Importação / sistema";
+  }
+  if (isFinanceAdminEmail(value)) {
+    return `Administrador: ${value}`;
+  }
+  if (isOfficeCollaboratorEmail(value)) {
+    return `Colaborador: ${value}`;
+  }
+  return `Equipe: ${value}`;
 }
 
 export function isFinanceAdminEmail(email?: string | null) {

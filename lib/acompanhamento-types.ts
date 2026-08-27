@@ -62,6 +62,8 @@ export type AcompanhamentoRecord = {
   services: AcompanhamentoService[];
   /** Timestamp ms do cadastro (usuário / linha) — ordenação “mais recentes”. */
   registeredAt: number;
+  /** Quem criou o cadastro (e-mail da equipe, "self", "system" ou vazio). Imutável na UI. */
+  createdByEmail: string | null;
   accountFields: AcompanhamentoAccountFields | null;
 };
 
