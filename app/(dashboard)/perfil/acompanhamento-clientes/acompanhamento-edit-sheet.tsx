@@ -486,11 +486,6 @@ export function AcompanhamentoEditSheet({
               value={form.accountFields.passwordConfirmScheduleAccount}
               onChange={(value) => setAccount("passwordConfirmScheduleAccount", value)}
             />
-            <Field
-              label="Valor do serviço"
-              value={form.accountFields.budget}
-              onChange={(value) => setAccount("budget", value)}
-            />
             <div className="space-y-1.5">
               <Label>Status do pagamento</Label>
               <Select
