@@ -3,7 +3,15 @@ import { CEAC_URL } from "@/lib/ds160-ceac";
 const CEAC_WINDOW_NAME = "cp-vistos-ceac";
 
 /** Versão esperada da extensão (manifest / content-admin). */
-export const CEAC_EXTENSION_EXPECTED_VERSION = "1.5.3";
+export const CEAC_EXTENSION_EXPECTED_VERSION = "1.5.4";
+
+/** Link da Chrome Web Store (após publicar). Fallback: página interna. */
+export function getCeacExtensionInstallUrl() {
+  return (
+    process.env.NEXT_PUBLIC_CEAC_EXTENSION_STORE_URL?.trim() ||
+    "https://www.cpvistos.com.br/extensao-ceac"
+  );
+}
 
 let ceacWindow: Window | null = null;
 

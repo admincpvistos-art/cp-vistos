@@ -1,6 +1,6 @@
-/**
+﻿/**
  * Teste do protocolo Transferir CEAC (sem Chrome).
- * Valida versão, mensagens e timeouts esperados no código.
+ * Valida versÃ£o, mensagens e timeouts esperados no cÃ³digo.
  * node scripts/test-ceac-transfer-unit.mjs
  */
 import assert from "assert";
@@ -12,13 +12,13 @@ const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ext = path.join(root, "extensions/ceac-frame");
 
 const manifest = JSON.parse(fs.readFileSync(path.join(ext, "manifest.json"), "utf8"));
-assert.strictEqual(manifest.version, "1.5.3");
+assert.strictEqual(manifest.version, "1.5.4");
 assert.ok(manifest.permissions.includes("scripting"));
 assert.ok(manifest.host_permissions.some((h) => h.includes("cpvistos.com.br")));
 assert.ok(manifest.host_permissions.some((h) => h.includes("ceac.state.gov")));
 
 const admin = fs.readFileSync(path.join(ext, "content-admin.js"), "utf8");
-assert.ok(admin.includes('EXT_VERSION = "1.5.3"'));
+assert.ok(admin.includes('EXT_VERSION = "1.5.4"'));
 assert.ok(admin.includes("sendRuntimeWithRetry"));
 assert.ok(admin.includes("CP_VISTOS_TRANSFER_CEAC"));
 assert.ok(admin.includes("CP_VISTOS_TRANSFER_CEAC_RESULT"));
@@ -42,15 +42,15 @@ assert.ok(win.includes("pauseCeacPinForTransfer"));
 assert.ok(win.includes("resumeCeacPinAfterTransfer"));
 assert.ok(win.includes("CP_VISTOS_TRANSFER_CEAC"));
 assert.ok(win.includes("16000"));
-assert.ok(win.includes("1.5.3"));
+assert.ok(win.includes("1.5.4"));
 assert.ok(win.includes("CEAC_EXTENSION_EXPECTED_VERSION"));
 
-// Simula handshake página ↔ content-script
+// Simula handshake pÃ¡gina â†” content-script
 function simulateTransferHandshake({ extensionPresent, workerResponds, delayMs = 0 }) {
   if (!extensionPresent) {
     return {
       ok: false,
-      error: "Extensão CP Vistos não detectada",
+      error: "ExtensÃ£o CP Vistos nÃ£o detectada",
     };
   }
 
@@ -58,13 +58,13 @@ function simulateTransferHandshake({ extensionPresent, workerResponds, delayMs =
   if (!workerResponds) {
     return {
       ok: false,
-      error: "Extensão não respondeu",
+      error: "ExtensÃ£o nÃ£o respondeu",
     };
   }
   if (delayMs > TIMEOUT) {
     return {
       ok: false,
-      error: "Extensão não respondeu",
+      error: "ExtensÃ£o nÃ£o respondeu",
     };
   }
   return { ok: true, filled: 3, skipped: 1, error: null };
@@ -80,4 +80,4 @@ assert.deepStrictEqual(
   { ok: true, filled: 3, skipped: 1, error: null },
 );
 
-console.log("OK test-ceac-transfer-unit: protocolo v1.5.3 + handshake simulado");
+console.log("OK test-ceac-transfer-unit: protocolo v1.5.4 + handshake simulado");

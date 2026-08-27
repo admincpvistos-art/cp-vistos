@@ -1,9 +1,9 @@
 /**
  * Ponte entre o painel DS-160 (cpvistos) e o service worker da extensão.
- * v1.5.3 — janela no tamanho do quadro; transfer fail-fast ~8s; pin pausado.
+ * v1.5.4 — pronta para Chrome Web Store (atualização automática).
  */
 
-const EXT_VERSION = "1.5.3";
+const EXT_VERSION = "1.5.4";
 
 function markReady() {
   try {

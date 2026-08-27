@@ -113,7 +113,15 @@ export function CeacOfficialPane() {
           : "não detectada"}
         : use <strong> Transferir para o CEAC</strong> no painel esquerdo após abrir
         o site oficial. Captcha e avanço de páginas continuam manuais. Sem a extensão, use
-        Copiar + Ctrl+V.
+        Copiar + Ctrl+V.{" "}
+        <a
+          href="/extensao-ceac"
+          target="_blank"
+          rel="noreferrer"
+          className="underline text-[#0b3a6e]"
+        >
+          Instalar / atualizar extensão
+        </a>
       </p>
     </div>
   );

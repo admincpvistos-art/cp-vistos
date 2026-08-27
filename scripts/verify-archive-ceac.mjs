@@ -1,5 +1,5 @@
-/**
- * Verificações estáticas do fluxo Arquivar + extensão CEAC (sem rede).
+﻿/**
+ * VerificaÃ§Ãµes estÃ¡ticas do fluxo Arquivar + extensÃ£o CEAC (sem rede).
  * Executar: node scripts/verify-archive-ceac.mjs
  */
 import assert from "assert";
@@ -20,12 +20,12 @@ const SERVICE_TO_ARQUIVADOS_CATEGORY = {
 function categoriesForServices(services) {
   return services.map((service) => {
     const category = SERVICE_TO_ARQUIVADOS_CATEGORY[service];
-    assert.ok(category, `serviço inválido: ${service}`);
+    assert.ok(category, `serviÃ§o invÃ¡lido: ${service}`);
     return category;
   });
 }
 
-// --- Arquivar: mapeamento e replicação ---
+// --- Arquivar: mapeamento e replicaÃ§Ã£o ---
 assert.deepStrictEqual(categoriesForServices(["primeiro_visto"]), ["american_visa"]);
 assert.deepStrictEqual(categoriesForServices(["passaporte"]), ["passport"]);
 assert.deepStrictEqual(categoriesForServices(["primeiro_visto", "passaporte"]), [
@@ -37,7 +37,7 @@ assert.deepStrictEqual(
   ["american_visa", "renovacao", "passport", "e_ta"],
 );
 
-// Simula “transferência”: sai da lista ativa e entra em N abas.
+// Simula â€œtransferÃªnciaâ€: sai da lista ativa e entra em N abas.
 function simulateArchiveTransfer(activeRows, id, services) {
   const row = activeRows.find((item) => item.id === id);
   assert.ok(row, "cliente precisa existir no acompanhamento");
@@ -68,17 +68,17 @@ assert.deepStrictEqual(
   ["american_visa", "e_ta"],
 );
 
-// --- CEAC extensão: versão alinhada ---
+// --- CEAC extensÃ£o: versÃ£o alinhada ---
 const manifest = JSON.parse(
   fs.readFileSync(path.join(root, "extensions/ceac-frame/manifest.json"), "utf8"),
 );
-assert.strictEqual(manifest.version, "1.5.3");
+assert.strictEqual(manifest.version, "1.5.4");
 
 const contentAdmin = fs.readFileSync(
   path.join(root, "extensions/ceac-frame/content-admin.js"),
   "utf8",
 );
-assert.ok(contentAdmin.includes('const EXT_VERSION = "1.5.3"'));
+assert.ok(contentAdmin.includes('const EXT_VERSION = "1.5.4"'));
 assert.ok(contentAdmin.includes("sendRuntimeWithRetry"));
 assert.ok(contentAdmin.includes("CP_VISTOS_TRANSFER_CEAC"));
 
@@ -90,7 +90,7 @@ assert.ok(contentCeac.includes("__cpVistosRunFill"));
 
 const windowLib = fs.readFileSync(path.join(root, "lib/ds160-ceac-window.ts"), "utf8");
 assert.ok(windowLib.includes("CEAC_EXTENSION_EXPECTED_VERSION"));
-assert.ok(windowLib.includes("1.5.3"));
+assert.ok(windowLib.includes("1.5.4"));
 assert.ok(windowLib.includes("pauseCeacPinForTransfer"));
 assert.ok(windowLib.includes("16000"));
 
@@ -111,4 +111,4 @@ const editSheet = fs.readFileSync(
 );
 assert.ok(editSheet.includes("AcompanhamentoArchiveAction") || editSheet.includes("Enviar para Arquivados"));
 
-console.log("OK verify-archive-ceac: mapeamento, transferência simulada e CEAC v1.5.3");
+console.log("OK verify-archive-ceac: mapeamento, transferÃªncia simulada e CEAC v1.5.4");

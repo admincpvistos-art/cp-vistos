@@ -1,8 +1,14 @@
 {
   "manifest_version": 3,
   "name": "CP Vistos — CEAC Transferir DS-160",
-  "version": "1.5.3",
+  "version": "1.5.4",
   "description": "Abre o CEAC ao lado do DS-160, mantém na frente e transfere os campos da página atual. Uso interno CP Vistos.",
+  "homepage_url": "https://www.cpvistos.com.br/extensao-ceac",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
   "permissions": ["sidePanel", "windows", "tabs", "scripting", "storage"],
   "host_permissions": [
     "https://www.cpvistos.com.br/*",
@@ -25,7 +31,11 @@
     "default_path": "sidepanel.html"
   },
   "action": {
-    "default_title": "CP Vistos CEAC"
+    "default_title": "CP Vistos CEAC",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png"
+    }
   },
   "content_scripts": [
     {

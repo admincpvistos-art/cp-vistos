@@ -1,51 +1,39 @@
-# CP Vistos — Extensão CEAC (v1.5.3)
+# CP Vistos — Extensão CEAC (v1.5.4)
 
-Pasta pronta para instalar em qualquer computador do escritório (Chrome ou Edge).
+## Atualização automática
+
+Instale pela **Chrome Web Store** (link em https://www.cpvistos.com.br/extensao-ceac após publicar).
+O Chrome atualiza sozinho quando publicamos uma versão nova.
+
+Guia completo: [PUBLISH.md](./PUBLISH.md)
 
 ## O que faz
 
-- Abre o CEAC oficial **no tamanho do quadro direito** do DS-160
-- Mantém a janela do CEAC **na frente** após Copiar / Transferir
-- Botão **Transferir para o CEAC**: envia os campos da **página atual** para a tela aberta do CEAC
-- Captcha e avanço de páginas continuam **manuais**
-- O botão **Copiar** por campo continua disponível
+- Abre o CEAC oficial no tamanho do quadro direito do DS-160
+- Mantém a janela na frente após Copiar / Transferir
+- **Transferir para o CEAC**: preenche os campos da página atual
+- Captcha e avanço de páginas continuam manuais
 
-## Instalação / atualização (Chrome / Edge)
+## Instalação rápida (fallback sem Store)
 
-1. Copie esta pasta inteira para o PC (`ceac-frame`)
-2. Abra `chrome://extensions` (ou `edge://extensions`)
-3. Ative **Modo do desenvolvedor**
-4. Se já tiver a extensão: clique em **Atualizar** (ou Remover + Carregar sem compactação de novo)
-5. Se for a 1ª vez: **Carregar sem compactação** → selecione esta pasta
-6. Recarregue `Preencher DS-160` no site (**Ctrl+F5**)
+1. Baixe o zip em `/downloads/cp-vistos-ceac-extension.zip` ou rode `instalar.bat`
+2. `chrome://extensions` → Modo do desenvolvedor → Carregar sem compactação
+3. Ctrl+F5 em Preencher DS-160
+4. Confirme **v1.5.4** no quadro CEAC
 
-Ou rode `instalar.bat`.
+## Empacotar
 
-Confirme que a versão exibida no quadro CEAC é **v1.5.3**.
-
-## Uso
-
-1. Abra o cliente em Preencher DS-160
-2. Clique em **Abrir CEAC neste quadro**
-3. No CEAC: login / captcha / página correspondente
-4. No painel esquerdo: mesma página do DS-160
-5. **Transferir para o CEAC**
-6. Revise; avance no CEAC e repita
-
-## Observações
-
-- Transferência **por página** (semi-automática)
-- Se um campo não bater, use **Copiar**
-- Funciona em `www.cpvistos.com.br`, `*.cpvistos.com.br`, `*.vercel.app` e `localhost`
-- Sem a extensão, o botão Transferir fica desabilitado (fail-fast)
+```bash
+node scripts/pack-ceac-extension.mjs
+```
 
 ## Arquivos
 
 | Arquivo | Função |
 |---|---|
-| `manifest.json` | Configuração MV3 (v1.5.3) |
-| `background.js` | Janela CEAC + pin + transferência |
-| `content-admin.js` | Ponte com o site CP Vistos |
-| `content-ceac.js` | Preenche campos no site do governo |
-| `sidepanel.html` / `sidepanel.js` | Painel lateral opcional |
-| `instalar.bat` | Atalho de instalação no Windows |
+| `manifest.json` | MV3 v1.5.4 + ícones |
+| `background.js` | Janela + pin + transferência |
+| `content-admin.js` | Ponte com o site |
+| `content-ceac.js` | Preenche o CEAC |
+| `icons/` | Ícones da Store |
+| `PUBLISH.md` | Publicação / auto-update |
