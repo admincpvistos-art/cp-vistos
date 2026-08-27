@@ -447,14 +447,20 @@ async function ensureFinanceAndServiceForUser(userId: string) {
 }
 
 async function linkAcompanhamentoToUser(
-  record: { id: string; cells: string[] },
+  record: { id: string; cells: string[]; services?: string[] },
   userId: string,
 ) {
   const cells = record.cells;
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { profiles: true },
+  });
+  const linkedServices = resolveServices(record.services, user);
   await prisma.acompanhamentoClient.update({
     where: { id: record.id },
     data: {
       userId,
+      ...(linkedServices.length ? { services: linkedServices } : {}),
       resp: cell(cells, COL.resp) || null,
       alimto: cell(cells, COL.alimto) || null,
       obs: cell(cells, COL.obs) || null,
@@ -1480,7 +1486,12 @@ export async function getAcompanhamentoRecord(id: string) {
 
   const resolved = resolveServices(record.services, record.user);
   // Backfill: cadastro antigo sem services[] gravado — persiste o que o cliente já escolheu.
-  if (resolved.length && normalizeServices(record.services).length === 0) {
+  const stored = normalizeServices(record.services);
+  if (
+    resolved.length &&
+    (stored.length === 0 ||
+      JSON.stringify(stored.sort()) !== JSON.stringify([...resolved].sort()))
+  ) {
     await prisma.acompanhamentoClient.update({
       where: { id: record.id },
       data: { services: resolved },
@@ -1870,11 +1881,66 @@ export async function updateAcompanhamentoRecord(input: AcompanhamentoUpdateInpu
   return getAcompanhamentoRecord(input.id);
 }
 
+/** IDs de linhas ativas a remover (mesmo cliente, duplicatas Excel, irmãs). */
+export async function collectAcompanhamentoIdsToArchive(
+  primaryId: string,
+  row: Pick<AcompanhamentoRecord, "name" | "group" | "email" | "barcode" | "userId">,
+  existingUserId: string | null,
+): Promise<string[]> {
+  const idsToRemove = new Set<string>([primaryId]);
+  const nameGroupKey = archiveNameGroupKey(row.name, row.group);
+
+  if (existingUserId) {
+    const byUser = await prisma.acompanhamentoClient.findMany({
+      where: { userId: existingUserId, source: ACOMPANHAMENTO_ACTIVE_SOURCE },
+      select: { id: true },
+    });
+    for (const sibling of byUser) {
+      idsToRemove.add(sibling.id);
+    }
+  }
+
+  const activeRows = await prisma.acompanhamentoClient.findMany({
+    where: { source: ACOMPANHAMENTO_ACTIVE_SOURCE },
+    include: { user: { select: { name: true, group: true, email: true } } },
+  });
+
+  if (nameGroupKey) {
+    for (const sibling of activeRows) {
+      const siblingName = sibling.user?.name || cell(sibling.cells, COL.name);
+      const siblingGroup = sibling.user?.group || cell(sibling.cells, COL.group);
+      if (archiveNameGroupKey(siblingName, siblingGroup) === nameGroupKey) {
+        idsToRemove.add(sibling.id);
+      }
+    }
+  }
+
+  const targetFp = archiveFingerprint(row.name, row.email, row.barcode);
+  if (targetFp) {
+    for (const sibling of activeRows) {
+      if (idsToRemove.has(sibling.id)) {
+        continue;
+      }
+      const name = sibling.user?.name || cell(sibling.cells, COL.name);
+      const email =
+        sibling.user && !isPlaceholderEmail(sibling.user.email)
+          ? sibling.user.email
+          : cell(sibling.cells, COL.email);
+      const barcode = cell(sibling.cells, COL.barcode);
+      if (archiveFingerprint(name, email, barcode) === targetFp) {
+        idsToRemove.add(sibling.id);
+      }
+    }
+  }
+
+  return Array.from(idsToRemove);
+}
+
 /**
  * Transfere o cliente do Acompanhamento para Arquivados:
  * 1) grava snapshot em cada aba dos serviços marcados (replicas intencionais);
- * 2) remove a(s) linha(s) do Acompanhamento (não só soft-archive — evita “voltar”).
- * Irmãs (mesmo userId ou mesma impressão nome|email|barcode) também saem.
+ * 2) remove a(s) linha(s) do Acompanhamento (delete — não volta na listagem).
+ * Irmãs (mesmo userId, nome+grupo ou nome+email+barcode) também saem.
  */
 export async function archiveAcompanhamentoClient(
   id: string,
@@ -1891,6 +1957,10 @@ export async function archiveAcompanhamentoClient(
 
   if (!existing) {
     return null;
+  }
+
+  if (existing.source === ACOMPANHAMENTO_ARCHIVED_SOURCE) {
+    throw new Error("Cliente já foi arquivado");
   }
 
   let services = normalizeServices(servicesInput);
@@ -1963,6 +2033,7 @@ export async function archiveAcompanhamentoClient(
           status: row.status || "FINALIZADO",
           sheetComment: row.sheetComment,
           services: [service],
+          sourceAcompanhamentoId: id,
           sourceUserId: row.userId,
         },
       });
@@ -2006,100 +2077,17 @@ export async function archiveAcompanhamentoClient(
     categories.push(category);
   }
 
-  const idsToRemove = new Set<string>([id]);
-  const nameGroupKey = archiveNameGroupKey(row.name, row.group);
+  const removeIds = await collectAcompanhamentoIdsToArchive(id, row, existing.userId);
 
-  // Irmãs do mesmo userId (relação @unique costuma ser 1, mas cobre legado).
-  if (existing.userId) {
-    const byUser = await prisma.acompanhamentoClient.findMany({
-      where: { userId: existing.userId, source: ACOMPANHAMENTO_ACTIVE_SOURCE },
-      select: { id: true },
-    });
-    for (const sibling of byUser) {
-      idsToRemove.add(sibling.id);
-    }
-  }
-
-  // Mesmo nome + grupo (ex.: Olivia Gomes no grupo Jefferson Ribeiro) — duplicatas Excel.
-  if (nameGroupKey) {
-    const activeInGroup = await prisma.acompanhamentoClient.findMany({
-      where: { source: ACOMPANHAMENTO_ACTIVE_SOURCE },
-      include: { user: { select: { name: true, group: true } } },
-      take: 1000,
-    });
-    for (const sibling of activeInGroup) {
-      const siblingName = sibling.user?.name || cell(sibling.cells, COL.name);
-      const siblingGroup = sibling.user?.group || cell(sibling.cells, COL.group);
-      if (archiveNameGroupKey(siblingName, siblingGroup) === nameGroupKey) {
-        idsToRemove.add(sibling.id);
-      }
-    }
-  }
-
-  // Irmãs órfãs com mesma impressão (nome + e-mail + barcode).
-  const targetFp = archiveFingerprint(row.name, row.email, row.barcode);
-  if (targetFp) {
-    const activeSiblings = await prisma.acompanhamentoClient.findMany({
-      where: {
-        source: ACOMPANHAMENTO_ACTIVE_SOURCE,
-        NOT: { id: { in: Array.from(idsToRemove) } },
-      },
-      include: {
-        user: { select: { name: true, email: true } },
-      },
-      take: 800,
-    });
-
-    for (const sibling of activeSiblings) {
-      const name = sibling.user?.name || cell(sibling.cells, COL.name);
-      const email =
-        sibling.user && !isPlaceholderEmail(sibling.user.email)
-          ? sibling.user.email
-          : cell(sibling.cells, COL.email);
-      const barcode = cell(sibling.cells, COL.barcode);
-      if (archiveFingerprint(name, email, barcode) === targetFp) {
-        idsToRemove.add(sibling.id);
-      }
-    }
-  }
-
-  const removeIds = Array.from(idsToRemove);
-  const archivedAt = new Date();
-  const archiveData = {
-    services,
-    archivedAt,
-    source: ACOMPANHAMENTO_ARCHIVED_SOURCE,
-    statusLabel: "FINALIZADO",
-  };
-
-  // Soft-archive (não apaga) — evita recriação pelo financeiro/sync e mantém histórico.
-  await prisma.acompanhamentoClient.updateMany({
+  // Remove da planilha — financeiro/serviços permanecem; Arquivados impede recriação.
+  await prisma.acompanhamentoClient.deleteMany({
     where: { id: { in: removeIds } },
-    data: archiveData,
   });
 
-  const stillActive = await prisma.acompanhamentoClient.findMany({
-    where: { source: ACOMPANHAMENTO_ACTIVE_SOURCE },
-    include: { user: { select: { name: true, group: true } } },
-    take: 1200,
+  const stillInSheet = await prisma.acompanhamentoClient.count({
+    where: { id: { in: removeIds } },
   });
-  const leaked = stillActive.filter((active) => {
-    if (removeIds.includes(active.id)) {
-      return true;
-    }
-    if (row.userId && active.userId === row.userId) {
-      return true;
-    }
-    if (nameGroupKey) {
-      const activeName = active.user?.name || cell(active.cells, COL.name);
-      const activeGroup = active.user?.group || cell(active.cells, COL.group);
-      if (archiveNameGroupKey(activeName, activeGroup) === nameGroupKey) {
-        return true;
-      }
-    }
-    return false;
-  });
-  if (leaked.length) {
+  if (stillInSheet) {
     throw new Error(
       "Cliente ainda aparece no Acompanhamento após arquivar. Tente novamente.",
     );

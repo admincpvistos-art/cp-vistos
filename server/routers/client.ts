@@ -17,6 +17,10 @@ import {
 import { isUserAuthedProcedure, router } from "../trpc";
 import prisma from "@/lib/prisma";
 import { cpfsMatch, namesMatch } from "@/lib/person-name";
+import {
+  ACOMPANHAMENTO_HEADERS,
+  servicesFromSignupFlags,
+} from "@/server/acompanhamento-sheet";
 
 async function assertTitularPassportIdentity(
   profileId: string,
@@ -722,6 +726,23 @@ export const clientRouter = router({
       await prisma.serviceCost.create({
         data: {
           userId: member.id,
+        },
+      });
+
+      const cells = Array.from({ length: ACOMPANHAMENTO_HEADERS.length }, () => "");
+      cells[0] = member.name;
+      cells[19] = group;
+      cells[21] = "ATIVO";
+      await prisma.acompanhamentoClient.create({
+        data: {
+          source: "imported",
+          userId: member.id,
+          cells,
+          statusLabel: "ATIVO",
+          services: servicesFromSignupFlags({
+            wantsAmericanVisa: categoryEnum === Category.american_visa,
+            wantsPassport: categoryEnum === Category.passport,
+          }),
         },
       });
 

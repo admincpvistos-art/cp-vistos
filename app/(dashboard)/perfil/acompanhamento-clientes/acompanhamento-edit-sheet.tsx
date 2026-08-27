@@ -149,7 +149,7 @@ export function AcompanhamentoEditSheet({
       },
     });
 
-  const { mutate: updateRow, isPending: isUpdating } =
+  const { mutate: updateRow, isPending: isUpdating, mutateAsync: updateRowAsync } =
     trpc.acompanhamentoRouter.updateRow.useMutation({
       onSuccess: () => {
         utils.acompanhamentoRouter.getClientesSheet.invalidate();
@@ -185,6 +185,12 @@ export function AcompanhamentoEditSheet({
       return;
     }
     try {
+      if (!validateBeforeSave()) {
+        setArchiveConfirmOpen(false);
+        return;
+      }
+      // Passo do admin: salvar classificação de serviços antes de arquivar.
+      await updateRowAsync({ id: rowId, ...payload });
       const result = await archiveRowAsync({
         id: rowId,
         services: servicesToArchive,
@@ -649,7 +655,12 @@ export function AcompanhamentoEditSheet({
                   type="button"
                   variant="outline"
                   className="text-destructive border-destructive/40 hover:bg-destructive/10"
-                  disabled={isPending}
+                  disabled={isPending || selectedServices.length === 0}
+                  title={
+                    selectedServices.length === 0
+                      ? "Marque ao menos um serviço contratado para arquivar"
+                      : undefined
+                  }
                   onClick={requestArchive}
                 >
                   {isArchiving ? (

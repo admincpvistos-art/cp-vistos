@@ -89,16 +89,10 @@ function archiveClient(store, id, services) {
     }
   }
 
-  for (const item of store.acompanhamento) {
-    if (removeIds.has(item.id)) {
-      item.source = "archived";
-      item.archivedAt = Date.now();
-    }
-  }
+  store.acompanhamento = store.acompanhamento.filter((item) => !removeIds.has(item.id));
 
   const stillActive = store.acompanhamento.filter((item) => {
     if (item.source !== "imported") return false;
-    if (removeIds.has(item.id)) return true;
     if (row.userId && item.userId === row.userId) return true;
     if (nameGroupKey && archiveNameGroupKey(item.name, item.group) === nameGroupKey) {
       return true;
@@ -149,4 +143,4 @@ assert.strictEqual(
 );
 assert.strictEqual(store.arquivados.length, 2);
 
-console.log("OK test-archive-flow-unit: soft-archive + nome/grupo + multi-serviço");
+console.log("OK test-archive-flow-unit: delete + nome/grupo + multi-serviço");
