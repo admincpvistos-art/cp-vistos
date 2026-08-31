@@ -11,7 +11,7 @@ import { Carousel, CarouselApi, CarouselContent, CarouselItem, CarouselNext, Car
 import { CardContent, CardHeader, Card } from "../ui/card";
 
 import { cn } from "@/lib/utils";
-import type { GoogleReviewItem } from "@/lib/google-reviews";
+import type { GoogleReviewItem, StarDistribution } from "@/lib/google-reviews";
 
 const containerAnimation = {
   hidden: {
@@ -89,9 +89,39 @@ type TestimonialProps = {
   ratingLabel?: string;
   reviewCount?: number | null;
   rating?: number | null;
+  starDistribution?: StarDistribution | null;
   writeReviewUrl?: string | null;
   mapsUrl?: string | null;
 };
+
+const STAR_LEVELS = [5, 4, 3, 2, 1] as const;
+
+function StarDistributionBars({ distribution }: { distribution: StarDistribution }) {
+  const maxCount = Math.max(...STAR_LEVELS.map((level) => distribution[level]), 1);
+
+  return (
+    <div className="w-full max-w-[220px] flex flex-col gap-1.5">
+      {STAR_LEVELS.map((level) => {
+        const count = distribution[level];
+        const width = count > 0 ? Math.max((count / maxCount) * 100, count > 0 ? 4 : 0) : 0;
+
+        return (
+          <div key={level} className="flex items-center gap-2">
+            <span className="w-3 text-xs font-medium text-foreground/80 tabular-nums">{level}</span>
+            <div className="h-2 flex-1 overflow-hidden rounded-full bg-foreground/10">
+              {width > 0 ? (
+                <div
+                  className="h-full rounded-full bg-amber-400"
+                  style={{ width: `${width}%` }}
+                />
+              ) : null}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 function starCount(rating: number | null | undefined) {
   if (rating == null) return 5;
@@ -103,6 +133,7 @@ export function Testimonial({
   ratingLabel = "Excelente",
   reviewCount = null,
   rating = null,
+  starDistribution = null,
   writeReviewUrl = "/avaliar",
   mapsUrl = null,
 }: TestimonialProps) {
@@ -276,11 +307,23 @@ export function Testimonial({
                   ))}
                 </motion.div>
 
+                {starDistribution ? (
+                  <motion.div variants={googleItemAnimation} className="mt-1">
+                    <StarDistributionBars distribution={starDistribution} />
+                  </motion.div>
+                ) : null}
+
                 <motion.span variants={googleItemAnimation} className="text-base text-foreground text-center">
-                  Com Base Em{" "}
-                  <strong className="font-semibold">
-                    {reviewCount != null ? `${reviewCount} avaliações` : "avaliações no Google"}
-                  </strong>
+                  {reviewCount != null ? (
+                    <>
+                      Com base em{" "}
+                      <strong className="font-semibold">
+                        {reviewCount.toLocaleString("pt-BR")} avaliações
+                      </strong>
+                    </>
+                  ) : (
+                    "avaliações no Google"
+                  )}
                 </motion.span>
 
                 <motion.a

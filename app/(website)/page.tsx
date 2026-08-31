@@ -24,6 +24,7 @@ export default async function Home() {
           rating={google.rating}
           ratingLabel={google.ratingLabel}
           reviewCount={google.reviewCount}
+          starDistribution={google.starDistribution}
           writeReviewUrl={google.writeReviewUrl || "/avaliar"}
           mapsUrl={google.mapsUrl}
         />
