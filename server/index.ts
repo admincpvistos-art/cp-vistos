@@ -11,6 +11,7 @@ import { ds160Router } from "./routers/ds160";
 import { acompanhamentoRouter } from "./routers/acompanhamento";
 import { arquivadosRouter } from "./routers/arquivados";
 import { prospectsRouter } from "./routers/prospects";
+import { estaRouter } from "./routers/esta";
 
 export const appRouter = router({
   userRouter,
@@ -25,6 +26,7 @@ export const appRouter = router({
   acompanhamentoRouter,
   arquivadosRouter,
   prospectsRouter,
+  estaRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -315,6 +315,7 @@ model Profile {
   user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   form         Form?
   passportForm PassportForm?
+  estaForm     EstaForm?
   comments     Comments[]
   notification Notification[]
 
@@ -656,6 +657,94 @@ model PassportForm {
   currentPassportNumber   String?
   currentPassportExpire   DateTime?
   notes                   String?
+
+  profileId String  @unique @db.ObjectId
+  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model EstaForm {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  firstName              String?
+  lastName               String?
+  passportNumber         String?
+  passportIssuingCountry String?
+  passportIssueDate      DateTime?
+  passportExpireDate     DateTime?
+  citizenshipCountry     String?
+  nationalIdNumber       String?
+  sex                    String?
+  birthDate              DateTime?
+
+  otherCitizenshipNow          Boolean?
+  otherCitizenshipNowCountry   String?
+  otherCitizenshipPast         Boolean?
+  otherCitizenshipPastCountry  String?
+  otherNameUsed                Boolean?
+  otherName                    String?
+  otherTravelDoc               Boolean?
+  otherTravelDocCountry        String?
+  otherTravelDocType           String?
+  otherTravelDocNumber         String?
+  otherTravelDocExpireYear     String?
+
+  address       String?
+  addressNumber String?
+  complement    String?
+  district      String?
+  city          String?
+  state         String?
+  cep           String?
+  country       String?
+  phone         String?
+  email         String?
+  instagram     String?
+  facebook      String?
+  linkedin      String?
+  otherSocial   String?
+
+  globalEntryMember Boolean?
+  fatherFullName    String?
+  motherFullName    String?
+  jobTitle          String?
+  employerName      String?
+  employerAddress       String?
+  employerAddressNumber String?
+  employerComplement    String?
+  employerDistrict      String?
+  employerCity          String?
+  employerState         String?
+  employerCep           String?
+  employerCountry       String?
+  employerPhone         String?
+
+  transitToOtherCountry    Boolean?
+  usContactName            String?
+  usContactAddress         String?
+  usContactAddressNumber   String?
+  usContactComplement      String?
+  usContactDistrict        String?
+  usContactCity            String?
+  usContactState           String?
+  usContactCep             String?
+  usContactCountry         String?
+  usContactPhone           String?
+  usAddressSameAsContact   Boolean?
+  usStayAddress            String?
+  usStayAddressNumber      String?
+  usStayComplement         String?
+  usStayDistrict           String?
+  usStayCity               String?
+  usStayState              String?
+  usStayCep                String?
+  usStayCountry            String?
+
+  emergencyName  String?
+  emergencyEmail String?
+  emergencyPhone String?
 
   profileId String  @unique @db.ObjectId
   profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)

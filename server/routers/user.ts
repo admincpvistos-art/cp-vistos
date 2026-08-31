@@ -161,6 +161,18 @@ async function createActiveProfile(params: {
     });
   }
 
+  if (params.category === Category.passport || params.category === Category.e_ta) {
+    await prisma.estaForm.create({
+      data: {
+        profile: {
+          connect: {
+            id: profile.id,
+          },
+        },
+      },
+    });
+  }
+
   return profile;
 }
 
@@ -1265,6 +1277,18 @@ export const userRouter = router({
 
         if (profile.category === "Visto Americano") {
           await prisma.form.create({
+            data: {
+              profile: {
+                connect: {
+                  id: newProfile.id,
+                },
+              },
+            },
+          });
+        }
+
+        if (profile.category === "Passaporte" || profile.category === "E-TA") {
+          await prisma.estaForm.create({
             data: {
               profile: {
                 connect: {

@@ -12,10 +12,11 @@ alwaysApply: true
 - Callouts de seção (`FormSectionHelp`) em viagem, contato EUA, trabalho, escolaridade e segurança.
 - Ajustes de redação pontuais podem ser feitos no dicionário sem redesenhar o formulário.
 
-## ESTA / E-TA (rótulo já na área do cliente)
+## ESTA / E-TA — formulário do cliente
 
-- Card na área do cliente exibe **ESTA / E-TA** (antes: Passaporte ou Renovação).
-- **Pendente:** configurar o formulário disponível nesse fluxo (alterações de conteúdo/campos ainda a definir com o cliente).
+- Card **ESTA / E-TA** abre `/formulario-esta/[profileId]` (6 passos, layout igual ao visto).
+- Admin: botão **Ver ESTA** nas abas Passaporte e ESTA/E-TA → `/perfil/esta-formulario/[profileId]`.
+- **eTA Canadá:** formulário dedicado fica para fase 2; aviso no passo 0 se `process` = E-TA.
 
 ## Já feito (rótulos)
 

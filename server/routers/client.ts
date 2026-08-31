@@ -180,11 +180,11 @@ async function resetServiceForm(profileId: string, userName: string, category: C
     where: { profileId },
   });
 
-  if (category === Category.passport) {
-    await prisma.passportForm.deleteMany({
+  if (category === Category.passport || category === Category.e_ta) {
+    await prisma.estaForm.deleteMany({
       where: { profileId },
     });
-    await prisma.passportForm.create({
+    await prisma.estaForm.create({
       data: {
         profile: {
           connect: { id: profileId },
@@ -229,7 +229,7 @@ async function removeDependentFromService(
   await prisma.form.deleteMany({
     where: { profileId },
   });
-  await prisma.passportForm.deleteMany({
+  await prisma.estaForm.deleteMany({
     where: { profileId },
   });
   await prisma.profile.delete({
@@ -239,7 +239,7 @@ async function removeDependentFromService(
   await prisma.user.update({
     where: { id: userId },
     data:
-      category === Category.passport
+      category === Category.passport || category === Category.e_ta
         ? { wantsPassport: false }
         : { wantsAmericanVisa: false },
   });
@@ -328,10 +328,10 @@ async function getGroupServiceMembers(
                   lastName: true,
                 },
               },
-              passportForm: {
+              estaForm: {
                 select: {
-                  serviceType: true,
-                  fullName: true,
+                  firstName: true,
+                  lastName: true,
                 },
               },
             },
@@ -359,10 +359,10 @@ async function getGroupServiceMembers(
                   lastName: true,
                 },
               },
-              passportForm: {
+              estaForm: {
                 select: {
-                  serviceType: true,
-                  fullName: true,
+                  firstName: true,
+                  lastName: true,
                 },
               },
             },
@@ -375,7 +375,7 @@ async function getGroupServiceMembers(
       const profile = user.profiles[0] ?? null;
       const hasDraft =
         Boolean(profile?.form?.firstName || profile?.form?.lastName) ||
-        Boolean(profile?.passportForm?.fullName || profile?.passportForm?.serviceType);
+        Boolean(profile?.estaForm?.firstName || profile?.estaForm?.lastName);
       const statusForm =
         profile?.statusForm === StatusForm.awaiting && hasDraft
           ? StatusForm.filling
@@ -386,7 +386,7 @@ async function getGroupServiceMembers(
         .trim();
       const displayName =
         (category === "passport"
-          ? profile?.passportForm?.fullName?.trim() || formName
+          ? [profile?.estaForm?.firstName, profile?.estaForm?.lastName].filter(Boolean).join(" ").trim() || formName
           : formName) || user.name;
 
       return {
@@ -402,7 +402,7 @@ async function getGroupServiceMembers(
         DSNumber: profile?.DSNumber ?? null,
         protocol: profile?.protocol ?? null,
         expireDate: profile?.expireDate ?? null,
-        passportType: profile?.passportForm?.serviceType ?? null,
+        passportType: profile?.process ?? null,
         formStep: profile?.formStep ?? 0,
         formLocked: isFormLocked(statusForm, profile?.formLocked ?? null),
         updatedAt: profile?.updatedAt ?? null,
@@ -641,14 +641,14 @@ export const clientRouter = router({
           });
         }
       } else {
-        const existingPassportForm = await prisma.passportForm.findUnique({
+        const existingEstaForm = await prisma.estaForm.findUnique({
           where: {
             profileId,
           },
         });
 
-        if (!existingPassportForm) {
-          await prisma.passportForm.create({
+        if (!existingEstaForm) {
+          await prisma.estaForm.create({
             data: {
               profile: {
                 connect: {

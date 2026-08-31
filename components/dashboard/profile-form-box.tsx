@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc-client";
+import { ESTA_MAX_STEP } from "@/lib/esta-form";
 
 interface Props {
   variant: "visa" | "passport";
@@ -42,7 +43,7 @@ export function ProfileFormBox({
 
   const formLink = profileId
     ? isPassport
-      ? `/formulario-passaporte/${profileId}`
+      ? `/formulario-esta/${profileId}?formStep=${Math.min(formStep, ESTA_MAX_STEP)}`
       : formStep > 10
         ? `/resumo-formulario/${profileId}`
         : `/formulario/${profileId}?formStep=${formStep}`
@@ -52,7 +53,7 @@ export function ProfileFormBox({
     onSuccess({ profileId: createdProfileId }) {
       router.push(
         isPassport
-          ? `/formulario-passaporte/${createdProfileId}`
+          ? `/formulario-esta/${createdProfileId}?formStep=0`
           : `/formulario/${createdProfileId}?formStep=0`,
       );
     },
@@ -66,7 +67,7 @@ export function ProfileFormBox({
       utils.clientRouter.getAreaData.invalidate();
       router.push(
         isPassport
-          ? `/formulario-passaporte/${createdProfileId}`
+          ? `/formulario-esta/${createdProfileId}?formStep=0`
           : `/formulario/${createdProfileId}?formStep=0`,
       );
     },
@@ -99,8 +100,8 @@ export function ProfileFormBox({
   const title = isAdd ? "Adicionar dependente" : profileName;
   const description = isPassport
     ? showTitular
-      ? "Preencha o mesmo formulário com os dados do cadastro de login. Depois do salvamento, este card passa a ser para família ou amigos."
-      : "Abre o mesmo formulário em branco para o dependente. Nome e sobrenome entram no checklist ao salvar."
+      ? "Preencha o formulário ESTA com os dados do cadastro de login. Depois do envio, este card passa a ser para família ou amigos."
+      : "Abre o formulário ESTA em branco para o dependente. Nome e sobrenome entram no checklist ao salvar."
     : showTitular
       ? "Preencha o mesmo formulário com os dados do cadastro de login. Depois do salvamento, este card passa a ser para família ou amigos."
       : "Abre o mesmo formulário em branco para o dependente. Nome e sobrenome entram no checklist ao salvar.";
