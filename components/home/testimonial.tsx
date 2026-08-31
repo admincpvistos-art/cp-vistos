@@ -96,25 +96,46 @@ type TestimonialProps = {
 
 const STAR_LEVELS = [5, 4, 3, 2, 1] as const;
 
-function StarDistributionBars({ distribution }: { distribution: StarDistribution }) {
+const STAR_PATH =
+  "M10.2977 2.63297L11.6177 5.27297C11.7977 5.64047 12.2777 5.99297 12.6827 6.06047L15.0752 6.45797C16.6052 6.71297 16.9652 7.82297 15.8627 8.91797L14.0027 10.778C13.6877 11.093 13.5152 11.7005 13.6127 12.1355L14.1452 14.438C14.5652 16.2605 13.5977 16.9655 11.9852 16.013L9.74268 14.6855C9.33768 14.4455 8.67018 14.4455 8.25768 14.6855L6.01518 16.013C4.41018 16.9655 3.43518 16.253 3.85518 14.438L4.38768 12.1355C4.48518 11.7005 4.31268 11.093 3.99768 10.778L2.13768 8.91797C1.04268 7.82297 1.39518 6.71297 2.92518 6.45797L5.31768 6.06047C5.71518 5.99297 6.19518 5.64047 6.37518 5.27297L7.69518 2.63297C8.41518 1.20047 9.58518 1.20047 10.2977 2.63297Z";
+
+function DistributionStar({ filled, size = 14 }: { filled: boolean; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 18 18" fill="none" aria-hidden className="shrink-0">
+      <path d={STAR_PATH} fill={filled ? "#F5BA07" : "#E4E4E7"} />
+    </svg>
+  );
+}
+
+function RatingLevelStars({ level, size = 14 }: { level: (typeof STAR_LEVELS)[number]; size?: number }) {
+  return (
+    <div className="flex items-center gap-[1px]">
+      {Array.from({ length: 5 }, (_, index) => (
+        <DistributionStar key={index} filled={index < level} size={size} />
+      ))}
+    </div>
+  );
+}
+
+function StarDistributionRows({ distribution }: { distribution: StarDistribution }) {
   const maxCount = Math.max(...STAR_LEVELS.map((level) => distribution[level]), 1);
 
   return (
-    <div className="w-full max-w-[220px] flex flex-col gap-1.5">
-      {STAR_LEVELS.map((level) => {
+    <div className="w-full max-w-[240px] flex flex-col gap-2">
+      {STAR_LEVELS.filter((level) => distribution[level] > 0).map((level) => {
         const count = distribution[level];
-        const width = count > 0 ? Math.max((count / maxCount) * 100, count > 0 ? 4 : 0) : 0;
+        const width = Math.max((count / maxCount) * 100, 6);
 
         return (
-          <div key={level} className="flex items-center gap-2">
-            <span className="w-3 text-xs font-medium text-foreground/80 tabular-nums">{level}</span>
-            <div className="h-2 flex-1 overflow-hidden rounded-full bg-foreground/10">
-              {width > 0 ? (
-                <div
-                  className="h-full rounded-full bg-amber-400"
-                  style={{ width: `${width}%` }}
-                />
-              ) : null}
+          <div key={level} className="flex items-center gap-2.5">
+            <div className="rounded-full bg-white px-2.5 py-1.5 shadow-[0_2px_10px_rgba(15,23,42,0.08)] border border-black/[0.04] shrink-0">
+              <RatingLevelStars level={level} size={13} />
+            </div>
+            <div className="h-2 flex-1 overflow-hidden rounded-full bg-foreground/[0.08]">
+              <div
+                className="h-full rounded-full bg-[#F5BA07]"
+                style={{ width: `${width}%` }}
+              />
             </div>
           </div>
         );
@@ -309,7 +330,7 @@ export function Testimonial({
 
                 {starDistribution ? (
                   <motion.div variants={googleItemAnimation} className="mt-1">
-                    <StarDistributionBars distribution={starDistribution} />
+                    <StarDistributionRows distribution={starDistribution} />
                   </motion.div>
                 ) : null}
 
