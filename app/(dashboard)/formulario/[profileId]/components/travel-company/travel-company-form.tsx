@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowRight, Loader2, Plus, Save, X } from "lucide-react";
+import { ArrowRight, Loader2, Plus, Save } from "lucide-react";
 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc-client";
 import useFormStore from "@/constants/stores/useFormStore";
 import { TravelCompanyFormType } from "@/types";
-import { joinPersonName, normalizeTravelCompanion } from "@/lib/person-name";
+import { normalizeTravelCompanion } from "@/lib/person-name";
 
 const formSchema = z
   .object({
@@ -259,10 +259,6 @@ export function TravelCompanyForm({ travelCompanyForm, profileId, isEditing }: P
       });
   }
 
-  function removeOtherPeopleTraveling(index: number) {
-    setOtherPeopleTravelingItems((prev) => prev.filter((_, i) => i !== index));
-  }
-
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="w-full flex flex-col flex-grow gap-6">
@@ -390,32 +386,6 @@ export function TravelCompanyForm({ travelCompanyForm, profileId, isEditing }: P
                     </Button>
                   </div>
                 </div>
-
-                {otherPeopleTravelingItems.length > 0 && (
-                  <div className="w-full flex flex-wrap gap-2">
-                    {otherPeopleTravelingItems.map((item, index) => (
-                      <div
-                        key={`otherName-${index}`}
-                        className="py-2 px-4 bg-primary/50 rounded-full flex items-center gap-2 group"
-                      >
-                        <span className="text-sm font-medium text-white">
-                          {joinPersonName(item.firstName, item.lastName) || item.name}
-                        </span>
-
-                        <Button
-                          type="button"
-                          variant="link"
-                          size="icon"
-                          className="size-5 hidden opacity-0 transition-all group-hover:block group-hover:opacity-100"
-                          disabled={isPending || isSavePending}
-                          onClick={() => removeOtherPeopleTraveling(index)}
-                        >
-                          <X strokeWidth={1} size={20} color="#FFF" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
             </div>
 

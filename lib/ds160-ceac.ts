@@ -124,10 +124,6 @@ function parentParts(form: Form, which: "father" | "mother") {
   return {
     firstName: firstStored?.trim() || split.firstName,
     lastName: lastStored?.trim() || split.lastName,
-    full: joinPersonName(
-      firstStored?.trim() || split.firstName,
-      lastStored?.trim() || split.lastName,
-    ) || complete?.trim() || "",
   };
 }
 
@@ -432,13 +428,11 @@ export function buildCeacPages(packet: Ds160Packet): Record<CeacPageId, CeacFiel
     family: [
       field("fatherGiven", "Father Given Names", upper(parentParts(form, "father").firstName)),
       field("fatherSurname", "Father Surnames", upper(parentParts(form, "father").lastName)),
-      field("fatherName", "Father Full Name", upper(parentParts(form, "father").full)),
       field("fatherDob", "Father Date of Birth", displayDate(form.fatherBirthdate), undefined, ceacDate(form.fatherBirthdate)),
       field("fatherUsa", "Is your father in the U.S.?", yesNo(form.fatherLiveInTheUSAConfirmation)),
       field("fatherStatus", "Father U.S. status", form.fatherUSASituation ?? ""),
       field("motherGiven", "Mother Given Names", upper(parentParts(form, "mother").firstName)),
       field("motherSurname", "Mother Surnames", upper(parentParts(form, "mother").lastName)),
-      field("motherName", "Mother Full Name", upper(parentParts(form, "mother").full)),
       field("motherDob", "Mother Date of Birth", displayDate(form.motherBirthdate), undefined, ceacDate(form.motherBirthdate)),
       field("motherUsa", "Is your mother in the U.S.?", yesNo(form.motherLiveInTheUSAConfirmation)),
       field("motherStatus", "Mother U.S. status", form.motherUSASituation ?? ""),
@@ -474,19 +468,23 @@ export function buildCeacPages(packet: Ds160Packet): Record<CeacPageId, CeacFiel
       field("salary", "Monthly Income", form.monthlySalary ?? ""),
       field("duties", "Briefly describe your duties", form.jobDetails ?? ""),
       field("prevQ", "Were you previously employed?", yesNo(form.previousJobConfirmation)),
-      field(
-        "prevJobs",
-        "Previous employers",
-        previousJobs.map((job) => formatPreviousJob(job, displayDate)).join(" | "),
-        undefined,
-        previousJobs.map((job) => formatPreviousJob(job, ceacDate)).join(" | "),
+      ...previousJobs.map((job, index) =>
+        field(
+          `prevJob${index + 1}`,
+          `Previous employer ${index + 1}`,
+          formatPreviousJob(job, displayDate),
+          undefined,
+          formatPreviousJob(job, ceacDate),
+        ),
       ),
-      field(
-        "education",
-        "Education",
-        courses.map((course) => formatCourse(course, displayDate)).join(" | "),
-        undefined,
-        courses.map((course) => formatCourse(course, ceacDate)).join(" | "),
+      ...courses.map((course, index) =>
+        field(
+          `education${index + 1}`,
+          `Education ${index + 1}`,
+          formatCourse(course, displayDate),
+          undefined,
+          formatCourse(course, ceacDate),
+        ),
       ),
     ],
     additional: [
