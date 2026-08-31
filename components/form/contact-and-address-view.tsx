@@ -1,6 +1,17 @@
 import { Form as FormType } from "@prisma/client";
 
 import { cn } from "@/lib/utils";
+import { buildLegacyPostalAddress } from "@/lib/form-postal-address";
+
+function mailingLabel(form: FormType) {
+  if (form.postalAddressConfirmation === false) return "É o mesmo da residencia";
+  if (form.postalStreet) {
+    return buildLegacyPostalAddress(form);
+  }
+  return form.otherPostalAddress && form.otherPostalAddress.length > 0
+    ? form.otherPostalAddress
+    : "Não preencheu o endereço";
+}
 
 interface ContactAndAddressViewProps {
   form: FormType;
@@ -72,13 +83,7 @@ export function ContactAndAddressView({ form, className }: ContactAndAddressView
         <div className="w-full flex flex-col gap-1">
           <span className="text-sm text-foreground/60 font-medium">Endereço de Correio</span>
 
-          <span className="text-lg font-medium text-foreground">
-            {form.postalAddressConfirmation === false
-              ? "É o mesmo da residencia"
-              : form.otherPostalAddress && form.otherPostalAddress.length > 0
-                ? form.otherPostalAddress
-                : "Não preencheu o endereço"}
-          </span>
+          <span className="text-lg font-medium text-foreground">{mailingLabel(form)}</span>
         </div>
 
         <div className="w-full flex flex-col gap-1">
@@ -91,6 +96,12 @@ export function ContactAndAddressView({ form, className }: ContactAndAddressView
           <span className="text-sm text-foreground/60 font-medium">Telefone</span>
 
           <span className="text-lg font-medium text-foreground">{form.tel ? form.tel : "Não Preenchido"}</span>
+        </div>
+
+        <div className="w-full flex flex-col gap-1">
+          <span className="text-sm text-foreground/60 font-medium">Telefone comercial</span>
+
+          <span className="text-lg font-medium text-foreground">{form.workPhone ? form.workPhone : "Não possui"}</span>
         </div>
       </div>
 

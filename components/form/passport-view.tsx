@@ -18,6 +18,13 @@ export function PassportView({ form, className }: PassportViewProps) {
         )}
       >
         <div className="w-full flex flex-col gap-1">
+          <span className="text-sm text-foreground/60 font-medium">Tipo de documento</span>
+          <span className="text-lg font-medium text-foreground">
+            {form.passportDocumentType ? form.passportDocumentType : "Regular"}
+          </span>
+        </div>
+
+        <div className="w-full flex flex-col gap-1">
           <span className="text-sm text-foreground/60 font-medium">
             Número do Passaporte
           </span>
@@ -38,12 +45,9 @@ export function PassportView({ form, className }: PassportViewProps) {
         </div>
 
         <div className="w-full flex flex-col gap-1">
-          <span className="text-sm text-foreground/60 font-medium">
-            Estado de Emissão
-          </span>
-
+          <span className="text-sm text-foreground/60 font-medium">Número do livro</span>
           <span className="text-lg font-medium text-foreground">
-            {form.passportState ? form.passportState : "Não Preenchido"}
+            {form.bookNumber ? form.bookNumber : "Não se aplica"}
           </span>
         </div>
       </div>
@@ -63,6 +67,16 @@ export function PassportView({ form, className }: PassportViewProps) {
             {form.passportIssuingCountry
               ? form.passportIssuingCountry
               : "Não Preenchido"}
+          </span>
+        </div>
+
+        <div className="w-full flex flex-col gap-1">
+          <span className="text-sm text-foreground/60 font-medium">
+            Estado de Emissão
+          </span>
+
+          <span className="text-lg font-medium text-foreground">
+            {form.passportState ? form.passportState : "Não Preenchido"}
           </span>
         </div>
 

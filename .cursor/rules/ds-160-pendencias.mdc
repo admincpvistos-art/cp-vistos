@@ -1,0 +1,31 @@
+---
+description: Pendências do DS-160/CEAC acordadas com o cliente
+alwaysApply: true
+---
+
+# DS-160 / CEAC — pendências
+
+## Dados (não implementar agora)
+
+O formulário do cliente cobre os campos do CEAC para o protocolo, **exceto a foto**.
+
+Pendente:
+
+- **Foto 600×600** — obrigatória no CEAC para obter o confirmation number
+
+Admin escolhe no CEAC (não coletado do cliente):
+
+- **Posto consular** — quando visto negado (`consularPost` existe no form só como referência opcional)
+
+Outros nomes / contato EUA / endereço de correspondência → só quando a resposta já for Sim; formato pode diferir do CEAC, não bloqueia.
+
+Detalhe: canvas `ds-160-ceac-audit.canvas.tsx`.
+
+## Já implementado
+
+- Menu: Conferir Formulários e Preencher DS-160 (abaixo de Clientes)
+- `/perfil/conferir-formularios` e `/perfil/preencher-ds160`
+- Split 50/50 + copiar; extensão em `extensions/ceac-frame`
+- Cliente preenche: alfabeto nativo, telefone comercial, tipo/livro do passaporte, endereço postal estruturado, código de guerra, clã/tribo, visto ainda válido, segurança completa no painel CEAC
+
+`https://ceac.state.gov` envia `X-Frame-Options: DENY`. Não fazer proxy do .gov nem app desktop.

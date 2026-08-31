@@ -17,6 +17,7 @@ import {
   focusCeacWindow,
   getCeacExtensionVersion,
   isCeacExtensionPresent,
+  pauseCeacPinForTransfer,
   transferFieldsToCeac,
 } from "@/lib/ds160-ceac-window";
 
@@ -77,25 +78,70 @@ export function CeacFormPanel({
     };
   }, []);
 
+  function copyToClipboardSync(text: string) {
+    try {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+      textarea.style.top = "0";
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      textarea.setSelectionRange(0, text.length);
+      const ok = document.execCommand("copy");
+      document.body.removeChild(textarea);
+      return ok;
+    } catch {
+      return false;
+    }
+  }
+
+  async function copyToClipboard(text: string) {
+    // Preferir caminho síncrono no gesto do clique — mais confiável com a
+    // janela do CEAC disputando o foco.
+    if (copyToClipboardSync(text)) {
+      return true;
+    }
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  }
+
   async function copyValue(id: string, value: string) {
-    if (!value) {
+    const text = String(value ?? "").trim();
+    if (!text || text === "—") {
       toast.error("Campo vazio");
       return;
     }
 
-    try {
-      await navigator.clipboard.writeText(value);
-    } catch {
-      toast.error("Não foi possível copiar");
+    pauseCeacPinForTransfer(2500);
+
+    const ok = await copyToClipboard(text);
+    if (!ok) {
+      toast.error("Não foi possível copiar. Tente de novo.");
       return;
     }
 
     setCopiedId(id);
+    window.setTimeout(() => setCopiedId(""), 1500);
     const index = fields.findIndex((field) => field.id === id);
     const next = fields[index + 1];
     setActiveId(next?.id ?? id);
-    // Um único raise após o clipboard — evita tempestade de foco.
-    focusCeacWindow();
+    toast.success("Copiado — cole no CEAC (Ctrl+V)");
+
+    // Foco no CEAC só depois, sem cancelar a pausa cedo demais (próximo Copiar
+    // ainda precisa do quiet period se o usuário voltar rápido).
+    window.setTimeout(() => {
+      focusCeacWindow();
+    }, 120);
   }
 
   async function transferPage() {
@@ -245,8 +291,13 @@ export function CeacFormPanel({
                 size="sm"
                 variant="outline"
                 className="h-8 shrink-0"
-                disabled={!item.value}
-                onClick={() => copyValue(item.id, item.value)}
+                data-cp-vistos-skip-ceac-raise=""
+                disabled={!item.value || item.value === "—"}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  void copyValue(item.id, item.value);
+                }}
               >
                 {copiedId === item.id ? (
                   <Check className="mr-1 size-3.5" />

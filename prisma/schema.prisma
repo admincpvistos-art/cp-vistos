@@ -362,6 +362,7 @@ model Form {
   cpf                              String?
   warNameConfirmation              Boolean?
   warName                          String?
+  fullNameNative                   String?
   otherNamesConfirmation           Boolean?
   otherNames                       String[]
   sex                              String?
@@ -389,8 +390,17 @@ model Form {
   country                          String?
   postalAddressConfirmation        Boolean?
   otherPostalAddress               String?
+  postalStreet                     String?
+  postalAddressNumber              String?
+  postalComplement                 String?
+  postalDistrict                   String?
+  postalCity                       String?
+  postalState                      String?
+  postalCep                        String?
+  postalCountry                    String?
   cel                              String?
   tel                              String?
+  workPhone                        String?
   fiveYearsOtherTelConfirmation    Boolean?
   otherTel                         String[]
   email                            String?
@@ -401,6 +411,8 @@ model Form {
   instagram                        String?
   othersSocialMedia                String?
   passportNumber                   String?
+  passportDocumentType             String?
+  bookNumber                       String?
   passportCity                     String?
   passportState                    String?
   passportIssuingCountry           String?

@@ -29,6 +29,8 @@ import useFormStore from "@/constants/stores/useFormStore";
 const formSchema = z
   .object({
     passportNumber: z.string().min(1, { message: "Campo obrigatório" }),
+    passportDocumentType: z.string().min(1, { message: "Campo obrigatório" }),
+    bookNumber: z.string(),
     passportCity: z.string().min(1, { message: "Campo obrigatório" }),
     passportState: z.string().min(1, { message: "Campo obrigatório" }),
     passportIssuingCountry: z.string().min(1, { message: "Campo obrigatório" }),
@@ -64,6 +66,8 @@ export function PassportForm({ passportForm, profileId, isEditing }: Props) {
     resolver: zodResolver(formSchema),
     defaultValues: {
       passportNumber: passportForm.passportNumber ? passportForm.passportNumber : "",
+      passportDocumentType: passportForm.passportDocumentType ? passportForm.passportDocumentType : "Regular",
+      bookNumber: passportForm.bookNumber ? passportForm.bookNumber : "",
       passportCity: passportForm.passportCity ? passportForm.passportCity : "",
       passportState: passportForm.passportState ? passportForm.passportState : "",
       passportIssuingCountry: passportForm.passportIssuingCountry ? passportForm.passportIssuingCountry : "",
@@ -129,6 +133,9 @@ export function PassportForm({ passportForm, profileId, isEditing }: Props) {
 
       savePassport({
         passportNumber: values.passportNumber !== "" ? values.passportNumber : passportForm.passportNumber,
+        passportDocumentType:
+          values.passportDocumentType !== "" ? values.passportDocumentType : passportForm.passportDocumentType,
+        bookNumber: values.bookNumber !== "" ? values.bookNumber : passportForm.bookNumber,
         passportCity: values.passportCity !== "" ? values.passportCity : passportForm.passportCity,
         passportState: values.passportState !== "" ? values.passportState : passportForm.passportState,
         passportIssuingCountry:
@@ -158,6 +165,9 @@ export function PassportForm({ passportForm, profileId, isEditing }: Props) {
 
     savePassport({
       passportNumber: values.passportNumber !== "" ? values.passportNumber : passportForm.passportNumber,
+      passportDocumentType:
+        values.passportDocumentType !== "" ? values.passportDocumentType : passportForm.passportDocumentType,
+      bookNumber: values.bookNumber !== "" ? values.bookNumber : passportForm.bookNumber,
       passportCity: values.passportCity !== "" ? values.passportCity : passportForm.passportCity,
       passportState: values.passportState !== "" ? values.passportState : passportForm.passportState,
       passportIssuingCountry:
@@ -185,6 +195,30 @@ export function PassportForm({ passportForm, profileId, isEditing }: Props) {
             <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-6 mb-6">
               <FormField
                 control={form.control}
+                name="passportDocumentType"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col gap-2">
+                    <FormLabel className="text-foreground text-sm">Tipo de documento*</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="!mt-auto" disabled={isPending || isSavePending}>
+                          <SelectValue placeholder="Selecione o tipo" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Regular">Regular</SelectItem>
+                        <SelectItem value="Oficial">Oficial</SelectItem>
+                        <SelectItem value="Diplomático">Diplomático</SelectItem>
+                        <SelectItem value="Outro">Outro</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage className="text-sm text-destructive" />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
                 name="passportNumber"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
@@ -199,6 +233,22 @@ export function PassportForm({ passportForm, profileId, isEditing }: Props) {
                 )}
               />
 
+              <FormField
+                control={form.control}
+                name="bookNumber"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col gap-2">
+                    <FormLabel className="text-foreground text-sm">Número do livro (deixe vazio se não se aplica)</FormLabel>
+                    <FormControl>
+                      <Input className="!mt-auto" disabled={isPending || isSavePending} {...field} />
+                    </FormControl>
+                    <FormMessage className="text-sm text-destructive" />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-6 mb-6">
               <FormField
                 control={form.control}
                 name="passportCity"

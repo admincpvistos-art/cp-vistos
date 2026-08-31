@@ -31,6 +31,9 @@ const formSchema = z
     firstName: z.string().min(1, "Campo obrigatório"),
     lastName: z.string().min(1, "Campo obrigatório"),
     cpf: z.string().min(1, "Campo obrigatório").min(14, "CPF Inválido"),
+    warNameConfirmation: z.enum(["Sim", "Não"]),
+    warName: z.string().optional(),
+    fullNameNative: z.string().optional(),
     otherNamesConfirmation: z.enum(["Sim", "Não"]),
     otherNames: z.array(z.string().min(1, { message: "Valor não pode ser vazio" })).optional(),
     sex: z.string({ message: "Selecione uma opção" }).min(1, { message: "Selecione uma opção" }),
@@ -57,6 +60,8 @@ const formSchema = z
         otherNationalityCountry,
         otherNamesConfirmation,
         otherNames,
+        warNameConfirmation,
+        warName,
         otherCountryResidentConfirmation,
         otherCountryResident,
       },
@@ -89,6 +94,14 @@ const formSchema = z
           code: z.ZodIssueCode.custom,
           message: "Campo vazio, preencha para prosseguir",
           path: ["otherNames"],
+        });
+      }
+
+      if (warNameConfirmation === "Sim" && (warName === undefined || warName.length === 0)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Campo vazio, preencha para prosseguir",
+          path: ["warName"],
         });
       }
 
@@ -126,6 +139,9 @@ export function PersonalDataForm({ personalDataForm, profileId, isEditing }: Pro
       firstName: personalDataForm.firstName ? personalDataForm.firstName : "",
       lastName: personalDataForm.lastName ? personalDataForm.lastName : "",
       cpf: personalDataForm.cpf ? personalDataForm.cpf : "",
+      warNameConfirmation: personalDataForm.warNameConfirmation ? "Sim" : "Não",
+      warName: personalDataForm.warName ? personalDataForm.warName : "",
+      fullNameNative: personalDataForm.fullNameNative ? personalDataForm.fullNameNative : "",
       otherNamesConfirmation: personalDataForm.otherNamesConfirmation ? "Sim" : "Não",
       otherNames: personalDataForm.otherNames.length > 0 ? personalDataForm.otherNames : [],
       sex: personalDataForm.sex ? personalDataForm.sex : undefined,
@@ -151,6 +167,7 @@ export function PersonalDataForm({ personalDataForm, profileId, isEditing }: Pro
   const currentYear = getYear(new Date());
   const birthDate = form.watch("birthDate");
   const otherNamesConfirmationValue: "Sim" | "Não" = form.watch("otherNamesConfirmation");
+  const warNameConfirmationValue: "Sim" | "Não" = form.watch("warNameConfirmation");
   const otherNationalityConfirmation: "Sim" | "Não" = form.watch("otherNationalityConfirmation");
   const otherCountryResidentConfirmation: "Sim" | "Não" = form.watch("otherCountryResidentConfirmation");
   const otherNames = form.watch("otherNames");
@@ -218,6 +235,9 @@ export function PersonalDataForm({ personalDataForm, profileId, isEditing }: Pro
         firstName: values.firstName !== "" ? values.firstName : personalDataForm.firstName,
         lastName: values.lastName !== "" ? values.lastName : personalDataForm.lastName,
         cpf: values.cpf !== "" ? values.cpf : personalDataForm.cpf,
+        warNameConfirmation: values.warNameConfirmation ?? (personalDataForm.warNameConfirmation ? "Sim" : "Não"),
+        warName: values.warName !== "" ? values.warName : personalDataForm.warName,
+        fullNameNative: values.fullNameNative !== "" ? values.fullNameNative : personalDataForm.fullNameNative,
         otherNamesConfirmation:
           values.otherNamesConfirmation ?? (personalDataForm.otherNamesConfirmation ? "Sim" : "Não"),
         otherNames: values.otherNames ?? personalDataForm.otherNames,
@@ -277,6 +297,9 @@ export function PersonalDataForm({ personalDataForm, profileId, isEditing }: Pro
       firstName: values.firstName !== "" ? values.firstName : personalDataForm.firstName,
       lastName: values.lastName !== "" ? values.lastName : personalDataForm.lastName,
       cpf: values.cpf !== "" ? values.cpf : personalDataForm.cpf,
+      warNameConfirmation: values.warNameConfirmation ?? (personalDataForm.warNameConfirmation ? "Sim" : "Não"),
+      warName: values.warName !== "" ? values.warName : personalDataForm.warName,
+      fullNameNative: values.fullNameNative !== "" ? values.fullNameNative : personalDataForm.fullNameNative,
       otherNamesConfirmation:
         values.otherNamesConfirmation ?? (personalDataForm.otherNamesConfirmation ? "Sim" : "Não"),
       otherNames: values.otherNames ?? personalDataForm.otherNames,
@@ -423,6 +446,76 @@ export function PersonalDataForm({ personalDataForm, profileId, isEditing }: Pro
                 )}
               />
             </div>
+
+            <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-6 mb-6">
+              <FormField
+                control={form.control}
+                name="warNameConfirmation"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col gap-2">
+                    <FormLabel className="text-foreground">Possui código ou nome de guerra?</FormLabel>
+
+                    <FormControl>
+                      <RadioGroup
+                        disabled={isPending || isSavePending || isBirthLoading}
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                        className="flex space-x-4"
+                      >
+                        <FormItem className="flex items-center space-x-2 space-y-0">
+                          <FormControl>
+                            <RadioGroupItem value="Não" />
+                          </FormControl>
+                          <FormLabel className="font-normal">Não</FormLabel>
+                        </FormItem>
+                        <FormItem className="flex items-center space-x-2 space-y-0">
+                          <FormControl>
+                            <RadioGroupItem value="Sim" />
+                          </FormControl>
+                          <FormLabel className="font-normal">Sim</FormLabel>
+                        </FormItem>
+                      </RadioGroup>
+                    </FormControl>
+
+                    <FormMessage className="text-sm text-destructive" />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="warName"
+                render={({ field }) => (
+                  <FormItem
+                    className={cn("flex flex-col gap-2", {
+                      hidden: warNameConfirmationValue === "Não",
+                    })}
+                  >
+                    <FormLabel className="text-foreground">Código ou nome de guerra</FormLabel>
+                    <FormControl>
+                      <Input disabled={isPending || isSavePending || isBirthLoading} className="!mt-auto" {...field} />
+                    </FormControl>
+                    <FormMessage className="text-sm text-destructive" />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="fullNameNative"
+              render={({ field }) => (
+                <FormItem className="flex flex-col gap-2 mb-6">
+                  <FormLabel className="text-foreground">
+                    Nome completo em alfabeto nativo (deixe vazio se igual ao passaporte ou não se aplica)
+                  </FormLabel>
+                  <FormControl>
+                    <Input disabled={isPending || isSavePending || isBirthLoading} className="!mt-auto" {...field} />
+                  </FormControl>
+                  <FormMessage className="text-sm text-destructive" />
+                </FormItem>
+              )}
+            />
 
             <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-6 mb-6">
               <FormField

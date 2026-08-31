@@ -180,6 +180,16 @@ export function PreviousTravelView({
       >
         <div className="w-full flex flex-col gap-1">
           <span className="text-sm text-foreground/60 font-medium">
+            Ainda possui o visto?
+          </span>
+
+          <span className="text-lg font-medium text-foreground">
+            {form.USAVisaConfirmation ? (form.alreadyHaveVisa ? "Sim" : "Não") : "—"}
+          </span>
+        </div>
+
+        <div className="w-full flex flex-col gap-1">
+          <span className="text-sm text-foreground/60 font-medium">
             Está solicitando o novo visto do mesmo país ou localização daquele
             concedido previamente?
           </span>

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import useClientDetailsModalStore from "@/constants/stores/useClientDetailsModalStore";
 import { format } from "date-fns";
 import { formatPrice } from "@/lib/utils";
+import { buildLegacyPostalAddress } from "@/lib/form-postal-address";
 
 interface Props {
   handleClose: () => void;
@@ -83,6 +84,18 @@ export function ClientDetailsForm({ handleClose }: Props) {
                 </span>
               </div>
 
+              <div className="flex flex-col">
+                <span className="text-sm text-foreground/50 font-medium">Nome completo em alfabeto nativo</span>
+
+                <span className="text-lg font-medium text-foreground">
+                  {client.form.fullNameNative
+                    ? client.form.fullNameNative
+                    : "Não se aplica / igual ao passaporte"}
+                </span>
+              </div>
+            </div>
+
+            <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="flex flex-col">
                 <span className="text-sm text-foreground/50 font-medium">
                   Outros Nomes (Religioso(a), Solteiro(a), etc...)
@@ -286,9 +299,11 @@ export function ClientDetailsForm({ handleClose }: Props) {
 
                 <span className="text-lg font-medium text-foreground">
                   {client.form.postalAddressConfirmation
-                    ? client.form.otherPostalAddress
-                      ? client.form.otherPostalAddress
-                      : "Não Preenchido"
+                    ? client.form.postalStreet
+                      ? buildLegacyPostalAddress(client.form)
+                      : client.form.otherPostalAddress
+                        ? client.form.otherPostalAddress
+                        : "Não Preenchido"
                     : "É o mesmo endereço da residencia"}
                 </span>
               </div>
@@ -311,6 +326,13 @@ export function ClientDetailsForm({ handleClose }: Props) {
             </div>
 
             <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-6">
+              <div className="flex flex-col">
+                <span className="text-sm text-foreground/50 font-medium">Telefone comercial</span>
+
+                <span className="text-lg font-medium text-foreground">
+                  {client.form.workPhone ? client.form.workPhone : "Não possui"}
+                </span>
+              </div>
               <div className="flex flex-col">
                 <span className="text-sm text-foreground/50 font-medium">E-mail</span>
 
@@ -386,6 +408,14 @@ export function ClientDetailsForm({ handleClose }: Props) {
           <div className="w-full flex flex-col gap-6">
             <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-6">
               <div className="flex flex-col">
+                <span className="text-sm text-foreground/50 font-medium">Tipo de documento</span>
+
+                <span className="text-lg font-medium text-foreground">
+                  {client.form.passportDocumentType ? client.form.passportDocumentType : "Regular"}
+                </span>
+              </div>
+
+              <div className="flex flex-col">
                 <span className="text-sm text-foreground/50 font-medium">Número do Passaporte</span>
 
                 <span className="text-lg font-medium text-foreground">
@@ -406,6 +436,14 @@ export function ClientDetailsForm({ handleClose }: Props) {
 
                 <span className="text-lg font-medium text-foreground">
                   {client.form.passportState ? client.form.passportState : "Não Preenchido"}
+                </span>
+              </div>
+
+              <div className="flex flex-col">
+                <span className="text-sm text-foreground/50 font-medium">Número do livro</span>
+
+                <span className="text-lg font-medium text-foreground">
+                  {client.form.bookNumber ? client.form.bookNumber : "Não se aplica"}
                 </span>
               </div>
             </div>
@@ -865,6 +903,13 @@ export function ClientDetailsForm({ handleClose }: Props) {
                         ? client.form.visaNumber
                         : "Não Preenchido"
                       : "Não Possui"}
+                  </span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm text-foreground/50 font-medium">Ainda possui o visto?</span>
+
+                  <span className="text-lg font-medium text-foreground">
+                    {client.form.USAVisaConfirmation ? (client.form.alreadyHaveVisa ? "Sim" : "Não") : "—"}
                   </span>
                 </div>
               </div>

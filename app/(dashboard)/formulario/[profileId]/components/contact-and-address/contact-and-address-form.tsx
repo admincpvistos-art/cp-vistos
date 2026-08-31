@@ -33,6 +33,14 @@ const formSchema = z
     country: z.string().min(1, { message: "Campo obrigatório" }),
     postalAddressConfirmation: z.enum(["Sim", "Não"]),
     otherPostalAddress: z.string(),
+    postalStreet: z.string(),
+    postalAddressNumber: z.string(),
+    postalComplement: z.string(),
+    postalDistrict: z.string(),
+    postalCity: z.string(),
+    postalState: z.string(),
+    postalCep: z.string(),
+    postalCountry: z.string(),
     cel: z
       .string()
       .min(1, { message: "Campo obrigatório" })
@@ -45,6 +53,12 @@ const formSchema = z
       .trim()
       .refine((value) => value === "" || /^[^a-zA-Z]+$/.test(value), {
         message: "Celular inválido",
+      }),
+    workPhone: z
+      .string()
+      .trim()
+      .refine((value) => value === "" || /^[^a-zA-Z]+$/.test(value), {
+        message: "Telefone inválido",
       }),
     fiveYearsOtherTelConfirmation: z.enum(["Sim", "Não"]),
     otherTel: z.array(z.string().min(1)).optional(),
@@ -62,6 +76,13 @@ const formSchema = z
         tel,
         postalAddressConfirmation,
         otherPostalAddress,
+        postalStreet,
+        postalAddressNumber,
+        postalDistrict,
+        postalCity,
+        postalState,
+        postalCep,
+        postalCountry,
         fiveYearsOtherTelConfirmation,
         otherTel,
         fiveYearsOtherEmailConfirmation,
@@ -69,11 +90,59 @@ const formSchema = z
       },
       ctx,
     ) => {
-      if (postalAddressConfirmation === "Sim" && otherPostalAddress.length === 0) {
+      if (postalAddressConfirmation === "Sim" && postalStreet.length === 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: "Campo vazio, preencha para prosseguir",
-          path: ["otherPostalAddress"],
+          path: ["postalStreet"],
+        });
+      }
+
+      if (postalAddressConfirmation === "Sim" && postalAddressNumber.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Campo vazio, preencha para prosseguir",
+          path: ["postalAddressNumber"],
+        });
+      }
+
+      if (postalAddressConfirmation === "Sim" && postalDistrict.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Campo vazio, preencha para prosseguir",
+          path: ["postalDistrict"],
+        });
+      }
+
+      if (postalAddressConfirmation === "Sim" && postalCity.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Campo vazio, preencha para prosseguir",
+          path: ["postalCity"],
+        });
+      }
+
+      if (postalAddressConfirmation === "Sim" && postalState.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Campo vazio, preencha para prosseguir",
+          path: ["postalState"],
+        });
+      }
+
+      if (postalAddressConfirmation === "Sim" && postalCep.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Campo vazio, preencha para prosseguir",
+          path: ["postalCep"],
+        });
+      }
+
+      if (postalAddressConfirmation === "Sim" && postalCountry.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Campo vazio, preencha para prosseguir",
+          path: ["postalCountry"],
         });
       }
 
@@ -119,8 +188,17 @@ export function ContactAndAddressForm({ contactAndAddressForm, profileId, isEdit
       country: contactAndAddressForm.country ? contactAndAddressForm.country : "",
       postalAddressConfirmation: contactAndAddressForm.postalAddressConfirmation ? "Sim" : "Não",
       otherPostalAddress: contactAndAddressForm.otherPostalAddress ? contactAndAddressForm.otherPostalAddress : "",
+      postalStreet: contactAndAddressForm.postalStreet ? contactAndAddressForm.postalStreet : "",
+      postalAddressNumber: contactAndAddressForm.postalAddressNumber ? contactAndAddressForm.postalAddressNumber : "",
+      postalComplement: contactAndAddressForm.postalComplement ? contactAndAddressForm.postalComplement : "",
+      postalDistrict: contactAndAddressForm.postalDistrict ? contactAndAddressForm.postalDistrict : "",
+      postalCity: contactAndAddressForm.postalCity ? contactAndAddressForm.postalCity : "",
+      postalState: contactAndAddressForm.postalState ? contactAndAddressForm.postalState : "",
+      postalCep: contactAndAddressForm.postalCep ? contactAndAddressForm.postalCep : "",
+      postalCountry: contactAndAddressForm.postalCountry ? contactAndAddressForm.postalCountry : "",
       cel: contactAndAddressForm.cel ? contactAndAddressForm.cel : "",
       tel: contactAndAddressForm.tel ? contactAndAddressForm.tel : "",
+      workPhone: contactAndAddressForm.workPhone ? contactAndAddressForm.workPhone : "",
       fiveYearsOtherTelConfirmation: contactAndAddressForm.fiveYearsOtherTelConfirmation ? "Sim" : "Não",
       otherTel: contactAndAddressForm.otherTel ? contactAndAddressForm.otherTel : [],
       email: contactAndAddressForm.email ? contactAndAddressForm.email : "",
@@ -203,8 +281,19 @@ export function ContactAndAddressForm({ contactAndAddressForm, profileId, isEdit
           values.postalAddressConfirmation ?? (contactAndAddressForm.postalAddressConfirmation ? "Sim" : "Não"),
         otherPostalAddress:
           values.otherPostalAddress !== "" ? values.otherPostalAddress : contactAndAddressForm.otherPostalAddress,
+        postalStreet: values.postalStreet !== "" ? values.postalStreet : contactAndAddressForm.postalStreet,
+        postalAddressNumber:
+          values.postalAddressNumber !== "" ? values.postalAddressNumber : contactAndAddressForm.postalAddressNumber,
+        postalComplement:
+          values.postalComplement !== "" ? values.postalComplement : contactAndAddressForm.postalComplement,
+        postalDistrict: values.postalDistrict !== "" ? values.postalDistrict : contactAndAddressForm.postalDistrict,
+        postalCity: values.postalCity !== "" ? values.postalCity : contactAndAddressForm.postalCity,
+        postalState: values.postalState !== "" ? values.postalState : contactAndAddressForm.postalState,
+        postalCep: values.postalCep !== "" ? values.postalCep : contactAndAddressForm.postalCep,
+        postalCountry: values.postalCountry !== "" ? values.postalCountry : contactAndAddressForm.postalCountry,
         cel: values.cel !== "" ? values.cel : contactAndAddressForm.cel,
         tel: values.tel !== "" ? values.tel : contactAndAddressForm.tel,
+        workPhone: values.workPhone !== "" ? values.workPhone : contactAndAddressForm.workPhone,
         fiveYearsOtherTelConfirmation:
           values.fiveYearsOtherTelConfirmation ?? (contactAndAddressForm.fiveYearsOtherTelConfirmation ? "Sim" : "Não"),
         otherTel: values.otherTel && values.otherTel !== undefined ? values.otherTel : contactAndAddressForm.otherTel,
@@ -262,6 +351,12 @@ export function ContactAndAddressForm({ contactAndAddressForm, profileId, isEdit
     form.setValue("cep", value);
   }
 
+  function handleCEPPostalChange(event: ChangeEvent<HTMLInputElement>) {
+    let value = event.target.value.replace(/[^\d]/g, "");
+    value = value.replace(/(\d{5})(\d{3})/, "$1-$2");
+    form.setValue("postalCep", value);
+  }
+
   function onSubmit(values: z.infer<typeof formSchema>) {
     submitContactAndAddress({ ...values, profileId, step: 2, isEditing });
   }
@@ -283,8 +378,19 @@ export function ContactAndAddressForm({ contactAndAddressForm, profileId, isEdit
         values.postalAddressConfirmation ?? (contactAndAddressForm.postalAddressConfirmation ? "Sim" : "Não"),
       otherPostalAddress:
         values.otherPostalAddress !== "" ? values.otherPostalAddress : contactAndAddressForm.otherPostalAddress,
+      postalStreet: values.postalStreet !== "" ? values.postalStreet : contactAndAddressForm.postalStreet,
+      postalAddressNumber:
+        values.postalAddressNumber !== "" ? values.postalAddressNumber : contactAndAddressForm.postalAddressNumber,
+      postalComplement:
+        values.postalComplement !== "" ? values.postalComplement : contactAndAddressForm.postalComplement,
+      postalDistrict: values.postalDistrict !== "" ? values.postalDistrict : contactAndAddressForm.postalDistrict,
+      postalCity: values.postalCity !== "" ? values.postalCity : contactAndAddressForm.postalCity,
+      postalState: values.postalState !== "" ? values.postalState : contactAndAddressForm.postalState,
+      postalCep: values.postalCep !== "" ? values.postalCep : contactAndAddressForm.postalCep,
+      postalCountry: values.postalCountry !== "" ? values.postalCountry : contactAndAddressForm.postalCountry,
       cel: values.cel !== "" ? values.cel : contactAndAddressForm.cel,
       tel: values.tel !== "" ? values.tel : contactAndAddressForm.tel,
+      workPhone: values.workPhone !== "" ? values.workPhone : contactAndAddressForm.workPhone,
       fiveYearsOtherTelConfirmation:
         values.fiveYearsOtherTelConfirmation ?? (contactAndAddressForm.fiveYearsOtherTelConfirmation ? "Sim" : "Não"),
       otherTel: values.otherTel && values.otherTel !== undefined ? values.otherTel : contactAndAddressForm.otherTel,
@@ -505,26 +611,143 @@ export function ContactAndAddressForm({ contactAndAddressForm, profileId, isEdit
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="otherPostalAddress"
-                render={({ field }) => (
-                  <FormItem
-                    className={cn("w-full bg-secondary p-4 flex flex-col gap-2", {
-                      hidden: postalAddressConfirmation === "Não",
-                    })}
-                  >
-                    <FormLabel className="text-foreground text-sm">Informe seu outro endereço</FormLabel>
-
-                    <FormControl>
-                      <Input className="!mt-auto" disabled={isPending || isSavePending} {...field} />
-                    </FormControl>
-
-                    <FormMessage className="text-sm text-destructive" />
-                  </FormItem>
-                )}
-              />
             </div>
+
+            {postalAddressConfirmation === "Sim" && (
+              <div className="w-full bg-secondary rounded-xl p-4 mb-10 flex flex-col gap-6">
+                <span className="text-foreground text-base font-medium">Endereço de correspondência</span>
+
+                <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-6">
+                  <FormField
+                    control={form.control}
+                    name="postalStreet"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col gap-2">
+                        <FormLabel className="text-foreground text-sm">Endereço*</FormLabel>
+                        <FormControl>
+                          <Input className="!mt-auto" disabled={isPending || isSavePending} {...field} />
+                        </FormControl>
+                        <FormMessage className="text-sm text-destructive" />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="postalAddressNumber"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col gap-2">
+                        <FormLabel className="text-foreground text-sm">Número*</FormLabel>
+                        <FormControl>
+                          <Input className="!mt-auto" disabled={isPending || isSavePending} {...field} />
+                        </FormControl>
+                        <FormMessage className="text-sm text-destructive" />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="postalDistrict"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col gap-2">
+                        <FormLabel className="text-foreground text-sm">Bairro*</FormLabel>
+                        <FormControl>
+                          <Input className="!mt-auto" disabled={isPending || isSavePending} {...field} />
+                        </FormControl>
+                        <FormMessage className="text-sm text-destructive" />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="postalComplement"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col gap-2">
+                        <FormLabel className="text-foreground text-sm">Complemento</FormLabel>
+                        <FormControl>
+                          <Input className="!mt-auto" disabled={isPending || isSavePending} {...field} />
+                        </FormControl>
+                        <FormMessage className="text-sm text-destructive" />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="w-full grid grid-cols-1 sm:grid-cols-4 gap-x-4 gap-y-6">
+                  <FormField
+                    control={form.control}
+                    name="postalCep"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col gap-2">
+                        <FormLabel className="text-foreground text-sm">CEP*</FormLabel>
+                        <FormControl>
+                          <Input
+                            className="!mt-auto"
+                            disabled={isPending || isSavePending}
+                            maxLength={9}
+                            value={field.value}
+                            ref={field.ref}
+                            name={field.name}
+                            onBlur={field.onBlur}
+                            onChange={handleCEPPostalChange}
+                          />
+                        </FormControl>
+                        <FormMessage className="text-sm text-destructive" />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="postalCity"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col gap-2">
+                        <FormLabel className="text-foreground text-sm">Cidade*</FormLabel>
+                        <FormControl>
+                          <Input className="!mt-auto" disabled={isPending || isSavePending} {...field} />
+                        </FormControl>
+                        <FormMessage className="text-sm text-destructive" />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="postalState"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col gap-2">
+                        <FormLabel className="text-foreground text-sm">Estado*</FormLabel>
+                        <FormControl>
+                          <Input className="!mt-auto" disabled={isPending || isSavePending} {...field} />
+                        </FormControl>
+                        <FormMessage className="text-sm text-destructive" />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="postalCountry"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col gap-2">
+                        <FormLabel className="text-foreground text-sm">País*</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="!mt-auto" disabled={isPending || isSavePending}>
+                              <SelectValue placeholder="Selecione o país" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {countries.map((country) => (
+                              <SelectItem value={country} key={`postal-${country}`}>
+                                {country}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage className="text-sm text-destructive" />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+            )}
 
             <span className="text-foreground text-base font-medium mb-6">Telefone</span>
 
@@ -556,6 +779,26 @@ export function ContactAndAddressForm({ contactAndAddressForm, profileId, isEdit
                       <Input
                         disabled={isPending || isSavePending}
                         placeholder="Insira seu telefone fixo..."
+                        {...field}
+                      />
+                    </FormControl>
+
+                    <FormMessage className="text-sm text-destructive" />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="workPhone"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col gap-2">
+                    <FormLabel className="text-foreground text-sm">Telefone comercial</FormLabel>
+
+                    <FormControl>
+                      <Input
+                        disabled={isPending || isSavePending}
+                        placeholder="Insira seu telefone comercial..."
                         {...field}
                       />
                     </FormControl>

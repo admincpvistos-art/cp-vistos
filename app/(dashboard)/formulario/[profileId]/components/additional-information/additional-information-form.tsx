@@ -28,6 +28,7 @@ import { AdditionalInformationFormType } from "@/types";
 
 const formSchema = z
   .object({
+    tribeParticipateConfirmation: z.enum(["Sim", "Não"]),
     languages: z.array(z.string().min(1, { message: "Idioma precisa ser preenchido" })),
     fiveYearsOtherCountryTravelsConfirmation: z.enum(["Sim", "Não"]),
     fiveYearsOtherCountryTravels: z.array(z.string().min(1, { message: "Países precisam ser preenchidos" })),
@@ -164,6 +165,7 @@ export function AdditionalInformationForm({ additionalInformationForm, profileId
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      tribeParticipateConfirmation: additionalInformationForm.tribeParticipateConfirmation ? "Sim" : "Não",
       languages: additionalInformationForm.languages,
       fiveYearsOtherCountryTravelsConfirmation: additionalInformationForm.fiveYearsOtherCountryTravelsConfirmation
         ? "Sim"
@@ -252,6 +254,9 @@ export function AdditionalInformationForm({ additionalInformationForm, profileId
       saveAdditionalInformation({
         profileId,
         redirectStep,
+        tribeParticipateConfirmation:
+          values.tribeParticipateConfirmation ??
+          (additionalInformationForm.tribeParticipateConfirmation ? "Sim" : "Não"),
         languages: values.languages.length > 0 ? values.languages : additionalInformationForm.languages,
         fiveYearsOtherCountryTravelsConfirmation:
           values.fiveYearsOtherCountryTravelsConfirmation ??
@@ -417,6 +422,9 @@ export function AdditionalInformationForm({ additionalInformationForm, profileId
 
     saveAdditionalInformation({
       profileId,
+      tribeParticipateConfirmation:
+        values.tribeParticipateConfirmation ??
+        (additionalInformationForm.tribeParticipateConfirmation ? "Sim" : "Não"),
       languages: values.languages.length > 0 ? values.languages : additionalInformationForm.languages,
       fiveYearsOtherCountryTravelsConfirmation:
         values.fiveYearsOtherCountryTravelsConfirmation ??
@@ -497,6 +505,38 @@ export function AdditionalInformationForm({ additionalInformationForm, profileId
 
         <div className="w-full flex flex-col gap-12 justify-between flex-grow">
           <div className="w-full flex flex-col">
+            <FormField
+              control={form.control}
+              name="tribeParticipateConfirmation"
+              render={({ field }) => (
+                <FormItem className="mb-6 flex flex-col gap-2">
+                  <FormLabel className="text-foreground">Você pertence a um clã ou tribo?</FormLabel>
+                  <FormControl>
+                    <RadioGroup
+                      disabled={isPending || isSavePending}
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                      className="flex space-x-4"
+                    >
+                      <FormItem className="flex items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <RadioGroupItem value="Não" />
+                        </FormControl>
+                        <FormLabel className="font-normal">Não</FormLabel>
+                      </FormItem>
+                      <FormItem className="flex items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <RadioGroupItem value="Sim" />
+                        </FormControl>
+                        <FormLabel className="font-normal">Sim</FormLabel>
+                      </FormItem>
+                    </RadioGroup>
+                  </FormControl>
+                  <FormMessage className="text-sm text-destructive" />
+                </FormItem>
+              )}
+            />
+
             <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-6 mb-6">
               <FormField
                 name="languages"

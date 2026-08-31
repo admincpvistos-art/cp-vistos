@@ -1,6 +1,8 @@
 import { format } from "date-fns";
 import { Category, Form, Profile, StatusForm, VisaClass } from "@prisma/client";
 
+import { buildLegacyPostalAddress } from "@/lib/form-postal-address";
+
 export const CEAC_URL = "https://ceac.state.gov/GenNIV/Default.aspx";
 
 export const CEAC_PAGES = [
@@ -92,6 +94,19 @@ function visaClassLabel(value?: VisaClass | null) {
   }
 }
 
+function passportTypeLabel(value?: string | null) {
+  switch (value) {
+    case "Oficial":
+      return "Official";
+    case "Diplomático":
+      return "Diplomatic";
+    case "Outro":
+      return "Other";
+    default:
+      return "Regular";
+  }
+}
+
 function field(id: string, label: string, value: string, hint?: string): CeacField {
   return { id, label, hint, value };
 }
@@ -134,10 +149,11 @@ export function buildCeacPages(packet: Ds160Packet): Record<CeacPageId, CeacFiel
     personal1: [
       field("surnames", "Surnames (as in passport)", upper(form.lastName)),
       field("given", "Given Names (as in passport)", upper(form.firstName)),
-      field("native", "Full Name in Native Alphabet", "Does Not Apply", "Admin marca Does Not Apply"),
+      field("native", "Full Name in Native Alphabet", dna(form.fullNameNative)),
       field("otherNamesQ", "Have you ever used other names?", yesNo(form.otherNamesConfirmation)),
       field("otherNames", "Other Names", otherNames.map(upper).join(" | ")),
-      field("telecode", "Telecode that represents your name?", "No", "Não aparece para BR"),
+      field("telecode", "Telecode that represents your name?", yesNo(form.warNameConfirmation)),
+      field("warName", "War name / telecode", form.warName ?? ""),
       field("sex", "Sex", form.sex === "Feminino" ? "Female" : form.sex === "Masculino" ? "Male" : ""),
       field("marital", "Marital Status", form.maritalStatus ?? ""),
       field("dob", "Date of Birth", ceacDate(form.birthDate)),
@@ -157,16 +173,37 @@ export function buildCeacPages(packet: Ds160Packet): Record<CeacPageId, CeacFiel
       field("itin", "U.S. Taxpayer ID Number", dna(form.USTaxpayerIDNumber)),
     ],
     address: [
-      field("street", "Street Address", upper([form.address, form.addressNumber, form.complement].filter(Boolean).join(", "))),
+      field(
+        "street",
+        "Street Address",
+        upper([form.address, form.addressNumber, form.complement, form.district].filter(Boolean).join(", ")),
+      ),
       field("city", "City", upper(form.city)),
       field("state", "State/Province", upper(form.state)),
       field("postal", "Postal Zone / ZIP Code", form.cep ?? ""),
       field("country", "Country/Region", form.country ?? ""),
       field("mailingQ", "Mailing address different from home?", yesNo(form.postalAddressConfirmation)),
-      field("mailing", "Mailing address", form.otherPostalAddress ?? ""),
+      field(
+        "mailingStreet",
+        "Mailing Street Address",
+        upper(
+          [form.postalStreet, form.postalAddressNumber, form.postalComplement, form.postalDistrict]
+            .filter(Boolean)
+            .join(", "),
+        ),
+      ),
+      field("mailingCity", "Mailing City", upper(form.postalCity)),
+      field("mailingState", "Mailing State/Province", upper(form.postalState)),
+      field("mailingPostal", "Mailing Postal Zone / ZIP", form.postalCep ?? ""),
+      field("mailingCountry", "Mailing Country/Region", form.postalCountry ?? ""),
+      field(
+        "mailing",
+        "Mailing address",
+        form.otherPostalAddress ?? buildLegacyPostalAddress(form),
+      ),
       field("primaryPhone", "Primary Phone Number", form.cel ?? ""),
       field("secondaryPhone", "Secondary Phone Number", dna(form.tel)),
-      field("workPhone", "Work Phone Number", "Does Not Apply"),
+      field("workPhone", "Work Phone Number", dna(form.workPhone)),
       field("email", "Email Address", form.email ?? ""),
       field("otherPhoneQ", "Additional phones in last 5 years?", yesNo(form.fiveYearsOtherTelConfirmation)),
       field("otherPhones", "Additional phones", otherTels.join(" | ")),
@@ -178,9 +215,9 @@ export function buildCeacPages(packet: Ds160Packet): Record<CeacPageId, CeacFiel
       field("otherSocial", "Other social media", form.othersSocialMedia ?? ""),
     ],
     passport: [
-      field("pptType", "Passport/Travel Document Type", "Regular", "Padrão passaporte comum"),
+      field("pptType", "Passport/Travel Document Type", passportTypeLabel(form.passportDocumentType)),
       field("pptNumber", "Passport Number", upper(form.passportNumber)),
-      field("bookNumber", "Passport Book Number", "Does Not Apply"),
+      field("bookNumber", "Passport Book Number", dna(form.bookNumber)),
       field("pptCountry", "Country/Authority that Issued Passport", form.passportIssuingCountry ?? ""),
       field("pptCity", "City where issued", upper(form.passportCity)),
       field("pptState", "State/Province where issued", upper(form.passportState)),
@@ -238,6 +275,8 @@ export function buildCeacPages(packet: Ds160Packet): Record<CeacPageId, CeacFiel
       field("visaQ", "Ever issued a U.S. visa?", yesNo(form.USAVisaConfirmation)),
       field("visaDate", "Last visa issued", ceacDate(form.visaIssuingDate)),
       field("visaNumber", "Visa Number", form.visaNumber ?? ""),
+      field("stillHaveVisaQ", "Do you still have this visa?", yesNo(form.alreadyHaveVisa)),
+      field("newVisaQ", "Applying from same country/location as previous visa?", yesNo(form.newVisaConfirmation)),
       field("sameType", "Applying for same visa type?", yesNo(form.sameVisaTypeConfirmation)),
       field("sameCountry", "Same country of issuance?", yesNo(form.sameCountryResidenceConfirmation)),
       field("tenPrint", "Ten printed / fingerprints provided?", yesNo(form.fingerprintsProvidedConfirmation)),
@@ -247,6 +286,8 @@ export function buildCeacPages(packet: Ds160Packet): Record<CeacPageId, CeacFiel
       field("canceled", "Cancelled visa explanation", form.canceledVisaDetails ?? ""),
       field("deniedQ", "Visa refused / admission refused?", yesNo(form.deniedVisaConfirmation)),
       field("denied", "Refusal explanation", form.deniedVisaDetails ?? ""),
+      field("consularPost", "Consular post where visa was denied", form.consularPost ?? ""),
+      field("deniedVisaType", "Type of visa denied", form.deniedVisaType ?? ""),
       field("estaQ", "ESTA denied?", yesNo(form.ESTAVisaDeniedConfirmation)),
       field("petitionQ", "Immigrant petition filed on your behalf?", yesNo(form.immigrationRequestByAnotherPersonConfirmation)),
       field("petition", "Petition explanation", form.immigrationRequestByAnotherPersonDetails ?? ""),
@@ -299,6 +340,7 @@ export function buildCeacPages(packet: Ds160Packet): Record<CeacPageId, CeacFiel
       ),
       field("employerTel", "Employer Phone", form.companyTel ?? ""),
       field("startDate", "Start Date", ceacDate(form.admissionDate)),
+      field("retireeDate", "Retirement Date", ceacDate(form.retireeDate)),
       field("salary", "Monthly Income", form.monthlySalary ?? ""),
       field("duties", "Briefly describe your duties", form.jobDetails ?? ""),
       field("prevQ", "Were you previously employed?", yesNo(form.previousJobConfirmation)),
@@ -371,6 +413,32 @@ export function buildCeacPages(packet: Ds160Packet): Record<CeacPageId, CeacFiel
       field("fraud", "Visa fraud explanation", form.visaFraudConfirmationDetails ?? ""),
       field("deportedQ", "Removed / deported?", yesNo(form.deportedConfirmation)),
       field("deported", "Deportation explanation", form.deportedConfirmationDetails ?? ""),
+      field("helpTrafficQ", "Aided human trafficking?", yesNo(form.helpPeopleTrafficConfirmation)),
+      field("helpTraffic", "Trafficking aid explanation", form.helpPeopleTrafficConfirmationDetails ?? ""),
+      field("parentTrafficQ", "Parent/spouse aided trafficking?", yesNo(form.parentPeopleTrafficConfirmation)),
+      field("parentTraffic", "Parent trafficking explanation", form.parentPeopleTrafficConfirmationDetails ?? ""),
+      field("financialQ", "Received financial assistance for terrorism?", yesNo(form.financialAssistanceConfirmation)),
+      field("financial", "Financial assistance explanation", form.financialAssistanceConfirmationDetails ?? ""),
+      field("terrorMemberQ", "Member of terrorist organization?", yesNo(form.terrorismMemberConfirmation)),
+      field("terrorMember", "Terrorism member explanation", form.terrorismMemberConfirmationDetails ?? ""),
+      field("parentTerrorQ", "Parent/spouse in terrorist organization?", yesNo(form.parentTerrorismConfirmation)),
+      field("parentTerror", "Parent terrorism explanation", form.parentTerrorismConfirmationDetails ?? ""),
+      field("assassinQ", "Committed assassination?", yesNo(form.assassinConfirmation)),
+      field("assassin", "Assassination explanation", form.assassinConfirmationDetails ?? ""),
+      field("childSoldierQ", "Recruited child soldiers?", yesNo(form.childSoldierConfirmation)),
+      field("childSoldier", "Child soldier explanation", form.childSoldierConfirmationDetails ?? ""),
+      field("religionQ", "Violated religious freedom?", yesNo(form.religionLibertyConfirmation)),
+      field("religion", "Religious freedom explanation", form.religionLibertyConfirmationDetails ?? ""),
+      field("abortQ", "Forced abortion or sterilization?", yesNo(form.abortConfirmation)),
+      field("abort", "Abortion/sterilization explanation", form.abortConfirmationDetails ?? ""),
+      field("transplantQ", "Coercive organ transplantation?", yesNo(form.coerciveTransplantConfirmation)),
+      field("transplant", "Transplantation explanation", form.coerciveTransplantConfirmationDetails ?? ""),
+      field("custodyQ", "Child custody violation?", yesNo(form.childCustodyConfirmation)),
+      field("custody", "Custody violation explanation", form.childCustodyConfirmationDetails ?? ""),
+      field("lawViolationQ", "Violated U.S. law while in U.S.?", yesNo(form.lawViolationConfirmation)),
+      field("lawViolation", "U.S. law violation explanation", form.lawViolationConfirmationDetails ?? ""),
+      field("avoidTaxQ", "Avoided U.S. taxes?", yesNo(form.avoidTaxConfirmation)),
+      field("avoidTax", "Tax avoidance explanation", form.avoidTaxConfirmationDetails ?? ""),
     ],
   };
 }

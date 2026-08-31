@@ -12,13 +12,13 @@ const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ext = path.join(root, "extensions/ceac-frame");
 
 const manifest = JSON.parse(fs.readFileSync(path.join(ext, "manifest.json"), "utf8"));
-assert.strictEqual(manifest.version, "1.5.4");
+assert.strictEqual(manifest.version, "1.5.5");
 assert.ok(manifest.permissions.includes("scripting"));
 assert.ok(manifest.host_permissions.some((h) => h.includes("cpvistos.com.br")));
 assert.ok(manifest.host_permissions.some((h) => h.includes("ceac.state.gov")));
 
 const admin = fs.readFileSync(path.join(ext, "content-admin.js"), "utf8");
-assert.ok(admin.includes('EXT_VERSION = "1.5.4"'));
+assert.ok(admin.includes('EXT_VERSION = "1.5.5"'));
 assert.ok(admin.includes("sendRuntimeWithRetry"));
 assert.ok(admin.includes("CP_VISTOS_TRANSFER_CEAC"));
 assert.ok(admin.includes("CP_VISTOS_TRANSFER_CEAC_RESULT"));
@@ -42,7 +42,7 @@ assert.ok(win.includes("pauseCeacPinForTransfer"));
 assert.ok(win.includes("resumeCeacPinAfterTransfer"));
 assert.ok(win.includes("CP_VISTOS_TRANSFER_CEAC"));
 assert.ok(win.includes("16000"));
-assert.ok(win.includes("1.5.4"));
+assert.ok(win.includes("1.5.5"));
 assert.ok(win.includes("CEAC_EXTENSION_EXPECTED_VERSION"));
 
 // Simula handshake pÃ¡gina â†” content-script
@@ -80,4 +80,4 @@ assert.deepStrictEqual(
   { ok: true, filled: 3, skipped: 1, error: null },
 );
 
-console.log("OK test-ceac-transfer-unit: protocolo v1.5.4 + handshake simulado");
+console.log("OK test-ceac-transfer-unit: protocolo v1.5.5 + handshake simulado");

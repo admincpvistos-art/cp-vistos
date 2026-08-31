@@ -36,6 +36,7 @@ const formSchema = z
     USAVisaConfirmation: z.enum(["Sim", "Não"]),
     visaIssuingDate: z.date({ message: "Campo obrigatório" }).optional(),
     visaNumber: z.string(),
+    alreadyHaveVisa: z.enum(["Sim", "Não"]),
     newVisaConfirmation: z.enum(["Sim", "Não"]),
     sameCountryResidenceConfirmation: z.enum(["Sim", "Não"]),
     sameVisaTypeConfirmation: z.enum(["Sim", "Não"]),
@@ -202,6 +203,7 @@ export function PreviousTravelForm({ previousTravelForm, profileId, isEditing }:
       USAVisaConfirmation: previousTravelForm.USAVisaConfirmation ? "Sim" : "Não",
       visaIssuingDate: previousTravelForm.visaIssuingDate ? previousTravelForm.visaIssuingDate : undefined,
       visaNumber: previousTravelForm.visaNumber ? previousTravelForm.visaNumber : "",
+      alreadyHaveVisa: previousTravelForm.alreadyHaveVisa ? "Sim" : "Não",
       newVisaConfirmation: previousTravelForm.newVisaConfirmation ? "Sim" : "Não",
       sameCountryResidenceConfirmation: previousTravelForm.sameCountryResidenceConfirmation ? "Sim" : "Não",
       sameVisaTypeConfirmation: previousTravelForm.sameVisaTypeConfirmation ? "Sim" : "Não",
@@ -338,6 +340,7 @@ export function PreviousTravelForm({ previousTravelForm, profileId, isEditing }:
             : !previousTravelForm.visaNumber
             ? ""
             : previousTravelForm.visaNumber,
+        alreadyHaveVisa: values.alreadyHaveVisa ?? (previousTravelForm.alreadyHaveVisa ? "Sim" : "Não"),
         newVisaConfirmation: values.newVisaConfirmation ?? (previousTravelForm.newVisaConfirmation ? "Sim" : "Não"),
         sameCountryResidenceConfirmation:
           values.sameCountryResidenceConfirmation ??
@@ -444,6 +447,7 @@ export function PreviousTravelForm({ previousTravelForm, profileId, isEditing }:
           : !previousTravelForm.visaNumber
           ? ""
           : previousTravelForm.visaNumber,
+      alreadyHaveVisa: values.alreadyHaveVisa ?? (previousTravelForm.alreadyHaveVisa ? "Sim" : "Não"),
       newVisaConfirmation: values.newVisaConfirmation ?? (previousTravelForm.newVisaConfirmation ? "Sim" : "Não"),
       sameCountryResidenceConfirmation:
         values.sameCountryResidenceConfirmation ??
@@ -932,6 +936,38 @@ export function PreviousTravelForm({ previousTravelForm, profileId, isEditing }:
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="alreadyHaveVisa"
+              render={({ field }) => (
+                <FormItem className={cn("mb-4 sm:mb-6 flex flex-col gap-2", USAVisaConfirmation === "Não" && "hidden")}>
+                  <FormLabel className="text-foreground">Você ainda possui esse visto?</FormLabel>
+                  <FormControl>
+                    <RadioGroup
+                      disabled={isPending || isSavePending}
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                      className="flex space-x-4"
+                    >
+                      <FormItem className="flex items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <RadioGroupItem value="Não" />
+                        </FormControl>
+                        <FormLabel className="font-normal">Não</FormLabel>
+                      </FormItem>
+                      <FormItem className="flex items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <RadioGroupItem value="Sim" />
+                        </FormControl>
+                        <FormLabel className="font-normal">Sim</FormLabel>
+                      </FormItem>
+                    </RadioGroup>
+                  </FormControl>
+                  <FormMessage className="text-sm text-destructive" />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}

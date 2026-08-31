@@ -72,13 +72,13 @@ assert.deepStrictEqual(
 const manifest = JSON.parse(
   fs.readFileSync(path.join(root, "extensions/ceac-frame/manifest.json"), "utf8"),
 );
-assert.strictEqual(manifest.version, "1.5.4");
+assert.strictEqual(manifest.version, "1.5.5");
 
 const contentAdmin = fs.readFileSync(
   path.join(root, "extensions/ceac-frame/content-admin.js"),
   "utf8",
 );
-assert.ok(contentAdmin.includes('const EXT_VERSION = "1.5.4"'));
+assert.ok(contentAdmin.includes('const EXT_VERSION = "1.5.5"'));
 assert.ok(contentAdmin.includes("sendRuntimeWithRetry"));
 assert.ok(contentAdmin.includes("CP_VISTOS_TRANSFER_CEAC"));
 
@@ -90,7 +90,7 @@ assert.ok(contentCeac.includes("__cpVistosRunFill"));
 
 const windowLib = fs.readFileSync(path.join(root, "lib/ds160-ceac-window.ts"), "utf8");
 assert.ok(windowLib.includes("CEAC_EXTENSION_EXPECTED_VERSION"));
-assert.ok(windowLib.includes("1.5.4"));
+assert.ok(windowLib.includes("1.5.5"));
 assert.ok(windowLib.includes("pauseCeacPinForTransfer"));
 assert.ok(windowLib.includes("16000"));
 
@@ -111,4 +111,4 @@ const editSheet = fs.readFileSync(
 );
 assert.ok(editSheet.includes("AcompanhamentoArchiveAction") || editSheet.includes("Enviar para Arquivados"));
 
-console.log("OK verify-archive-ceac: mapeamento, transferÃªncia simulada e CEAC v1.5.4");
+console.log("OK verify-archive-ceac: mapeamento, transferência simulada e CEAC v1.5.5");

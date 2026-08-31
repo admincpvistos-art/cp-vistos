@@ -39,7 +39,17 @@ export function PersonalDataView({ form, className }: PersonalDataViewProps) {
         <div className="w-full flex flex-col gap-1">
           <span className="text-sm text-foreground/60 font-medium">Código ou Nome de Guerra</span>
 
-          <span className="text-lg font-medium text-foreground">{form.warName ? form.warName : "Não possui"}</span>
+          <span className="text-lg font-medium text-foreground">
+            {form.warNameConfirmation ? (form.warName ? form.warName : "Não Preenchido") : "Não possui"}
+          </span>
+        </div>
+
+        <div className="w-full flex flex-col gap-1">
+          <span className="text-sm text-foreground/60 font-medium">Nome em alfabeto nativo</span>
+
+          <span className="text-lg font-medium text-foreground">
+            {form.fullNameNative ? form.fullNameNative : "Não se aplica / igual ao passaporte"}
+          </span>
         </div>
 
         <div className="w-full flex flex-col gap-1">

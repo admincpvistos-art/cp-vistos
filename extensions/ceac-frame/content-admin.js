@@ -1,9 +1,9 @@
 /**
  * Ponte entre o painel DS-160 (cpvistos) e o service worker da extensão.
- * v1.5.4 — pronta para Chrome Web Store (atualização automática).
+ * v1.5.5 — pronta para Chrome Web Store (atualização automática).
  */
 
-const EXT_VERSION = "1.5.4";
+const EXT_VERSION = "1.5.5";
 
 function markReady() {
   try {

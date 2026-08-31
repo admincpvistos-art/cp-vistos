@@ -3,7 +3,7 @@ import { CEAC_URL } from "@/lib/ds160-ceac";
 const CEAC_WINDOW_NAME = "cp-vistos-ceac";
 
 /** Versão esperada da extensão (manifest / content-admin). */
-export const CEAC_EXTENSION_EXPECTED_VERSION = "1.5.4";
+export const CEAC_EXTENSION_EXPECTED_VERSION = "1.5.5";
 
 /** Link da Chrome Web Store (após publicar). Fallback: página interna. */
 export function getCeacExtensionInstallUrl() {
@@ -177,7 +177,27 @@ export function startCeacAlwaysOnTop() {
     }
   }
 
-  function onInteract() {
+  function onInteract(event?: Event) {
+    // Clique em Copiar precisa manter o foco nesta aba. Depois do 1º Copiar o CEAC
+    // fica na frente; no 2º clique o evento "focus" desta janela reativava o raise
+    // e o clipboard falhava. Pausamos o pin assim que o pointerdown bate no botão.
+    const target = event?.target;
+    if (
+      target instanceof Element &&
+      target.closest("[data-cp-vistos-skip-ceac-raise]")
+    ) {
+      pauseCeacPinForTransfer(2500);
+      return;
+    }
+    // Evento focus da janela: só renova o pin, sem roubar o foco de volta ao CEAC
+    // (senão qualquer clique após voltar da janela CEAC quebra o clipboard).
+    if (event?.type === "focus") {
+      if (Date.now() < transferQuietUntil) {
+        return;
+      }
+      window.postMessage({ type: "CP_VISTOS_PIN_CEAC" }, "*");
+      return;
+    }
     raise(true);
   }
 

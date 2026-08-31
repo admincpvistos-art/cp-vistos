@@ -1,6 +1,6 @@
 /**
  * Preenche campos da página atual do CEAC com o pacote enviado pelo admin.
- * v1.5.0 — aliases por id, dedupe de controles, DNA/Yes-No, frames ASP.NET.
+ * v1.5.5 — aliases mailing estruturado, passaporte, viagens anteriores e segurança.
  * Não avança páginas e não toca em captcha.
  */
 
@@ -14,6 +14,7 @@ if (window.__cpVistosCeacFillV15 && typeof window.__cpVistosRunFill === "functio
     surnames: ["surname", "tbxsurname", "lastname", "familyname", "applsurname"],
     given: ["givenname", "tbxgiven", "given_name", "firstname", "applgiven"],
     native: ["nativealphabet", "fullname", "fullnamenative", "nafullname"],
+    warName: ["warname", "telecodevalue", "otherwarname"],
     otherNamesQ: ["othername", "other_names", "usedothername", "alias"],
     otherNames: ["othername", "aliases", "maiden"],
     telecode: ["telecode"],
@@ -38,6 +39,12 @@ if (window.__cpVistosCeacFillV15 && typeof window.__cpVistosRunFill === "functio
     postal: ["postal", "zipcode", "tbxzip", "zip"],
     country: ["homecountry", "addresscountry", "applcountry"],
     mailingQ: ["mailingaddress", "sameasmailing", "mailaddresssame"],
+    mailing: ["mailingaddressline", "mailaddress", "mailingstreet"],
+    mailingStreet: ["mailingstreet", "mailstreet", "mailaddress1"],
+    mailingCity: ["mailingcity", "mailcity"],
+    mailingState: ["mailingstate", "mailstate", "mailprovince"],
+    mailingPostal: ["mailingpostal", "mailzip", "mailingzip"],
+    mailingCountry: ["mailingcountry", "mailcountry"],
     primaryPhone: ["primaryphone", "homephone", "tbxphone", "cellphone"],
     secondaryPhone: ["secondaryphone", "otherphone"],
     workPhone: ["workphone", "businessphone"],
@@ -68,6 +75,24 @@ if (window.__cpVistosCeacFillV15 && typeof window.__cpVistosRunFill === "functio
     beenQ: ["beenintheus", "everbeeninus", "previousustravel"],
     visaQ: ["issuedusvisa", "everissuedvisa"],
     visaNumber: ["visanumber"],
+    stillHaveVisaQ: ["stillhavevisa", "possessvisa", "visastillvalid"],
+    newVisaQ: ["samecountrylocation", "newvisasamecountry", "applyingfromsame"],
+    consularPost: ["consularpost", "postwherevisa", "embassywhere"],
+    deniedVisaType: ["deniedvisatype", "visatyperefused", "typeofvisadenied"],
+    retireeDate: ["retirementdate", "retiredate", "dateofretirement"],
+    helpTrafficQ: ["aidedtrafficking", "helptrafficking", "traffickingaid"],
+    parentTrafficQ: ["parenttrafficking", "spousetrafficking"],
+    financialQ: ["financialassistance", "terrorismfinancial"],
+    terrorMemberQ: ["terroristmember", "memberterroristorg"],
+    parentTerrorQ: ["parentterrorism", "spouseterrorism"],
+    assassinQ: ["assassination", "committedassassination"],
+    childSoldierQ: ["childsoldier", "recruitedchild"],
+    religionQ: ["religiousfreedom", "religionliberty"],
+    abortQ: ["forcedabortion", "sterilization"],
+    transplantQ: ["organtransplant", "coercivetransplant"],
+    custodyQ: ["childcustody", "custodyviolation"],
+    lawViolationQ: ["violateduslaw", "lawviolationinus"],
+    avoidTaxQ: ["avoidtax", "taxavoidance", "avoidedtaxes"],
   };
 
   const VALUE_MAP = {

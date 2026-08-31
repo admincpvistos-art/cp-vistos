@@ -56,6 +56,9 @@ export type PersonalDataFormType = {
   firstName: string | null;
   lastName: string | null;
   cpf: string | null;
+  warNameConfirmation: boolean | null;
+  warName: string | null;
+  fullNameNative: string | null;
   otherNamesConfirmation: boolean | null;
   otherNames: string[];
   sex: string | null;
@@ -86,8 +89,17 @@ export type ContactAndAddressFormType = {
   country: string | null;
   postalAddressConfirmation: boolean | null;
   otherPostalAddress: string | null;
+  postalStreet: string | null;
+  postalAddressNumber: string | null;
+  postalComplement: string | null;
+  postalDistrict: string | null;
+  postalCity: string | null;
+  postalState: string | null;
+  postalCep: string | null;
+  postalCountry: string | null;
   cel: string | null;
   tel: string | null;
+  workPhone: string | null;
   fiveYearsOtherTelConfirmation: boolean | null;
   otherTel: string[];
   email: string | null;
@@ -101,6 +113,8 @@ export type ContactAndAddressFormType = {
 
 export type PassportFormType = {
   passportNumber: string | null;
+  passportDocumentType: string | null;
+  bookNumber: string | null;
   passportCity: string | null;
   passportState: string | null;
   passportIssuingCountry: string | null;
@@ -150,6 +164,7 @@ export type PreviousTravelFormType = {
   USAVisaConfirmation: boolean | null;
   visaIssuingDate: Date | null;
   visaNumber: string | null;
+  alreadyHaveVisa: boolean | null;
   newVisaConfirmation: boolean | null;
   sameCountryResidenceConfirmation: boolean | null;
   sameVisaTypeConfirmation: boolean | null;
@@ -220,6 +235,7 @@ export type WorkEducationFormType = {
 };
 
 export type AdditionalInformationFormType = {
+  tribeParticipateConfirmation: boolean | null;
   languages: string[];
   fiveYearsOtherCountryTravelsConfirmation: boolean | null;
   fiveYearsOtherCountryTravels: string[];
