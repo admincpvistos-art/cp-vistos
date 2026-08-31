@@ -23,6 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils";
 import { countries } from "@/constants";
 import { trpc } from "@/lib/trpc-client";
+import { FIELD_HELP } from "@/lib/form-field-help";
 import { PassportFormType } from "@/types";
 import useFormStore from "@/constants/stores/useFormStore";
 
@@ -316,7 +317,9 @@ export function PassportForm({ passportForm, profileId, isEditing }: Props) {
                 name="passportIssuingDate"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">Data de emissão*</FormLabel>
+                    <FormLabel className="text-foreground" help={FIELD_HELP.passportIssueDate}>
+                      Data de emissão*
+                    </FormLabel>
 
                     <Popover>
                       <PopoverTrigger asChild>
@@ -373,7 +376,9 @@ export function PassportForm({ passportForm, profileId, isEditing }: Props) {
                 name="passportExpireDate"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">Data de expiração (caso tenha)</FormLabel>
+                    <FormLabel className="text-foreground" help={FIELD_HELP.passportExpireDate}>
+                      Data de expiração (caso tenha)
+                    </FormLabel>
 
                     <Popover>
                       <PopoverTrigger asChild>
@@ -432,7 +437,7 @@ export function PassportForm({ passportForm, profileId, isEditing }: Props) {
                 name="passportLostConfirmation"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">
+                    <FormLabel className="text-foreground" help={FIELD_HELP.passportLost}>
                       Você já perdeu um passaporte ou teve ele roubado?*
                     </FormLabel>
 

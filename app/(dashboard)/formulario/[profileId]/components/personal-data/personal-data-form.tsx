@@ -22,6 +22,7 @@ import { countries } from "@/constants";
 
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc-client";
+import { FIELD_HELP } from "@/lib/form-field-help";
 import useFormStore from "@/constants/stores/useFormStore";
 import { PersonalDataFormType } from "@/types";
 
@@ -394,7 +395,9 @@ export function PersonalDataForm({ personalDataForm, profileId, isEditing }: Pro
                 name="firstName"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">Primeiro nome (Conforme passaporte)*</FormLabel>
+                    <FormLabel className="text-foreground" help={FIELD_HELP.firstName}>
+                      Primeiro nome (Conforme passaporte)*
+                    </FormLabel>
 
                     <FormControl>
                       <Input disabled={isPending || isSavePending || isBirthLoading} className="!mt-auto" {...field} />
@@ -410,7 +413,9 @@ export function PersonalDataForm({ personalDataForm, profileId, isEditing }: Pro
                 name="lastName"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">Sobrenome (Conforme passaporte)*</FormLabel>
+                    <FormLabel className="text-foreground" help={FIELD_HELP.lastName}>
+                      Sobrenome (Conforme passaporte)*
+                    </FormLabel>
 
                     <FormControl>
                       <Input disabled={isPending || isSavePending || isBirthLoading} className="!mt-auto" {...field} />
@@ -453,7 +458,9 @@ export function PersonalDataForm({ personalDataForm, profileId, isEditing }: Pro
                 name="warNameConfirmation"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">Possui código ou nome de guerra?</FormLabel>
+                    <FormLabel className="text-foreground" help={FIELD_HELP.warName}>
+                      Possui código ou nome de guerra?
+                    </FormLabel>
 
                     <FormControl>
                       <RadioGroup
@@ -491,7 +498,9 @@ export function PersonalDataForm({ personalDataForm, profileId, isEditing }: Pro
                       hidden: warNameConfirmationValue === "Não",
                     })}
                   >
-                    <FormLabel className="text-foreground">Código ou nome de guerra</FormLabel>
+                    <FormLabel className="text-foreground" help={FIELD_HELP.warName}>
+                      Código ou nome de guerra
+                    </FormLabel>
                     <FormControl>
                       <Input disabled={isPending || isSavePending || isBirthLoading} className="!mt-auto" {...field} />
                     </FormControl>
@@ -506,7 +515,7 @@ export function PersonalDataForm({ personalDataForm, profileId, isEditing }: Pro
               name="fullNameNative"
               render={({ field }) => (
                 <FormItem className="flex flex-col gap-2 mb-6">
-                  <FormLabel className="text-foreground">
+                  <FormLabel className="text-foreground" help={FIELD_HELP.fullNameNative}>
                     Nome completo em alfabeto nativo (deixe vazio se igual ao passaporte ou não se aplica)
                   </FormLabel>
                   <FormControl>
@@ -523,7 +532,7 @@ export function PersonalDataForm({ personalDataForm, profileId, isEditing }: Pro
                 name="otherNamesConfirmation"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">
+                    <FormLabel className="text-foreground" help={FIELD_HELP.otherNames}>
                       Possui outros nomes? (Solteira/Nome Profissional/Religioso/etc...)
                     </FormLabel>
 
@@ -566,7 +575,9 @@ export function PersonalDataForm({ personalDataForm, profileId, isEditing }: Pro
                       hidden: otherNamesConfirmationValue === "Não",
                     })}
                   >
-                    <FormLabel className="text-foreground">Outro nome</FormLabel>
+                    <FormLabel className="text-foreground" help={FIELD_HELP.otherNames}>
+                      Outro nome
+                    </FormLabel>
 
                     <FormControl>
                       <div className="flex flex-col gap-2">
@@ -656,7 +667,9 @@ export function PersonalDataForm({ personalDataForm, profileId, isEditing }: Pro
                 name="maritalStatus"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">Estado civil*</FormLabel>
+                    <FormLabel className="text-foreground" help={FIELD_HELP.maritalStatus}>
+                      Estado civil*
+                    </FormLabel>
 
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
@@ -844,7 +857,9 @@ export function PersonalDataForm({ personalDataForm, profileId, isEditing }: Pro
                 name="otherNationalityConfirmation"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">Possui outra nacionalidade?</FormLabel>
+                    <FormLabel className="text-foreground" help={FIELD_HELP.otherNationality}>
+                      Possui outra nacionalidade?
+                    </FormLabel>
 
                     <FormControl>
                       <RadioGroup
@@ -883,7 +898,9 @@ export function PersonalDataForm({ personalDataForm, profileId, isEditing }: Pro
                 name="otherNationalityCountry"
                 render={({ field }) => (
                   <FormItem className={cn("flex flex-col gap-2", otherNationalityConfirmation === "Não" && "hidden")}>
-                    <FormLabel className="text-foreground">País da outra nacionalidade</FormLabel>
+                    <FormLabel className="text-foreground" help={FIELD_HELP.otherNationality}>
+                      País da outra nacionalidade
+                    </FormLabel>
 
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
@@ -931,7 +948,7 @@ export function PersonalDataForm({ personalDataForm, profileId, isEditing }: Pro
                 name="ESTAVisaDeniedConfirmation"
                 render={({ field }) => (
                   <FormItem className={cn("flex flex-col gap-2", otherNationalityConfirmation === "Não" && "hidden")}>
-                    <FormLabel className="text-foreground">
+                    <FormLabel className="text-foreground" help={FIELD_HELP.estaDenied}>
                       Você já teve sua autorização de viagem negada pelo Departamento de Segurança Interna por meio do
                       Sistema Eletrônico de Autorização de Viagem (ESTA)?
                     </FormLabel>
@@ -1044,7 +1061,7 @@ export function PersonalDataForm({ personalDataForm, profileId, isEditing }: Pro
                 name="USSocialSecurityNumber"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">
+                    <FormLabel className="text-foreground" help={FIELD_HELP.usSsn}>
                       U.S. Social Security Number (aplicável somente para quem já trabalhou nos EUA)
                     </FormLabel>
 
@@ -1062,7 +1079,7 @@ export function PersonalDataForm({ personalDataForm, profileId, isEditing }: Pro
                 name="USTaxpayerIDNumber"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">
+                    <FormLabel className="text-foreground" help={FIELD_HELP.usTaxpayer}>
                       U.S. Taxpayer ID Number (aplicável somente para quem já trabalhou nos EUA)
                     </FormLabel>
 

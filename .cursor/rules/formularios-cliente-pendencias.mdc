@@ -5,10 +5,12 @@ alwaysApply: true
 
 # Formulários do cliente — pendências
 
-## Aguardando material do admin
+## Orientações nos campos (tooltip) — feito
 
-- **Orientações nos campos (tooltip/hover)** — em todos os campos de preenchimento do formulário do cliente, ao posicionar o cursor, mostrar instruções de como/quais dados preencher, conforme o documento manual que o admin usava antes do sistema.
-  - **Não implementar agora.** O usuário enviará o arquivo com as orientações; só então desenhar e aplicar os textos.
+- Ícone **?** ao lado do rótulo (`FormLabel` + `help`) com texto do Word manual DS-160.
+- Textos em `lib/form-field-help.ts`; UI em `components/form/field-help.tsx`.
+- Callouts de seção (`FormSectionHelp`) em viagem, contato EUA, trabalho, escolaridade e segurança.
+- Ajustes de redação pontuais podem ser feitos no dicionário sem redesenhar o formulário.
 
 ## ESTA / E-TA (rótulo já na área do cliente)
 

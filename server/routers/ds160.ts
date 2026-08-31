@@ -11,15 +11,14 @@ import { isCadastroBefore2026 } from "@/server/client-year-ops";
 const pageIdSchema = z.enum([
   "personal1",
   "personal2",
-  "address",
-  "passport",
   "travel",
   "companions",
   "previous",
+  "address",
+  "passport",
   "uscontact",
   "family",
   "work",
-  "additional",
   "security",
 ]);
 

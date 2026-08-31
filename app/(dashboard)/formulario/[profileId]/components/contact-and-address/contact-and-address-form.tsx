@@ -16,6 +16,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc-client";
+import { FIELD_HELP } from "@/lib/form-field-help";
 import useFormStore from "@/constants/stores/useFormStore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { countries } from "@/constants";
@@ -424,7 +425,9 @@ export function ContactAndAddressForm({ contactAndAddressForm, profileId, isEdit
                 name="address"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground text-sm">Endereço Residencial*</FormLabel>
+                    <FormLabel className="text-foreground text-sm" help={FIELD_HELP.residenceAddress}>
+                      Endereço Residencial*
+                    </FormLabel>
 
                     <FormControl>
                       <Input className="!mt-auto" disabled={isPending || isSavePending} {...field} />
@@ -440,7 +443,9 @@ export function ContactAndAddressForm({ contactAndAddressForm, profileId, isEdit
                 name="addressNumber"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground text-sm">Número do Endereço*</FormLabel>
+                    <FormLabel className="text-foreground text-sm" help={FIELD_HELP.residenceAddress}>
+                      Número do Endereço*
+                    </FormLabel>
 
                     <FormControl>
                       <Input className="!mt-auto" disabled={isPending || isSavePending} {...field} />
@@ -757,7 +762,9 @@ export function ContactAndAddressForm({ contactAndAddressForm, profileId, isEdit
                 name="cel"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground text-sm">Celular*</FormLabel>
+                    <FormLabel className="text-foreground text-sm" help={FIELD_HELP.cellPhone}>
+                      Celular*
+                    </FormLabel>
 
                     <FormControl>
                       <Input disabled={isPending || isSavePending} placeholder="Insira seu celular..." {...field} />
@@ -793,7 +800,9 @@ export function ContactAndAddressForm({ contactAndAddressForm, profileId, isEdit
                 name="workPhone"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground text-sm">Telefone comercial</FormLabel>
+                    <FormLabel className="text-foreground text-sm" help={FIELD_HELP.workPhone}>
+                      Telefone comercial
+                    </FormLabel>
 
                     <FormControl>
                       <Input
@@ -831,7 +840,7 @@ export function ContactAndAddressForm({ contactAndAddressForm, profileId, isEdit
                 name="fiveYearsOtherTelConfirmation"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">
+                    <FormLabel className="text-foreground" help={FIELD_HELP.phonesLast5Years}>
                       Nos últimos 5 anos você usou outros números de telefone?*
                     </FormLabel>
 
@@ -937,7 +946,9 @@ export function ContactAndAddressForm({ contactAndAddressForm, profileId, isEdit
                 name="fiveYearsOtherEmailConfirmation"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">Nos últimos 5 anos você teve outros e-mails?*</FormLabel>
+                    <FormLabel className="text-foreground" help={FIELD_HELP.emailsLast5Years}>
+                      Nos últimos 5 anos você teve outros e-mails?*
+                    </FormLabel>
 
                     <FormControl>
                       <RadioGroup
@@ -998,7 +1009,9 @@ export function ContactAndAddressForm({ contactAndAddressForm, profileId, isEdit
                 name="facebook"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground text-sm">Facebook</FormLabel>
+                    <FormLabel className="text-foreground text-sm" help={FIELD_HELP.socialMedia}>
+                      Facebook
+                    </FormLabel>
 
                     <FormControl>
                       <Input className="!mt-auto" disabled={isPending || isSavePending} {...field} />
@@ -1014,7 +1027,9 @@ export function ContactAndAddressForm({ contactAndAddressForm, profileId, isEdit
                 name="linkedin"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground text-sm">Linkedin</FormLabel>
+                    <FormLabel className="text-foreground text-sm" help={FIELD_HELP.socialMedia}>
+                      Linkedin
+                    </FormLabel>
 
                     <FormControl>
                       <Input className="!mt-auto" disabled={isPending || isSavePending} {...field} />
@@ -1030,7 +1045,9 @@ export function ContactAndAddressForm({ contactAndAddressForm, profileId, isEdit
                 name="instagram"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground text-sm">Instagram</FormLabel>
+                    <FormLabel className="text-foreground text-sm" help={FIELD_HELP.socialMedia}>
+                      Instagram
+                    </FormLabel>
 
                     <FormControl>
                       <Input className="!mt-auto" disabled={isPending || isSavePending} {...field} />
@@ -1046,7 +1063,9 @@ export function ContactAndAddressForm({ contactAndAddressForm, profileId, isEdit
                 name="othersSocialMedia"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground text-sm">Outras Redes</FormLabel>
+                    <FormLabel className="text-foreground text-sm" help={FIELD_HELP.socialMedia}>
+                      Outras Redes
+                    </FormLabel>
 
                     <FormControl>
                       <Input className="!mt-auto" disabled={isPending || isSavePending} {...field} />

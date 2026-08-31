@@ -21,6 +21,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc-client";
+import { FIELD_HELP } from "@/lib/form-field-help";
 import useFormStore from "@/constants/stores/useFormStore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { countries } from "@/constants";
@@ -543,7 +544,9 @@ export function AdditionalInformationForm({ additionalInformationForm, profileId
                 control={form.control}
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2 bg-secondary rounded-xl p-4">
-                    <FormLabel className="text-foreground">Quais idiomas você fala?</FormLabel>
+                    <FormLabel className="text-foreground" help={FIELD_HELP.languages}>
+                      Quais idiomas você fala?
+                    </FormLabel>
 
                     <FormControl>
                       <div className="!mt-auto w-full flex items-center justify-between gap-2">
@@ -604,7 +607,9 @@ export function AdditionalInformationForm({ additionalInformationForm, profileId
                 control={form.control}
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">Viajou para outros países?</FormLabel>
+                    <FormLabel className="text-foreground" help={FIELD_HELP.otherCountries5Years}>
+                      Viajou para outros países?
+                    </FormLabel>
 
                     <FormControl>
                       <RadioGroup
@@ -647,7 +652,9 @@ export function AdditionalInformationForm({ additionalInformationForm, profileId
                       fiveYearsOtherCountryTravelsConfirmation === "Não" && "hidden"
                     )}
                   >
-                    <FormLabel className="text-foreground">Forneça uma lista dos países visitados</FormLabel>
+                    <FormLabel className="text-foreground" help={FIELD_HELP.otherCountries5Years}>
+                      Forneça uma lista dos países visitados
+                    </FormLabel>
 
                     <Select onValueChange={(value) => setCountryValue(value)} defaultValue={countryValue}>
                       <div className="!mt-auto w-full flex items-center justify-between gap-2">
@@ -712,7 +719,7 @@ export function AdditionalInformationForm({ additionalInformationForm, profileId
                 control={form.control}
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">
+                    <FormLabel className="text-foreground" help={FIELD_HELP.charityOrg}>
                       Contribui ou faz parte de alguma instituição de caridade ou organização social?
                     </FormLabel>
 
@@ -817,7 +824,9 @@ export function AdditionalInformationForm({ additionalInformationForm, profileId
                 control={form.control}
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">Você tem treinamento com arma de fogo?</FormLabel>
+                    <FormLabel className="text-foreground" help={FIELD_HELP.weaponsTraining}>
+                      Você tem treinamento com arma de fogo?
+                    </FormLabel>
 
                     <FormControl>
                       <RadioGroup
@@ -872,7 +881,9 @@ export function AdditionalInformationForm({ additionalInformationForm, profileId
                 control={form.control}
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">Já prestou serviço militar?</FormLabel>
+                    <FormLabel className="text-foreground" help={FIELD_HELP.militaryService}>
+                      Já prestou serviço militar?
+                    </FormLabel>
 
                     <FormControl>
                       <RadioGroup

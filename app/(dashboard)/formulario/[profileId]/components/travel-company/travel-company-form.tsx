@@ -15,6 +15,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc-client";
+import { FIELD_HELP } from "@/lib/form-field-help";
 import useFormStore from "@/constants/stores/useFormStore";
 import { TravelCompanyFormType } from "@/types";
 import { normalizeTravelCompanion } from "@/lib/person-name";
@@ -274,7 +275,9 @@ export function TravelCompanyForm({ travelCompanyForm, profileId, isEditing }: P
                 name="otherPeopleTravelingConfirmation"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">Você viajará com alguém?</FormLabel>
+                    <FormLabel className="text-foreground" help={FIELD_HELP.travelCompanion}>
+                      Você viajará com alguém?
+                    </FormLabel>
 
                     <FormControl>
                       <RadioGroup
@@ -395,7 +398,7 @@ export function TravelCompanyForm({ travelCompanyForm, profileId, isEditing }: P
                 name="groupMemberConfirmation"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground text-sm">
+                    <FormLabel className="text-foreground text-sm" help={FIELD_HELP.travelGroup}>
                       Está viajando como integrante de um grupo de viagem?
                     </FormLabel>
 
@@ -434,7 +437,9 @@ export function TravelCompanyForm({ travelCompanyForm, profileId, isEditing }: P
                 name="groupName"
                 render={({ field }) => (
                   <FormItem className={cn("flex flex-col gap-2", groupMemberConfirmation === "Não" && "hidden")}>
-                    <FormLabel className="text-foreground text-sm">Nome da Organização ou Grupo</FormLabel>
+                    <FormLabel className="text-foreground text-sm" help={FIELD_HELP.travelGroup}>
+                      Nome da Organização ou Grupo
+                    </FormLabel>
 
                     <FormControl>
                       <Input className="!mt-auto" disabled={isPending || isSavePending} {...field} />

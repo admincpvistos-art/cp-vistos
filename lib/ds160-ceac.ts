@@ -11,17 +11,16 @@ import {
 export const CEAC_URL = "https://ceac.state.gov/GenNIV/Default.aspx";
 
 export const CEAC_PAGES = [
-  { id: "personal1", title: "Personal Information 1", subtitle: "Dados pessoais" },
-  { id: "personal2", title: "Personal Information 2", subtitle: "Nacionalidade e documentos" },
-  { id: "address", title: "Address and Phone", subtitle: "Endereço e contatos" },
-  { id: "passport", title: "Passport Information", subtitle: "Passaporte" },
+  { id: "personal1", title: "Personal 1", subtitle: "Dados pessoais" },
+  { id: "personal2", title: "Personal 2", subtitle: "Nacionalidade e documentos" },
   { id: "travel", title: "Travel", subtitle: "Sobre a viagem" },
   { id: "companions", title: "Travel Companions", subtitle: "Acompanhante da viagem" },
   { id: "previous", title: "Previous U.S. Travel", subtitle: "Viagens anteriores" },
-  { id: "uscontact", title: "U.S. Point of Contact", subtitle: "Contato nos EUA" },
+  { id: "address", title: "Address and Phone", subtitle: "Endereço e contatos" },
+  { id: "passport", title: "Passport", subtitle: "Passaporte" },
+  { id: "uscontact", title: "U.S. Contact", subtitle: "Contato nos EUA" },
   { id: "family", title: "Family", subtitle: "Família" },
   { id: "work", title: "Work / Education / Training", subtitle: "Trabalho e educação" },
-  { id: "additional", title: "Additional Information", subtitle: "Informações adicionais" },
   { id: "security", title: "Security and Background", subtitle: "Segurança" },
 ] as const;
 
@@ -223,15 +222,14 @@ export function buildCeacPages(packet: Ds160Packet): Record<CeacPageId, CeacFiel
     return {
       personal1: empty,
       personal2: empty,
-      address: empty,
-      passport: empty,
       travel: empty,
       companions: empty,
       previous: empty,
+      address: empty,
+      passport: empty,
       uscontact: empty,
       family: empty,
       work: empty,
-      additional: empty,
       security: empty,
     };
   }
@@ -486,8 +484,6 @@ export function buildCeacPages(packet: Ds160Packet): Record<CeacPageId, CeacFiel
           formatCourse(course, ceacDate),
         ),
       ),
-    ],
-    additional: [
       field("tribeQ", "Clan or tribe?", yesNo(form.tribeParticipateConfirmation)),
       field("languages", "Languages spoken", languages.join(" | ")),
       field("travelQ", "Traveled to other countries in last 5 years?", yesNo(form.fiveYearsOtherCountryTravelsConfirmation)),

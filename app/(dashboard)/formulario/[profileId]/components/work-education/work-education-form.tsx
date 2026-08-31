@@ -33,8 +33,10 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Accordion, AccordionContent, AccordionTrigger, AccordionItem } from "@/components/ui/accordion";
 import { Separator } from "@/components/ui/separator";
 
+import { FormSectionHelp } from "@/components/form/field-help";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc-client";
+import { FIELD_HELP, SECTION_HELP } from "@/lib/form-field-help";
 import useFormStore from "@/constants/stores/useFormStore";
 import { WorkEducationFormType } from "@/types";
 
@@ -746,6 +748,8 @@ export function WorkEducationForm({ workEducationForm, profileId, isEditing }: P
 
         <div className="w-full flex flex-col gap-12 justify-between flex-grow">
           <div className="w-full flex flex-col">
+            <FormSectionHelp items={[...SECTION_HELP.workCurrent]} className="mb-6" />
+
             <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-6 mb-6">
               <FormField
                 control={form.control}
@@ -854,7 +858,7 @@ export function WorkEducationForm({ workEducationForm, profileId, isEditing }: P
                       hidden: occupation === "Não Trabalho" || occupation === "Aposentado",
                     })}
                   >
-                    <FormLabel className="text-foreground">
+                    <FormLabel className="text-foreground" help={FIELD_HELP.employerName}>
                       {occupation === "Empresário/Proprietário"
                         ? "Nome fantasia ou razão social"
                         : occupation === "Autônomo"
@@ -1130,7 +1134,7 @@ export function WorkEducationForm({ workEducationForm, profileId, isEditing }: P
                       hidden: occupation === "Não Trabalho" || occupation === "Aposentado",
                     })}
                   >
-                    <FormLabel className="text-foreground">
+                    <FormLabel className="text-foreground" help={FIELD_HELP.jobStartDate}>
                       {occupation === "Empresário/Proprietário"
                         ? "Data de abertura*"
                         : occupation === "Estudante"
@@ -1299,7 +1303,9 @@ export function WorkEducationForm({ workEducationForm, profileId, isEditing }: P
                         occupation === "Não Trabalho" || occupation === "Aposentado" || occupation === "Estudante",
                     })}
                   >
-                    <FormLabel className="text-foreground">Renda mensal (R$)</FormLabel>
+                    <FormLabel className="text-foreground" help={FIELD_HELP.monthlyIncome}>
+                      Renda mensal (R$)
+                    </FormLabel>
 
                     <FormControl>
                       <div className="h-12 flex items-center gap-2 border border-muted/70 rounded-xl transition duration-300 bg-background px-3 py-2 text-sm group focus-within:border-primary hover:border-border">
@@ -1359,7 +1365,7 @@ export function WorkEducationForm({ workEducationForm, profileId, isEditing }: P
                       hidden: occupation === "Não Trabalho" || occupation === "Aposentado",
                     })}
                   >
-                    <FormLabel className="text-foreground">
+                    <FormLabel className="text-foreground" help={FIELD_HELP.jobDuties}>
                       {occupation == "Contratado (CLT/PJ)" ? (
                         <>Descreva quais as suas funções dentro da empresa</>
                       ) : occupation === "Estudante" ? (
@@ -1406,13 +1412,15 @@ export function WorkEducationForm({ workEducationForm, profileId, isEditing }: P
               />
             </div>
 
+            <FormSectionHelp items={[...SECTION_HELP.workHistory]} className="mb-6" />
+
             <div className="w-full grid grid-cols-1 gap-x-4 gap-y-6 mb-6">
               <FormField
                 control={form.control}
                 name="previousJobConfirmation"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">
+                    <FormLabel className="text-foreground" help={FIELD_HELP.previousJobs}>
                       Você já teve experiências profissionais anteriores? Caso sim, informe um histórico das suas
                       últimas ocupações ou, se for o caso, da sua aposentadoria
                     </FormLabel>
@@ -1477,7 +1485,9 @@ export function WorkEducationForm({ workEducationForm, profileId, isEditing }: P
                       name={`previousJobs.${index}.companyName`}
                       render={({ field }) => (
                         <FormItem className="flex flex-col gap-2">
-                          <FormLabel className="text-foreground">Nome do empregador ou empresa anterior*</FormLabel>
+                          <FormLabel className="text-foreground" help={FIELD_HELP.previousJobs}>
+                            Nome do empregador ou empresa anterior*
+                          </FormLabel>
 
                           <FormControl>
                             <Input className="!mt-auto" disabled={isPending} {...field} />
@@ -1790,6 +1800,8 @@ export function WorkEducationForm({ workEducationForm, profileId, isEditing }: P
               )}
             </div>
 
+            <FormSectionHelp items={[...SECTION_HELP.education]} className="mb-6" />
+
             <span className="text-foreground text-base font-medium mb-6">
               Informe pelo menos os dois últimos cursos concluídos. Caso não tenha ensino superior ou médio completo,
               informe o ensino básico.
@@ -1819,7 +1831,7 @@ export function WorkEducationForm({ workEducationForm, profileId, isEditing }: P
                       name={`courses.${index}.institutionName`}
                       render={({ field }) => (
                         <FormItem className="flex flex-col gap-2">
-                          <FormLabel>Nome completo da instituição*</FormLabel>
+                          <FormLabel help={FIELD_HELP.education}>Nome completo da instituição*</FormLabel>
 
                           <FormControl>
                             <Input className="!mt-auto" disabled={isPending} {...field} />

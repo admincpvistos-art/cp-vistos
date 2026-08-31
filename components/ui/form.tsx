@@ -1,3 +1,5 @@
+"use client"
+
 import * as React from "react"
 import * as LabelPrimitive from "@radix-ui/react-label"
 import { Slot } from "@radix-ui/react-slot"
@@ -12,6 +14,7 @@ import {
 
 import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label"
+import { FieldHelp } from "@/components/form/field-help"
 
 const Form = FormProvider
 
@@ -84,19 +87,37 @@ const FormItem = React.forwardRef<
 })
 FormItem.displayName = "FormItem"
 
+type FormLabelProps = React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root> & {
+  /** Orientação curta exibida no hover do ícone ? ao lado do rótulo. */
+  help?: string
+}
+
 const FormLabel = React.forwardRef<
   React.ElementRef<typeof LabelPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root>
->(({ className, ...props }, ref) => {
+  FormLabelProps
+>(({ className, help, children, ...props }, ref) => {
   const { error, formItemId } = useFormField()
 
-  return (
+  const label = (
     <Label
       ref={ref}
       className={cn(error && "text-destructive", className)}
       htmlFor={formItemId}
       {...props}
-    />
+    >
+      {children}
+    </Label>
+  )
+
+  if (!help) {
+    return label
+  }
+
+  return (
+    <div className="flex items-center gap-1.5">
+      {label}
+      <FieldHelp text={help} />
+    </div>
   )
 })
 FormLabel.displayName = "FormLabel"

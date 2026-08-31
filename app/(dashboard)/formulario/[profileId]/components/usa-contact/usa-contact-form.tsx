@@ -14,8 +14,10 @@ import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
+import { FormSectionHelp } from "@/components/form/field-help";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc-client";
+import { FIELD_HELP, SECTION_HELP } from "@/lib/form-field-help";
 import useFormStore from "@/constants/stores/useFormStore";
 import { USAContactFormType } from "@/types";
 
@@ -326,6 +328,8 @@ export function USAContactForm({ usaContactForm, profileId, isEditing }: Props) 
           Contato nos Estados Unidos
         </h2>
 
+        <FormSectionHelp items={[...SECTION_HELP.usaContact]} className="mb-6" />
+
         <div className="w-full flex flex-col gap-12 justify-between flex-grow">
           <div className="w-full flex flex-col">
             <FormField
@@ -333,7 +337,9 @@ export function USAContactForm({ usaContactForm, profileId, isEditing }: Props) 
               name="hasUSAOrganizationOrResident"
               render={({ field }) => (
                 <FormItem className="flex flex-col gap-2 mb-6">
-                  <FormLabel className="text-foreground">Você possui contato com alguém dos EUA?</FormLabel>
+                  <FormLabel className="text-foreground" help={FIELD_HELP.usaContactSection}>
+                    Você possui contato com alguém dos EUA?
+                  </FormLabel>
 
                   <FormControl>
                     <RadioGroup

@@ -21,6 +21,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc-client";
+import { FIELD_HELP } from "@/lib/form-field-help";
 import useFormStore from "@/constants/stores/useFormStore";
 import { PreviousTravelFormType } from "@/types";
 
@@ -552,7 +553,9 @@ export function PreviousTravelForm({ previousTravelForm, profileId, isEditing }:
                 name="hasBeenOnUSAConfirmation"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">Você já foi para os EUA?</FormLabel>
+                    <FormLabel className="text-foreground" help={FIELD_HELP.previousUsVisits}>
+                      Você já foi para os EUA?
+                    </FormLabel>
 
                     <FormControl>
                       <RadioGroup
@@ -601,7 +604,9 @@ export function PreviousTravelForm({ previousTravelForm, profileId, isEditing }:
                       name={`USALastTravel.${currentUSALastTravelIndex}.arriveDate`}
                       render={({ field }) => (
                         <FormItem className="w-full flex flex-col gap-2">
-                          <FormLabel className="text-foreground">Data de chegada aos EUA</FormLabel>
+                          <FormLabel className="text-foreground" help={FIELD_HELP.previousUsVisits}>
+                            Data de chegada aos EUA
+                          </FormLabel>
 
                           <Popover>
                             <PopoverTrigger asChild>
@@ -662,7 +667,9 @@ export function PreviousTravelForm({ previousTravelForm, profileId, isEditing }:
                         name={`USALastTravel.${currentUSALastTravelIndex}.estimatedTime`}
                         render={({ field }) => (
                           <FormItem className="w-full flex flex-col gap-2">
-                            <FormLabel className="text-foreground">Tempo de permanência nos EUA</FormLabel>
+                            <FormLabel className="text-foreground" help={FIELD_HELP.previousUsVisits}>
+                              Tempo de permanência nos EUA
+                            </FormLabel>
 
                             <FormControl>
                               <Input className="!mt-auto" disabled={isPending || isSavePending} {...field} />
@@ -748,7 +755,7 @@ export function PreviousTravelForm({ previousTravelForm, profileId, isEditing }:
                 name="americanLicenseToDriveConfirmation"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">
+                    <FormLabel className="text-foreground" help={FIELD_HELP.usDriversLicense}>
                       Já obteve uma licença americana para dirigir nos EUA?
                     </FormLabel>
 
@@ -919,7 +926,7 @@ export function PreviousTravelForm({ previousTravelForm, profileId, isEditing }:
                 name="visaNumber"
                 render={({ field }) => (
                   <FormItem className={cn("flex flex-col gap-2", USAVisaConfirmation === "Não" && "hidden")}>
-                    <FormLabel className="text-foreground text-sm">
+                    <FormLabel className="text-foreground text-sm" help={FIELD_HELP.lastVisaNumber}>
                       Nº do último visto (está em vermelho do lado direito inferior do selo do visto)
                     </FormLabel>
 
@@ -974,7 +981,7 @@ export function PreviousTravelForm({ previousTravelForm, profileId, isEditing }:
               name="newVisaConfirmation"
               render={({ field }) => (
                 <FormItem className={cn("mb-4 sm:mb-6 flex flex-col gap-2", USAVisaConfirmation === "Não" && "hidden")}>
-                  <FormLabel className="text-foreground">
+                  <FormLabel className="text-foreground" help={FIELD_HELP.renewalOnly}>
                     Está solicitando o novo visto do mesmo País ou localização daquele concedido previamente?
                   </FormLabel>
 
@@ -1013,7 +1020,7 @@ export function PreviousTravelForm({ previousTravelForm, profileId, isEditing }:
               name="sameCountryResidenceConfirmation"
               render={({ field }) => (
                 <FormItem className={cn("mb-4 sm:mb-6 flex flex-col gap-2", USAVisaConfirmation === "Não" && "hidden")}>
-                  <FormLabel className="text-foreground">
+                  <FormLabel className="text-foreground" help={FIELD_HELP.renewalOnly}>
                     Este País é o mesmo onde está localizada sua residência principal?
                   </FormLabel>
 
@@ -1052,7 +1059,7 @@ export function PreviousTravelForm({ previousTravelForm, profileId, isEditing }:
               name="sameVisaTypeConfirmation"
               render={({ field }) => (
                 <FormItem className={cn("mb-4 sm:mb-6 flex flex-col gap-2", USAVisaConfirmation === "Não" && "hidden")}>
-                  <FormLabel className="text-foreground">
+                  <FormLabel className="text-foreground" help={FIELD_HELP.renewalOnly}>
                     Está solicitando o mesmo tipo de visto concedido anteriormente?
                   </FormLabel>
 
@@ -1091,7 +1098,9 @@ export function PreviousTravelForm({ previousTravelForm, profileId, isEditing }:
               name="fingerprintsProvidedConfirmation"
               render={({ field }) => (
                 <FormItem className={cn("mb-4 sm:mb-6 flex flex-col gap-2", USAVisaConfirmation === "Não" && "hidden")}>
-                  <FormLabel className="text-foreground">Forneceu digitais dos 10 dedos</FormLabel>
+                  <FormLabel className="text-foreground" help={FIELD_HELP.fingerprints}>
+                    Forneceu digitais dos 10 dedos
+                  </FormLabel>
 
                   <FormControl>
                     <RadioGroup
@@ -1247,7 +1256,7 @@ export function PreviousTravelForm({ previousTravelForm, profileId, isEditing }:
                 name="immigrationRequestByAnotherPersonConfirmation"
                 render={({ field }) => (
                   <FormItem className={cn("flex flex-col gap-2")}>
-                    <FormLabel className="text-foreground">
+                    <FormLabel className="text-foreground" help={FIELD_HELP.immigrationPetition}>
                       Alguém já solicitou alguma petição de imigração em seu nome perante o Departamento de Imigração
                       dos Estados Unidos?
                     </FormLabel>
@@ -1307,7 +1316,9 @@ export function PreviousTravelForm({ previousTravelForm, profileId, isEditing }:
                 name="deniedVisaConfirmation"
                 render={({ field }) => (
                   <FormItem className={cn("flex flex-col gap-2")}>
-                    <FormLabel className="text-foreground">Já teve um visto negado?</FormLabel>
+                    <FormLabel className="text-foreground" help={FIELD_HELP.visaDeniedReason}>
+                      Já teve um visto negado?
+                    </FormLabel>
 
                     <FormControl>
                       <RadioGroup
@@ -1347,7 +1358,9 @@ export function PreviousTravelForm({ previousTravelForm, profileId, isEditing }:
                       name="deniedVisaDetails"
                       render={({ field }) => (
                         <FormItem className="w-full flex flex-col gap-2">
-                          <FormLabel className="text-foreground">Em qual ano? Explique o ocorrido</FormLabel>
+                          <FormLabel className="text-foreground" help={FIELD_HELP.visaDeniedReason}>
+                            Em qual ano? Explique o ocorrido
+                          </FormLabel>
 
                           <FormControl>
                             <Textarea

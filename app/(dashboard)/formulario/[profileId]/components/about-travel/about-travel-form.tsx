@@ -19,8 +19,10 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 
+import { FormSectionHelp } from "@/components/form/field-help";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc-client";
+import { FIELD_HELP, SECTION_HELP } from "@/lib/form-field-help";
 import useFormStore from "@/constants/stores/useFormStore";
 import { AboutTravelFormType } from "@/types";
 import { USALocations } from "@/constants";
@@ -440,6 +442,8 @@ export function AboutTravelForm({ aboutTravelForm, profileId, isEditing }: Props
       <form onSubmit={form.handleSubmit(onSubmit)} className="w-full flex flex-col flex-grow gap-6">
         <h2 className="w-full text-center text-2xl sm:text-3xl text-foreground font-semibold mb-6">Sobre a Viagem</h2>
 
+        <FormSectionHelp items={[...SECTION_HELP.travelPlan]} className="mb-6" />
+
         <div className="w-full flex flex-col gap-12 justify-between flex-grow">
           <div className="w-full flex flex-col">
             <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-6 mb-6">
@@ -487,7 +491,9 @@ export function AboutTravelForm({ aboutTravelForm, profileId, isEditing }: Props
                 name="USAPreviewArriveDate"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">Data prevista da viagem aos EUA*</FormLabel>
+                    <FormLabel className="text-foreground" help={FIELD_HELP.travelPlan}>
+                      Data prevista da viagem aos EUA*
+                    </FormLabel>
 
                     <FormControl>
                       <div className="w-full relative">
@@ -552,7 +558,9 @@ export function AboutTravelForm({ aboutTravelForm, profileId, isEditing }: Props
                 name="arriveFlyNumber"
                 render={({ field }) => (
                   <FormItem className={cn("flex flex-col gap-2", travelItineraryConfirmation === "Não" && "hidden")}>
-                    <FormLabel className="text-foreground">Número do voo de chegada</FormLabel>
+                    <FormLabel className="text-foreground" help={FIELD_HELP.flightOnlyIfBought}>
+                      Número do voo de chegada
+                    </FormLabel>
 
                     <FormControl>
                       <Input
@@ -664,7 +672,9 @@ export function AboutTravelForm({ aboutTravelForm, profileId, isEditing }: Props
                 name="returnFlyNumber"
                 render={({ field }) => (
                   <FormItem className={cn("flex flex-col gap-2", travelItineraryConfirmation === "Não" && "hidden")}>
-                    <FormLabel className="text-foreground">Número do voo de partida</FormLabel>
+                    <FormLabel className="text-foreground" help={FIELD_HELP.flightOnlyIfBought}>
+                      Número do voo de partida
+                    </FormLabel>
 
                     <FormControl>
                       <Input
@@ -707,7 +717,9 @@ export function AboutTravelForm({ aboutTravelForm, profileId, isEditing }: Props
                   name="estimatedTimeNumber"
                   render={({ field }) => (
                     <FormItem className="flex flex-col gap-2">
-                      <FormLabel className="text-foreground">Tempo de permanência estimado nos EUA</FormLabel>
+                      <FormLabel className="text-foreground" help={FIELD_HELP.travelPlan}>
+                        Tempo de permanência estimado nos EUA
+                      </FormLabel>
 
                       <FormControl>
                         <Input
@@ -759,7 +771,9 @@ export function AboutTravelForm({ aboutTravelForm, profileId, isEditing }: Props
                 name="visitLocations"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">Qual estado pretende visitar?</FormLabel>
+                    <FormLabel className="text-foreground" help={FIELD_HELP.travelPlan}>
+                      Qual estado pretende visitar?
+                    </FormLabel>
 
                     <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
                       <FormControl>
@@ -791,7 +805,9 @@ export function AboutTravelForm({ aboutTravelForm, profileId, isEditing }: Props
                 name="hasAddressInUSA"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">Você tem o endereço onde ficará nos EUA?</FormLabel>
+                    <FormLabel className="text-foreground" help={FIELD_HELP.hotelOnlyIfBooked}>
+                      Você tem o endereço onde ficará nos EUA?
+                    </FormLabel>
 
                     <FormControl>
                       <RadioGroup
@@ -834,7 +850,9 @@ export function AboutTravelForm({ aboutTravelForm, profileId, isEditing }: Props
                 name="USACompleteAddress"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">Endereço completo de onde ficará nos EUA*</FormLabel>
+                    <FormLabel className="text-foreground" help={FIELD_HELP.hotelOnlyIfBooked}>
+                      Endereço completo de onde ficará nos EUA*
+                    </FormLabel>
 
                     <FormControl>
                       <Input className="!mt-auto" disabled={isPending || isSavePending} {...field} />
@@ -906,7 +924,9 @@ export function AboutTravelForm({ aboutTravelForm, profileId, isEditing }: Props
                 name="payer"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">Você pagará pela viagem?</FormLabel>
+                    <FormLabel className="text-foreground" help={FIELD_HELP.tripPayer}>
+                      Você pagará pela viagem?
+                    </FormLabel>
 
                     <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
                       <FormControl>

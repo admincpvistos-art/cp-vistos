@@ -21,6 +21,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc-client";
+import { FIELD_HELP } from "@/lib/form-field-help";
 import useFormStore from "@/constants/stores/useFormStore";
 import { FamilyFormType } from "@/types";
 import { joinPersonName, splitPersonName } from "@/lib/person-name";
@@ -581,7 +582,9 @@ export function FamilyForm({ familyForm, profileId, isEditing, isMinor }: Props)
                 name="fatherFirstName"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">Nome do pai</FormLabel>
+                    <FormLabel className="text-foreground" help={FIELD_HELP.parentsEvenDeceased}>
+                      Nome do pai
+                    </FormLabel>
 
                     <FormControl>
                       <Input className="!mt-auto" disabled={isPending || isSavePending} {...field} />
@@ -597,7 +600,9 @@ export function FamilyForm({ familyForm, profileId, isEditing, isMinor }: Props)
                 name="fatherLastName"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">Sobrenome do pai</FormLabel>
+                    <FormLabel className="text-foreground" help={FIELD_HELP.parentsEvenDeceased}>
+                      Sobrenome do pai
+                    </FormLabel>
 
                     <FormControl>
                       <Input className="!mt-auto" disabled={isPending || isSavePending} {...field} />
@@ -615,7 +620,9 @@ export function FamilyForm({ familyForm, profileId, isEditing, isMinor }: Props)
                 name="fatherBirthdate"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">Data de nascimento do pai</FormLabel>
+                    <FormLabel className="text-foreground" help={FIELD_HELP.parentsEvenDeceased}>
+                      Data de nascimento do pai
+                    </FormLabel>
 
                     <Popover>
                       <PopoverTrigger asChild>
@@ -674,7 +681,9 @@ export function FamilyForm({ familyForm, profileId, isEditing, isMinor }: Props)
                 name="fatherLiveInTheUSAConfirmation"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">Seu pai se encontra nos EUA?</FormLabel>
+                    <FormLabel className="text-foreground" help={FIELD_HELP.parentInUsaStatus}>
+                      Seu pai se encontra nos EUA?
+                    </FormLabel>
 
                     <FormControl>
                       <RadioGroup
@@ -716,7 +725,7 @@ export function FamilyForm({ familyForm, profileId, isEditing, isMinor }: Props)
                       fatherLiveInTheUSAConfirmation === "Não" && "hidden"
                     )}
                   >
-                    <FormLabel className="text-foreground">
+                    <FormLabel className="text-foreground" help={FIELD_HELP.parentInUsaStatus}>
                       Em qual situação? (trabalhando legalmente, passeando, etc)
                     </FormLabel>
 
@@ -752,7 +761,9 @@ export function FamilyForm({ familyForm, profileId, isEditing, isMinor }: Props)
                 name="motherFirstName"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">Nome da mãe*</FormLabel>
+                    <FormLabel className="text-foreground" help={FIELD_HELP.parentsEvenDeceased}>
+                      Nome da mãe*
+                    </FormLabel>
 
                     <FormControl>
                       <Input className="!mt-auto" disabled={isPending || isSavePending} {...field} />
@@ -768,7 +779,9 @@ export function FamilyForm({ familyForm, profileId, isEditing, isMinor }: Props)
                 name="motherLastName"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">Sobrenome da mãe*</FormLabel>
+                    <FormLabel className="text-foreground" help={FIELD_HELP.parentsEvenDeceased}>
+                      Sobrenome da mãe*
+                    </FormLabel>
 
                     <FormControl>
                       <Input className="!mt-auto" disabled={isPending || isSavePending} {...field} />
@@ -786,7 +799,9 @@ export function FamilyForm({ familyForm, profileId, isEditing, isMinor }: Props)
                 name="motherBirthdate"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">Data de nascimento da mãe</FormLabel>
+                    <FormLabel className="text-foreground" help={FIELD_HELP.parentsEvenDeceased}>
+                      Data de nascimento da mãe
+                    </FormLabel>
 
                     <Popover>
                       <PopoverTrigger asChild>
@@ -845,7 +860,9 @@ export function FamilyForm({ familyForm, profileId, isEditing, isMinor }: Props)
                 name="motherLiveInTheUSAConfirmation"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">Sua mãe se encontra nos EUA?</FormLabel>
+                    <FormLabel className="text-foreground" help={FIELD_HELP.parentInUsaStatus}>
+                      Sua mãe se encontra nos EUA?
+                    </FormLabel>
 
                     <FormControl>
                       <RadioGroup
@@ -887,7 +904,7 @@ export function FamilyForm({ familyForm, profileId, isEditing, isMinor }: Props)
                       motherLiveInTheUSAConfirmation === "Não" && "hidden"
                     )}
                   >
-                    <FormLabel className="text-foreground">
+                    <FormLabel className="text-foreground" help={FIELD_HELP.parentInUsaStatus}>
                       Em qual situação? (trabalhando legalmente, passeando, etc)
                     </FormLabel>
 
@@ -923,7 +940,7 @@ export function FamilyForm({ familyForm, profileId, isEditing, isMinor }: Props)
                 name="familyLivingInTheUSAConfirmation"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">
+                    <FormLabel className="text-foreground" help={FIELD_HELP.relativesInUsa}>
                       Excluindo os pais, há alguém da sua família nos EUA?
                     </FormLabel>
 
@@ -1121,7 +1138,9 @@ export function FamilyForm({ familyForm, profileId, isEditing, isMinor }: Props)
                 name="partnerCompleteName"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">Nome completo</FormLabel>
+                    <FormLabel className="text-foreground" help={FIELD_HELP.spouseRequired}>
+                      Nome completo
+                    </FormLabel>
 
                     <FormControl>
                       <Input disabled={isPending || isSavePending} {...field} />
@@ -1137,7 +1156,9 @@ export function FamilyForm({ familyForm, profileId, isEditing, isMinor }: Props)
                 name="partnerBirthdate"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">Data de nascimento</FormLabel>
+                    <FormLabel className="text-foreground" help={FIELD_HELP.spouseRequired}>
+                      Data de nascimento
+                    </FormLabel>
 
                     <Popover>
                       <PopoverTrigger asChild>
@@ -1288,7 +1309,9 @@ export function FamilyForm({ familyForm, profileId, isEditing, isMinor }: Props)
                 name="unionDate"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">Data da união</FormLabel>
+                    <FormLabel className="text-foreground" help={FIELD_HELP.spouseRequired}>
+                      Data da união
+                    </FormLabel>
 
                     <Popover>
                       <PopoverTrigger asChild>
@@ -1345,7 +1368,9 @@ export function FamilyForm({ familyForm, profileId, isEditing, isMinor }: Props)
                 name="divorceDate"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">Data da separação</FormLabel>
+                    <FormLabel className="text-foreground" help={FIELD_HELP.spouseRequired}>
+                      Data da separação
+                    </FormLabel>
 
                     <Popover>
                       <PopoverTrigger asChild>
