@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
 import {
   AlertTriangle,
@@ -8,6 +9,7 @@ import {
   ArrowUpAZ,
   CheckCircle2,
   CircleAlert,
+  FileText,
   Loader2,
   Search,
 } from "lucide-react";
@@ -50,7 +52,28 @@ export type SheetClientRow = {
   status: string;
   /** ms — cadastro no sistema; usado na ordem padrão “mais recentes”. */
   registeredAt?: number;
+  /** Perfil ESTA/E-TA — botão de formulário só quando preenchido abaixo. */
+  estaProfileId?: string | null;
+  estaFormStep?: number;
+  estaStatusForm?: "" | "awaiting" | "filling" | "filled";
 };
+
+const ESTA_FORM_STEPS = 6;
+
+function estaFormButtonLabel(
+  statusForm: SheetClientRow["estaStatusForm"],
+  formStep = 0,
+): string {
+  if (statusForm === "filled") {
+    return "ESTA ✓";
+  }
+
+  if (statusForm === "filling" || formStep > 0) {
+    return `ESTA · ${Math.min(formStep + 1, ESTA_FORM_STEPS)}/${ESTA_FORM_STEPS}`;
+  }
+
+  return "ESTA";
+}
 
 type VisibleColumn =
   | { key: keyof SheetClientRow; label: string }
@@ -160,43 +183,71 @@ function NameCell({
   unarchivePending?: boolean;
   onUnarchive?: (row: SheetClientRow) => void;
 }) {
+  const estaLabel = estaFormButtonLabel(row.estaStatusForm, row.estaFormStep ?? 0);
+  const estaFilled = row.estaStatusForm === "filled";
+  const estaDraft = row.estaStatusForm === "filling" || (row.estaFormStep ?? 0) > 0;
+
   return (
-    <div className="flex items-center gap-1.5 min-w-0">
-      <SheetCommentBubble
-        comment={row.sheetComment ?? ""}
-        isPending={commentPending}
-        title="Comentário"
-        ariaLabel="Comentário do cliente"
-        onSave={async (sheetComment) => {
-          if (!onSaveComment) {
-            toast.message("Comentário disponível quando houver clientes nesta aba");
-            return;
-          }
-          await onSaveComment(row.id, sheetComment);
-        }}
-      />
-      <span className="text-primary hover:underline truncate">{row.name || "—"}</span>
-      {canUnarchive && onUnarchive && row.id.startsWith("db:") ? (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-7 shrink-0 px-2 text-xs text-muted-foreground hover:text-foreground"
-          disabled={unarchivePending}
-          title="Desarquivar — voltar ao Acompanhamento"
-          onClick={(event) => {
-            event.stopPropagation();
-            onUnarchive(row);
+    <div className="flex flex-col items-start gap-1 min-w-0">
+      <div className="flex items-center gap-1.5 min-w-0 w-full">
+        <SheetCommentBubble
+          comment={row.sheetComment ?? ""}
+          isPending={commentPending}
+          title="Comentário"
+          ariaLabel="Comentário do cliente"
+          onSave={async (sheetComment) => {
+            if (!onSaveComment) {
+              toast.message("Comentário disponível quando houver clientes nesta aba");
+              return;
+            }
+            await onSaveComment(row.id, sheetComment);
           }}
-        >
-          {unarchivePending ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <>
-              <ArchiveRestore className="h-3.5 w-3.5 mr-1" />
-              Desarquivar
-            </>
+        />
+        <span className="text-primary hover:underline truncate">{row.name || "—"}</span>
+        {canUnarchive && onUnarchive && row.id.startsWith("db:") ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 shrink-0 px-2 text-xs text-muted-foreground hover:text-foreground"
+            disabled={unarchivePending}
+            title="Desarquivar — voltar ao Acompanhamento"
+            onClick={(event) => {
+              event.stopPropagation();
+              onUnarchive(row);
+            }}
+          >
+            {unarchivePending ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <>
+                <ArchiveRestore className="h-3.5 w-3.5 mr-1" />
+                Desarquivar
+              </>
+            )}
+          </Button>
+        ) : null}
+      </div>
+
+      {row.estaProfileId ? (
+        <Button
+          variant="outline"
+          size="sm"
+          className={cn(
+            "h-7 shrink-0 px-2 text-xs gap-1",
+            estaFilled && "border-emerald-200 text-emerald-700 hover:text-emerald-800",
+            !estaFilled && !estaDraft && "text-muted-foreground",
           )}
+          asChild
+        >
+          <Link
+            href={`/perfil/esta-formulario/${row.estaProfileId}`}
+            title="Ver formulário ESTA / E-TA preenchido pelo cliente"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <FileText className="h-3.5 w-3.5" />
+            {estaLabel}
+          </Link>
         </Button>
       ) : null}
     </div>

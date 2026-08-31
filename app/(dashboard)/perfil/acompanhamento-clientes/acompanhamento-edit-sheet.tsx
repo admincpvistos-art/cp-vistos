@@ -39,7 +39,16 @@ import { AcompanhamentoDependentsBatch } from "./acompanhamento-dependents-batch
 
 type SheetForm = Omit<
   AcompanhamentoRecord,
-  "id" | "userId" | "profileId" | "formStep" | "accountFields" | "registeredAt" | "createdByEmail"
+  | "id"
+  | "userId"
+  | "profileId"
+  | "formStep"
+  | "accountFields"
+  | "registeredAt"
+  | "createdByEmail"
+  | "estaProfileId"
+  | "estaFormStep"
+  | "estaStatusForm"
 > & {
   accountFields: AcompanhamentoAccountFields;
 };

@@ -74,6 +74,9 @@ export default function AcompanhamentoClientesPage() {
       group: row.group,
       status: row.status,
       registeredAt: row.registeredAt ?? 0,
+      estaProfileId: row.estaProfileId,
+      estaFormStep: row.estaFormStep,
+      estaStatusForm: row.estaStatusForm,
     }));
   }, [data?.rows]);
 

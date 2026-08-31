@@ -65,6 +65,10 @@ export type AcompanhamentoRecord = {
   /** Quem criou o cadastro (e-mail da equipe, "self", "system" ou vazio). Imutável na UI. */
   createdByEmail: string | null;
   accountFields: AcompanhamentoAccountFields | null;
+  /** Perfil ESTA/E-TA (`Category.e_ta`) — distinto do serviço Passaporte. */
+  estaProfileId: string | null;
+  estaFormStep: number;
+  estaStatusForm: "" | "awaiting" | "filling" | "filled";
 };
 
 export function emptyAccountFields(

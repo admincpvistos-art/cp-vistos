@@ -1000,6 +1000,10 @@ function pickProfile(profiles: Profile[]) {
   );
 }
 
+function pickEstaProfile(profiles: Profile[]) {
+  return profiles.find((profile) => profile.category === Category.e_ta) ?? null;
+}
+
 function buildAccountFields(user: User | null | undefined): AcompanhamentoAccountFields | null {
   if (!user) {
     return null;
@@ -1148,6 +1152,7 @@ function buildRecord(
   const cells = record.cells;
   const user = record.user;
   const profile = user ? pickProfile(user.profiles) : null;
+  const estaProfile = user ? pickEstaProfile(user.profiles) : null;
   const email = user
     ? isPlaceholderEmail(user.email)
       ? user.payerEmail || cell(cells, COL.email)
@@ -1199,6 +1204,9 @@ function buildRecord(
     registeredAt,
     createdByEmail: record.createdByEmail || user?.createdByEmail || null,
     accountFields: buildAccountFields(user),
+    estaProfileId: estaProfile?.id ?? null,
+    estaFormStep: estaProfile?.formStep ?? 0,
+    estaStatusForm: estaProfile?.statusForm ?? "",
   };
 }
 
