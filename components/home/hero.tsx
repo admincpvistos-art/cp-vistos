@@ -149,10 +149,10 @@ export function Hero() {
 
                 <div className="flex flex-col sm:items-center">
                   <p className="text-2xl font-semibold text-foreground sm:text-center">
-                    5.000
+                    + 7.000
                   </p>
                   <p className="text-xl text-foreground font-medium sm:text-center">
-                    Clientes
+                    clientes
                   </p>
                 </div>
               </div>
