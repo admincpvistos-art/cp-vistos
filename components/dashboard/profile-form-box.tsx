@@ -114,7 +114,7 @@ export function ProfileFormBox({
     >
       <div className="flex flex-col gap-3">
         <span className="text-xs font-semibold uppercase tracking-wide text-white/70">
-          {isPassport ? "Passaporte ou Renovação" : "Visto Americano"}
+          {isPassport ? "ESTA / E-TA" : "Visto Americano / Renovação"}
         </span>
         <h6 className="text-2xl font-semibold text-white">{title}</h6>
         <span className="w-fit px-2 py-1 text-sm font-semibold uppercase text-center rounded-lg bg-white/15 text-white">

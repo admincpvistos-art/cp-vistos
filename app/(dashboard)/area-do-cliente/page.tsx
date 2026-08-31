@@ -159,10 +159,10 @@ export default function ClientAreaPage() {
             <Tabs value={category} onValueChange={setCategory}>
               <TabsList className="w-full flex-col h-fit sm:flex-row rounded-xl">
                 <TabsTrigger value="american_visa" className="w-full h-10 rounded-lg sm:text-base sm:font-semibold">
-                  Visto Americano
+                  Visto Americano / Renovação
                 </TabsTrigger>
                 <TabsTrigger value="passport" className="w-full h-10 rounded-lg sm:text-base sm:font-semibold">
-                  Passaporte
+                  ESTA / E-TA
                 </TabsTrigger>
               </TabsList>
 

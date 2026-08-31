@@ -1,0 +1,21 @@
+---
+description: Pendências da área do cliente e formulários (rótulos, ESTA, orientações)
+alwaysApply: true
+---
+
+# Formulários do cliente — pendências
+
+## Aguardando material do admin
+
+- **Orientações nos campos (tooltip/hover)** — em todos os campos de preenchimento do formulário do cliente, ao posicionar o cursor, mostrar instruções de como/quais dados preencher, conforme o documento manual que o admin usava antes do sistema.
+  - **Não implementar agora.** O usuário enviará o arquivo com as orientações; só então desenhar e aplicar os textos.
+
+## ESTA / E-TA (rótulo já na área do cliente)
+
+- Card na área do cliente exibe **ESTA / E-TA** (antes: Passaporte ou Renovação).
+- **Pendente:** configurar o formulário disponível nesse fluxo (alterações de conteúdo/campos ainda a definir com o cliente).
+
+## Já feito (rótulos)
+
+- Card de visto: **Visto Americano / Renovação**
+- Card de passaporte/ESTA: **ESTA / E-TA**
