@@ -7,7 +7,7 @@ import { NotificationStatusForm, Role, Status, StatusForm } from "@prisma/client
 import isEmail from "validator/lib/isEmail";
 import { differenceInYears, parse } from "date-fns";
 import { fromZonedTime } from "date-fns-tz";
-import { cpfsMatch, namesMatch } from "@/lib/person-name";
+import { cpfsMatch, namesMatch, normalizeTravelCompanion } from "@/lib/person-name";
 import { buildLegacyPostalAddress } from "@/lib/form-postal-address";
 
 function isFormLocked(statusForm: StatusForm, formLocked: boolean | null) {
@@ -1806,7 +1806,9 @@ export const formsRouter = router({
           otherPeopleTravelingConfirmation: z.enum(["Sim", "Não"]),
           otherPeopleTraveling: z.array(
             z.object({
-              name: z.string(),
+              firstName: z.string(),
+              lastName: z.string(),
+              name: z.string().optional(),
               relation: z.string(),
             }),
           ),
@@ -1826,12 +1828,24 @@ export const formsRouter = router({
             if (
               otherPeopleTravelingConfirmation === "Sim" &&
               otherPeopleTraveling.length === 1 &&
-              otherPeopleTraveling.filter((item) => item.name === "").length === 1
+              otherPeopleTraveling.filter((item) => !item.firstName?.trim() && !item.name?.trim()).length === 1
             ) {
               ctx.addIssue({
                 code: z.ZodIssueCode.custom,
                 message: "Campo vazio, preencha para prosseguir",
-                path: [`otherPeopleTraveling.${otherPeopleTraveling.length - 1}.name`],
+                path: [`otherPeopleTraveling.${otherPeopleTraveling.length - 1}.firstName`],
+              });
+            }
+
+            if (
+              otherPeopleTravelingConfirmation === "Sim" &&
+              otherPeopleTraveling.length === 1 &&
+              otherPeopleTraveling.filter((item) => !item.lastName?.trim() && !item.name?.trim()).length === 1
+            ) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Campo vazio, preencha para prosseguir",
+                path: [`otherPeopleTraveling.${otherPeopleTraveling.length - 1}.lastName`],
               });
             }
 
@@ -1855,10 +1869,11 @@ export const formsRouter = router({
         step,
         isEditing,
         otherPeopleTravelingConfirmation,
-        otherPeopleTraveling,
+        otherPeopleTraveling: otherPeopleTravelingRaw,
         groupMemberConfirmation,
         groupName,
       } = opts.input;
+      const otherPeopleTraveling = otherPeopleTravelingRaw.map(normalizeTravelCompanion);
       let profileUpdated;
 
       if (isEditing) {
@@ -1938,7 +1953,9 @@ export const formsRouter = router({
         otherPeopleTravelingConfirmation: z.enum(["Sim", "Não"]).nullable(),
         otherPeopleTraveling: z.array(
           z.object({
-            name: z.string(),
+            firstName: z.string().optional(),
+            lastName: z.string().optional(),
+            name: z.string().optional(),
             relation: z.string(),
           }),
         ),
@@ -1951,10 +1968,11 @@ export const formsRouter = router({
         profileId,
         redirectStep,
         otherPeopleTravelingConfirmation,
-        otherPeopleTraveling,
+        otherPeopleTraveling: otherPeopleTravelingRaw,
         groupMemberConfirmation,
         groupName,
       } = opts.input;
+      const otherPeopleTraveling = otherPeopleTravelingRaw.map(normalizeTravelCompanion);
 
       const profile = await prisma.profile.findUnique({
         where: {
@@ -2667,10 +2685,14 @@ export const formsRouter = router({
         },
         select: {
           fatherCompleteName: true,
+          fatherFirstName: true,
+          fatherLastName: true,
           fatherBirthdate: true,
           fatherLiveInTheUSAConfirmation: true,
           fatherUSASituation: true,
           motherCompleteName: true,
+          motherFirstName: true,
+          motherLastName: true,
           motherBirthdate: true,
           motherLiveInTheUSAConfirmation: true,
           motherUSASituation: true,
@@ -2704,10 +2726,14 @@ export const formsRouter = router({
         step: z.number(),
         isEditing: z.boolean(),
         fatherCompleteName: z.string(),
+        fatherFirstName: z.string(),
+        fatherLastName: z.string(),
         fatherBirthdate: z.date().optional(),
         fatherLiveInTheUSAConfirmation: z.enum(["Sim", "Não"]),
         fatherUSASituation: z.string(),
         motherCompleteName: z.string().min(1),
+        motherFirstName: z.string().min(1),
+        motherLastName: z.string().min(1),
         motherBirthdate: z.date().optional(),
         motherLiveInTheUSAConfirmation: z.enum(["Sim", "Não"]),
         motherUSASituation: z.string(),
@@ -2735,10 +2761,14 @@ export const formsRouter = router({
         step,
         isEditing,
         fatherCompleteName,
+        fatherFirstName,
+        fatherLastName,
         fatherBirthdate,
         fatherLiveInTheUSAConfirmation,
         fatherUSASituation,
         motherCompleteName,
+        motherFirstName,
+        motherLastName,
         motherBirthdate,
         motherLiveInTheUSAConfirmation,
         motherUSASituation,
@@ -2816,10 +2846,14 @@ export const formsRouter = router({
         },
         data: {
           fatherCompleteName,
+          fatherFirstName,
+          fatherLastName,
           fatherBirthdate,
           fatherLiveInTheUSAConfirmation: fatherLiveInTheUSAConfirmation === "Sim",
           fatherUSASituation,
           motherCompleteName,
+          motherFirstName,
+          motherLastName,
           motherBirthdate,
           motherLiveInTheUSAConfirmation: motherLiveInTheUSAConfirmation === "Sim",
           motherUSASituation,
@@ -2844,10 +2878,14 @@ export const formsRouter = router({
         profileId: z.string().min(1),
         redirectStep: z.number().optional(),
         fatherCompleteName: z.string(),
+        fatherFirstName: z.string(),
+        fatherLastName: z.string(),
         fatherBirthdate: z.coerce.date().optional().nullable(),
         fatherLiveInTheUSAConfirmation: z.enum(["Sim", "Não"]),
         fatherUSASituation: z.string(),
         motherCompleteName: z.string(),
+        motherFirstName: z.string(),
+        motherLastName: z.string(),
         motherBirthdate: z.coerce.date().optional().nullable(),
         motherLiveInTheUSAConfirmation: z.enum(["Sim", "Não"]),
         motherUSASituation: z.string(),
@@ -2874,10 +2912,14 @@ export const formsRouter = router({
         profileId,
         redirectStep,
         fatherCompleteName,
+        fatherFirstName,
+        fatherLastName,
         fatherBirthdate,
         fatherLiveInTheUSAConfirmation,
         fatherUSASituation,
         motherCompleteName,
+        motherFirstName,
+        motherLastName,
         motherBirthdate,
         motherLiveInTheUSAConfirmation,
         motherUSASituation,
@@ -2922,10 +2964,14 @@ export const formsRouter = router({
         },
         data: {
           fatherCompleteName,
+          fatherFirstName,
+          fatherLastName,
           fatherBirthdate,
           fatherLiveInTheUSAConfirmation: fatherLiveInTheUSAConfirmation === "Sim",
           fatherUSASituation,
           motherCompleteName,
+          motherFirstName,
+          motherLastName,
           motherBirthdate,
           motherLiveInTheUSAConfirmation: motherLiveInTheUSAConfirmation === "Sim",
           motherUSASituation,

@@ -217,7 +217,7 @@ export function MobileFormMenu({
                 />
 
                 <span className="text-lg sm:text-xl font-medium text-foreground transition-colors group-hover:text-destructive">
-                  Companhia de Viagem
+                  Acompanhante da Viagem
                 </span>
               </Link>
             </li>

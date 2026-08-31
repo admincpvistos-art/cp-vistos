@@ -150,7 +150,7 @@ export function CeacFormPanel({
       .map((field) => ({
         id: field.id,
         label: field.label,
-        value: field.value,
+        value: field.transferValue ?? field.value,
       }));
 
     if (!payload.length) {

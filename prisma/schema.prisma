@@ -487,10 +487,14 @@ model Form {
   organizationOrUSAResidentTel                  String?
   organizationOrUSAResidentEmail                String?
   fatherCompleteName                            String?
+  fatherFirstName                               String?
+  fatherLastName                                String?
   fatherBirthdate                               DateTime?
   fatherLiveInTheUSAConfirmation                Boolean?
   fatherUSASituation                            String?
   motherCompleteName                            String?
+  motherFirstName                               String?
+  motherLastName                                String?
   motherBirthdate                               DateTime?
   motherLiveInTheUSAConfirmation                Boolean?
   motherUSASituation                            String?

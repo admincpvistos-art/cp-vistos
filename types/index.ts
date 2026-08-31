@@ -3,8 +3,11 @@ import { Comments, Form, NullableListFilter, Profile, User } from "@prisma/clien
 declare global {
   namespace PrismaJson {
     type otherPeopleTravelingType = {
-      name: string;
+      firstName: string;
+      lastName: string;
       relation: string;
+      /** Nome completo legado (sincronizado com firstName + lastName). */
+      name?: string;
     };
 
     type USALastTravelType = {
@@ -151,7 +154,7 @@ export type AboutTravelFormType = {
 
 export type TravelCompanyFormType = {
   otherPeopleTravelingConfirmation: boolean | null;
-  otherPeopleTraveling: { name: string; relation: string }[];
+  otherPeopleTraveling: PrismaJson.otherPeopleTravelingType[];
   groupMemberConfirmation: boolean | null;
   groupName: string | null;
 };
@@ -195,10 +198,14 @@ export type USAContactFormType = {
 
 export type FamilyFormType = {
   fatherCompleteName: string | null;
+  fatherFirstName: string | null;
+  fatherLastName: string | null;
   fatherBirthdate: Date | null;
   fatherLiveInTheUSAConfirmation: boolean | null;
   fatherUSASituation: string | null;
   motherCompleteName: string | null;
+  motherFirstName: string | null;
+  motherLastName: string | null;
   motherBirthdate: Date | null;
   motherLiveInTheUSAConfirmation: boolean | null;
   motherUSASituation: string | null;

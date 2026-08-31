@@ -2,6 +2,7 @@ import { format } from "date-fns";
 import { Form as FormType } from "@prisma/client";
 
 import { cn } from "@/lib/utils";
+import { splitPersonName } from "@/lib/person-name";
 
 interface FamilyViewProps {
   form: FormType;
@@ -9,6 +10,13 @@ interface FamilyViewProps {
 }
 
 export function FamilyView({ form, className }: FamilyViewProps) {
+  const fatherSplit = splitPersonName(form.fatherCompleteName);
+  const motherSplit = splitPersonName(form.motherCompleteName);
+  const fatherFirst = form.fatherFirstName || fatherSplit.firstName;
+  const fatherLast = form.fatherLastName || fatherSplit.lastName;
+  const motherFirst = form.motherFirstName || motherSplit.firstName;
+  const motherLast = form.motherLastName || motherSplit.lastName;
+
   return (
     <>
       <div
@@ -19,16 +27,31 @@ export function FamilyView({ form, className }: FamilyViewProps) {
       >
         <div className="w-full flex flex-col gap-1">
           <span className="text-sm text-foreground/60 font-medium">
-            Nome Completo do Pai
+            Nome do Pai
           </span>
 
           <span className="text-lg font-medium text-foreground">
-            {form.fatherCompleteName && form.fatherCompleteName.length > 0
-              ? form.fatherCompleteName
-              : "Não preenchido"}
+            {fatherFirst || "Não preenchido"}
           </span>
         </div>
 
+        <div className="w-full flex flex-col gap-1">
+          <span className="text-sm text-foreground/60 font-medium">
+            Sobrenome do Pai
+          </span>
+
+          <span className="text-lg font-medium text-foreground">
+            {fatherLast || "Não preenchido"}
+          </span>
+        </div>
+      </div>
+
+      <div
+        className={cn(
+          "w-full grid grid-cols-1 sm:grid-cols-2 gap-6",
+          className,
+        )}
+      >
         <div className="w-full flex flex-col gap-1">
           <span className="text-sm text-foreground/60 font-medium">
             Data de Nascimento do Pai
@@ -79,19 +102,34 @@ export function FamilyView({ form, className }: FamilyViewProps) {
       >
         <div className="w-full flex flex-col gap-1">
           <span className="text-sm text-foreground/60 font-medium">
-            Nome Completo do Mãe
+            Nome da Mãe
           </span>
 
           <span className="text-lg font-medium text-foreground">
-            {form.motherCompleteName && form.motherCompleteName.length > 0
-              ? form.motherCompleteName
-              : "Não Preenchido"}
+            {motherFirst || "Não Preenchido"}
           </span>
         </div>
 
         <div className="w-full flex flex-col gap-1">
           <span className="text-sm text-foreground/60 font-medium">
-            Data de Nascimento do Mãe
+            Sobrenome da Mãe
+          </span>
+
+          <span className="text-lg font-medium text-foreground">
+            {motherLast || "Não Preenchido"}
+          </span>
+        </div>
+      </div>
+
+      <div
+        className={cn(
+          "w-full grid grid-cols-1 sm:grid-cols-2 gap-6",
+          className,
+        )}
+      >
+        <div className="w-full flex flex-col gap-1">
+          <span className="text-sm text-foreground/60 font-medium">
+            Data de Nascimento da Mãe
           </span>
 
           <span className="text-lg font-medium text-foreground">

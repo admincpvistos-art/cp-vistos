@@ -56,7 +56,7 @@ export function FormMobileMenu() {
                   "font-semibold": pathname === "/perfil/editar-conta",
                 })}
               >
-                Companhia de Viagem
+                Acompanhante da Viagem
               </li>
 
               <li

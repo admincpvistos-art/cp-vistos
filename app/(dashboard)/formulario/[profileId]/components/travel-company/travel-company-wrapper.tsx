@@ -16,7 +16,7 @@ export const TravelCompanyWrapper = ({ profileId, isEditing, loading }: TravelCo
     return (
       <div className="w-full flex flex-col flex-grow gap-6">
         <h2 className="w-full text-center text-2xl sm:text-3xl text-foreground font-semibold mb-6">
-          Companhia de Viagem
+          Acompanhante da Viagem
         </h2>
 
         <div className="w-full flex flex-col gap-12 justify-between flex-grow">

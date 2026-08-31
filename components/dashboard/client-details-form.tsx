@@ -7,6 +7,7 @@ import useClientDetailsModalStore from "@/constants/stores/useClientDetailsModal
 import { format } from "date-fns";
 import { formatPrice } from "@/lib/utils";
 import { buildLegacyPostalAddress } from "@/lib/form-postal-address";
+import { normalizeTravelCompanion, splitPersonName } from "@/lib/person-name";
 
 interface Props {
   handleClose: () => void;
@@ -714,36 +715,49 @@ export function ClientDetailsForm({ handleClose }: Props) {
           </div>
 
           <div className="w-full flex flex-col gap-9">
-            <h3 className="text-2xl font-semibold text-foreground">Companhia de Viagem</h3>
+            <h3 className="text-2xl font-semibold text-foreground">Acompanhante da Viagem</h3>
 
             <div className="w-full flex flex-col gap-6">
               <div className="w-full flex flex-col gap-6">
                 {client.form.otherPeopleTravelingConfirmation && client.form.otherPeopleTraveling.length > 0 ? (
-                  client.form.otherPeopleTraveling.map((otherPerson, index) => (
+                  client.form.otherPeopleTraveling.map((otherPerson, index) => {
+                    const companion = normalizeTravelCompanion(otherPerson);
+                    return (
                     <div key={`otherPerson-${index}`} className="w-full bg-[#D3D3E2] p-2 flex flex-col gap-4">
                       <div className="w-full flex items-center gap-2">
                         <div className="w-8 min-w-[32px] h-8 min-h-[32px] rounded-full bg-primary flex items-center justify-center">
                           <span className="text-white text-lg font-medium">{index + 1}</span>
                         </div>
 
-                        <span className="text-foreground text-lg font-medium">Pessoa Acompanhante</span>
+                        <span className="text-foreground text-lg font-medium">Acompanhante da Viagem</span>
                       </div>
 
-                      <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-6">
                         <div className="w-full flex flex-col gap-1">
-                          <span className="text-sm text-foreground/70 font-medium">Nome completo da outra pessoa</span>
+                          <span className="text-sm text-foreground/70 font-medium">Nome</span>
 
-                          <span className="text-lg font-medium text-foreground">{otherPerson.name}</span>
+                          <span className="text-lg font-medium text-foreground">
+                            {companion.firstName || "Não Preenchido"}
+                          </span>
+                        </div>
+
+                        <div className="w-full flex flex-col gap-1">
+                          <span className="text-sm text-foreground/70 font-medium">Sobrenome</span>
+
+                          <span className="text-lg font-medium text-foreground">
+                            {companion.lastName || "Não Preenchido"}
+                          </span>
                         </div>
 
                         <div className="w-full flex flex-col gap-1">
                           <span className="text-sm text-foreground/70 font-medium">Relação com a outra pessoa</span>
 
-                          <span className="text-lg font-medium text-foreground">{otherPerson.relation}</span>
+                          <span className="text-lg font-medium text-foreground">{companion.relation}</span>
                         </div>
                       </div>
                     </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <div className="w-full bg-[#D3D3E2] p-5 flex items-center justify-center">
                     <span className="text-foreground text-lg text-center font-semibold">
@@ -1171,13 +1185,27 @@ export function ClientDetailsForm({ handleClose }: Props) {
             <div className="w-full flex flex-col gap-6">
               <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="flex flex-col">
-                  <span className="text-sm text-foreground/50 font-medium">Nome Completo do Pai</span>
+                  <span className="text-sm text-foreground/50 font-medium">Nome do Pai</span>
 
                   <span className="text-lg font-medium text-foreground">
-                    {client.form.fatherCompleteName ? client.form.fatherCompleteName : "Não Preenchido"}
+                    {client.form.fatherFirstName ||
+                      splitPersonName(client.form.fatherCompleteName).firstName ||
+                      "Não Preenchido"}
                   </span>
                 </div>
 
+                <div className="flex flex-col">
+                  <span className="text-sm text-foreground/50 font-medium">Sobrenome do Pai</span>
+
+                  <span className="text-lg font-medium text-foreground">
+                    {client.form.fatherLastName ||
+                      splitPersonName(client.form.fatherCompleteName).lastName ||
+                      "Não Preenchido"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="flex flex-col">
                   <span className="text-sm text-foreground/50 font-medium">Data de Nascimento do Pai</span>
 
@@ -1207,15 +1235,29 @@ export function ClientDetailsForm({ handleClose }: Props) {
 
               <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="flex flex-col">
-                  <span className="text-sm text-foreground/50 font-medium">Nome Completo do Mãe</span>
+                  <span className="text-sm text-foreground/50 font-medium">Nome da Mãe</span>
 
                   <span className="text-lg font-medium text-foreground">
-                    {client.form.motherCompleteName ? client.form.motherCompleteName : "Não Preenchido"}
+                    {client.form.motherFirstName ||
+                      splitPersonName(client.form.motherCompleteName).firstName ||
+                      "Não Preenchido"}
                   </span>
                 </div>
 
                 <div className="flex flex-col">
-                  <span className="text-sm text-foreground/50 font-medium">Data de Nascimento do Mãe</span>
+                  <span className="text-sm text-foreground/50 font-medium">Sobrenome da Mãe</span>
+
+                  <span className="text-lg font-medium text-foreground">
+                    {client.form.motherLastName ||
+                      splitPersonName(client.form.motherCompleteName).lastName ||
+                      "Não Preenchido"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="flex flex-col">
+                  <span className="text-sm text-foreground/50 font-medium">Data de Nascimento da Mãe</span>
 
                   <span className="text-lg font-medium text-foreground">
                     {client.form.motherBirthdate ? format(client.form.motherBirthdate, "dd/MM/yyyy") : "Não Preenchido"}

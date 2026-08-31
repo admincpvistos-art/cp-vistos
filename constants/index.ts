@@ -198,7 +198,7 @@ export const STEPS = [
   { label: "Endereço e Contatos", step: 1 },
   { label: "Passaporte", step: 2 },
   { label: "Sobre a Viagem", step: 3 },
-  { label: "Companhia de Viagem", step: 4 },
+  { label: "Acompanhante da Viagem", step: 4 },
   { label: "Viagens Anteriores", step: 5 },
   { label: "Contato nos Estados Unidos", step: 6 },
   { label: "Informações Familiares", step: 7 },

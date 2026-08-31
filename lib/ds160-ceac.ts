@@ -2,6 +2,11 @@ import { format } from "date-fns";
 import { Category, Form, Profile, StatusForm, VisaClass } from "@prisma/client";
 
 import { buildLegacyPostalAddress } from "@/lib/form-postal-address";
+import {
+  joinPersonName,
+  normalizeTravelCompanion,
+  splitPersonName,
+} from "@/lib/person-name";
 
 export const CEAC_URL = "https://ceac.state.gov/GenNIV/Default.aspx";
 
@@ -11,7 +16,7 @@ export const CEAC_PAGES = [
   { id: "address", title: "Address and Phone", subtitle: "Endereço e contatos" },
   { id: "passport", title: "Passport Information", subtitle: "Passaporte" },
   { id: "travel", title: "Travel", subtitle: "Sobre a viagem" },
-  { id: "companions", title: "Travel Companions", subtitle: "Companhia de viagem" },
+  { id: "companions", title: "Travel Companions", subtitle: "Acompanhante da viagem" },
   { id: "previous", title: "Previous U.S. Travel", subtitle: "Viagens anteriores" },
   { id: "uscontact", title: "U.S. Point of Contact", subtitle: "Contato nos EUA" },
   { id: "family", title: "Family", subtitle: "Família" },
@@ -26,8 +31,26 @@ export type CeacField = {
   id: string;
   label: string;
   hint?: string;
+  /** Valor exibido / copiado (datas em dd/mmm/yyyy). */
   value: string;
+  /** Valor enviado ao CEAC; se omitido, usa `value`. */
+  transferValue?: string;
 };
+
+const MONTHS_PT_SHORT = [
+  "jan",
+  "fev",
+  "mar",
+  "abr",
+  "mai",
+  "jun",
+  "jul",
+  "ago",
+  "set",
+  "out",
+  "nov",
+  "dez",
+] as const;
 
 export type Ds160Packet = {
   profile: Pick<
@@ -70,11 +93,83 @@ function dna(value?: string | null) {
   return text ? text : "Does Not Apply";
 }
 
-function ceacDate(value?: Date | string | null) {
-  if (!value) return "";
+function parseDate(value?: Date | string | null) {
+  if (!value) return null;
   const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
+  if (Number.isNaN(date.getTime())) return null;
+  return date;
+}
+
+/** Formato CEAC (transferência automática). */
+function ceacDate(value?: Date | string | null) {
+  const date = parseDate(value);
+  if (!date) return "";
   return format(date, "MM/dd/yyyy");
+}
+
+/** Formato para copiar/colar manual no Preencher DS-160 (ex.: 01/ago/2026). */
+function displayDate(value?: Date | string | null) {
+  const date = parseDate(value);
+  if (!date) return "";
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = MONTHS_PT_SHORT[date.getMonth()];
+  return `${day}/${month}/${date.getFullYear()}`;
+}
+
+function parentParts(form: Form, which: "father" | "mother") {
+  const firstStored = which === "father" ? form.fatherFirstName : form.motherFirstName;
+  const lastStored = which === "father" ? form.fatherLastName : form.motherLastName;
+  const complete = which === "father" ? form.fatherCompleteName : form.motherCompleteName;
+  const split = splitPersonName(complete);
+  return {
+    firstName: firstStored?.trim() || split.firstName,
+    lastName: lastStored?.trim() || split.lastName,
+    full: joinPersonName(
+      firstStored?.trim() || split.firstName,
+      lastStored?.trim() || split.lastName,
+    ) || complete?.trim() || "",
+  };
+}
+
+function formatPreviousJob(
+  job: PrismaJson.previousJobsType,
+  dateFmt: (value?: Date | string | null) => string,
+) {
+  return [
+    upper(job.companyName),
+    upper(job.companyAddress),
+    upper(job.companyCity),
+    upper(job.companyState),
+    job.companyCountry,
+    job.companyCep,
+    job.companyTel,
+    job.office,
+    upper(job.supervisorName),
+    [dateFmt(job.admissionDate), dateFmt(job.resignationDate)].filter(Boolean).join("-"),
+    job.jobDescription,
+  ]
+    .map((part) => (typeof part === "string" ? part.trim() : ""))
+    .filter(Boolean)
+    .join(" / ");
+}
+
+function formatCourse(
+  course: PrismaJson.coursesType,
+  dateFmt: (value?: Date | string | null) => string,
+) {
+  return [
+    upper(course.institutionName),
+    upper(course.address),
+    course.cep,
+    upper(course.city),
+    upper(course.state),
+    course.country,
+    course.courseName,
+    [dateFmt(course.initialDate), dateFmt(course.finishDate)].filter(Boolean).join("-"),
+  ]
+    .map((part) => (typeof part === "string" ? part.trim() : ""))
+    .filter(Boolean)
+    .join(" / ");
 }
 
 function visaClassLabel(value?: VisaClass | null) {
@@ -107,8 +202,20 @@ function passportTypeLabel(value?: string | null) {
   }
 }
 
-function field(id: string, label: string, value: string, hint?: string): CeacField {
-  return { id, label, hint, value };
+function field(
+  id: string,
+  label: string,
+  value: string,
+  hint?: string,
+  transferValue?: string,
+): CeacField {
+  return {
+    id,
+    label,
+    hint,
+    value,
+    ...(transferValue !== undefined ? { transferValue } : {}),
+  };
 }
 
 export function buildCeacPages(packet: Ds160Packet): Record<CeacPageId, CeacField[]> {
@@ -138,7 +245,9 @@ export function buildCeacPages(packet: Ds160Packet): Record<CeacPageId, CeacFiel
   const languages = (form.languages ?? []).filter(Boolean);
   const travels = (form.fiveYearsOtherCountryTravels ?? []).filter(Boolean);
   const orgs = (form.socialOrganization ?? []).filter(Boolean);
-  const companions = (form.otherPeopleTraveling ?? []) as PrismaJson.otherPeopleTravelingType[];
+  const companions = ((form.otherPeopleTraveling ?? []) as PrismaJson.otherPeopleTravelingType[]).map(
+    normalizeTravelCompanion,
+  );
   const usaTravel = (form.USALastTravel ?? []) as PrismaJson.USALastTravelType[];
   const familyUsa = (form.familyLivingInTheUSA ?? []) as PrismaJson.familyLivingInTheUSAType[];
   const previousJobs = (form.previousJobs ?? []) as PrismaJson.previousJobsType[];
@@ -156,7 +265,7 @@ export function buildCeacPages(packet: Ds160Packet): Record<CeacPageId, CeacFiel
       field("warName", "War name / telecode", form.warName ?? ""),
       field("sex", "Sex", form.sex === "Feminino" ? "Female" : form.sex === "Masculino" ? "Male" : ""),
       field("marital", "Marital Status", form.maritalStatus ?? ""),
-      field("dob", "Date of Birth", ceacDate(form.birthDate)),
+      field("dob", "Date of Birth", displayDate(form.birthDate), undefined, ceacDate(form.birthDate)),
       field("birthCity", "City of Birth", upper(form.birthCity)),
       field("birthState", "State/Province of Birth", upper(form.birthState)),
       field("birthCountry", "Country/Region of Birth", form.birthCountry ?? ""),
@@ -221,8 +330,8 @@ export function buildCeacPages(packet: Ds160Packet): Record<CeacPageId, CeacFiel
       field("pptCountry", "Country/Authority that Issued Passport", form.passportIssuingCountry ?? ""),
       field("pptCity", "City where issued", upper(form.passportCity)),
       field("pptState", "State/Province where issued", upper(form.passportState)),
-      field("pptIssue", "Issuance Date", ceacDate(form.passportIssuingDate)),
-      field("pptExpire", "Expiration Date", ceacDate(form.passportExpireDate)),
+      field("pptIssue", "Issuance Date", displayDate(form.passportIssuingDate), undefined, ceacDate(form.passportIssuingDate)),
+      field("pptExpire", "Expiration Date", displayDate(form.passportExpireDate), undefined, ceacDate(form.passportExpireDate)),
       field("lostQ", "Lost or stolen passport?", yesNo(form.passportLostConfirmation)),
       field("lostNumber", "Lost passport number", form.lostPassportNumber ?? ""),
       field("lostCountry", "Lost passport country", form.lostPassportCountry ?? ""),
@@ -231,10 +340,10 @@ export function buildCeacPages(packet: Ds160Packet): Record<CeacPageId, CeacFiel
     travel: [
       field("purpose", "Purpose of Trip to the U.S.", visaClassLabel(profile.visaClass)),
       field("plansQ", "Have you made specific travel plans?", yesNo(form.travelItineraryConfirmation)),
-      field("arriveDate", "Intended Date of Arrival", ceacDate(form.USAPreviewArriveDate)),
+      field("arriveDate", "Intended Date of Arrival", displayDate(form.USAPreviewArriveDate), undefined, ceacDate(form.USAPreviewArriveDate)),
       field("arriveFlight", "Arrival Flight", form.arriveFlyNumber ?? ""),
       field("arriveCity", "Arrival City", upper(form.arriveCity)),
-      field("departDate", "Intended Date of Departure", ceacDate(form.USAPreviewReturnDate)),
+      field("departDate", "Intended Date of Departure", displayDate(form.USAPreviewReturnDate), undefined, ceacDate(form.USAPreviewReturnDate)),
       field("departFlight", "Departure Flight", form.returnFlyNumber ?? ""),
       field("departCity", "Departure City", upper(form.returnCity)),
       field("length", "Intended Length of Stay", form.estimatedTimeOnUSA ?? ""),
@@ -256,8 +365,21 @@ export function buildCeacPages(packet: Ds160Packet): Record<CeacPageId, CeacFiel
       field(
         "others",
         "Travel companions",
-        companions.map((item) => `${upper(item.name)} — ${item.relation}`).join(" | "),
+        companions
+          .map((item) => {
+            const full = joinPersonName(item.firstName, item.lastName) || item.name;
+            return `${upper(full)} — ${item.relation}`;
+          })
+          .join(" | "),
       ),
+      ...companions.flatMap((item, index) => {
+        const n = index + 1;
+        return [
+          field(`companion${n}Given`, `Companion ${n} Given Names`, upper(item.firstName)),
+          field(`companion${n}Surname`, `Companion ${n} Surnames`, upper(item.lastName)),
+          field(`companion${n}Relation`, `Companion ${n} Relationship`, item.relation ?? ""),
+        ];
+      }),
       field("groupQ", "Traveling as part of a group or organization?", yesNo(form.groupMemberConfirmation)),
       field("groupName", "Group Name", form.groupName ?? ""),
     ],
@@ -267,13 +389,17 @@ export function buildCeacPages(packet: Ds160Packet): Record<CeacPageId, CeacFiel
         "been",
         "Previous U.S. visits",
         usaTravel
+          .map((item) => `${displayDate(item.arriveDate)} — ${item.estimatedTime}`)
+          .join(" | "),
+        undefined,
+        usaTravel
           .map((item) => `${ceacDate(item.arriveDate)} — ${item.estimatedTime}`)
           .join(" | "),
       ),
       field("licenseQ", "U.S. driver license?", yesNo(form.americanLicenseToDriveConfirmation)),
       field("license", "License number / state", license ? `${license.licenseNumber} / ${license.state}` : ""),
       field("visaQ", "Ever issued a U.S. visa?", yesNo(form.USAVisaConfirmation)),
-      field("visaDate", "Last visa issued", ceacDate(form.visaIssuingDate)),
+      field("visaDate", "Last visa issued", displayDate(form.visaIssuingDate), undefined, ceacDate(form.visaIssuingDate)),
       field("visaNumber", "Visa Number", form.visaNumber ?? ""),
       field("stillHaveVisaQ", "Do you still have this visa?", yesNo(form.alreadyHaveVisa)),
       field("newVisaQ", "Applying from same country/location as previous visa?", yesNo(form.newVisaConfirmation)),
@@ -304,12 +430,16 @@ export function buildCeacPages(packet: Ds160Packet): Record<CeacPageId, CeacFiel
       field("contactEmail", "Email", form.organizationOrUSAResidentEmail ?? ""),
     ],
     family: [
-      field("fatherName", "Father Full Name", upper(form.fatherCompleteName)),
-      field("fatherDob", "Father Date of Birth", ceacDate(form.fatherBirthdate)),
+      field("fatherGiven", "Father Given Names", upper(parentParts(form, "father").firstName)),
+      field("fatherSurname", "Father Surnames", upper(parentParts(form, "father").lastName)),
+      field("fatherName", "Father Full Name", upper(parentParts(form, "father").full)),
+      field("fatherDob", "Father Date of Birth", displayDate(form.fatherBirthdate), undefined, ceacDate(form.fatherBirthdate)),
       field("fatherUsa", "Is your father in the U.S.?", yesNo(form.fatherLiveInTheUSAConfirmation)),
       field("fatherStatus", "Father U.S. status", form.fatherUSASituation ?? ""),
-      field("motherName", "Mother Full Name", upper(form.motherCompleteName)),
-      field("motherDob", "Mother Date of Birth", ceacDate(form.motherBirthdate)),
+      field("motherGiven", "Mother Given Names", upper(parentParts(form, "mother").firstName)),
+      field("motherSurname", "Mother Surnames", upper(parentParts(form, "mother").lastName)),
+      field("motherName", "Mother Full Name", upper(parentParts(form, "mother").full)),
+      field("motherDob", "Mother Date of Birth", displayDate(form.motherBirthdate), undefined, ceacDate(form.motherBirthdate)),
       field("motherUsa", "Is your mother in the U.S.?", yesNo(form.motherLiveInTheUSAConfirmation)),
       field("motherStatus", "Mother U.S. status", form.motherUSASituation ?? ""),
       field("relativesQ", "Immediate relatives in the U.S.?", yesNo(form.familyLivingInTheUSAConfirmation)),
@@ -319,13 +449,13 @@ export function buildCeacPages(packet: Ds160Packet): Record<CeacPageId, CeacFiel
         familyUsa.map((item) => `${upper(item.name)} — ${item.relation} — ${item.situation}`).join(" | "),
       ),
       field("spouseName", "Spouse / Partner Full Name", upper(form.partnerCompleteName)),
-      field("spouseDob", "Spouse Date of Birth", ceacDate(form.partnerBirthdate)),
+      field("spouseDob", "Spouse Date of Birth", displayDate(form.partnerBirthdate), undefined, ceacDate(form.partnerBirthdate)),
       field("spouseNat", "Spouse Nationality", form.partnerNationality ?? ""),
       field("spouseCity", "Spouse City of Birth", upper(form.partnerCity)),
       field("spouseState", "Spouse State of Birth", upper(form.partnerState)),
       field("spouseCountry", "Spouse Country of Birth", form.partnerCountry ?? ""),
-      field("unionDate", "Date of Marriage / Union", ceacDate(form.unionDate)),
-      field("divorceDate", "Date of Divorce / Separation", ceacDate(form.divorceDate)),
+      field("unionDate", "Date of Marriage / Union", displayDate(form.unionDate), undefined, ceacDate(form.unionDate)),
+      field("divorceDate", "Date of Divorce / Separation", displayDate(form.divorceDate), undefined, ceacDate(form.divorceDate)),
     ],
     work: [
       field("occupation", "Primary Occupation", form.occupation ?? ""),
@@ -339,30 +469,24 @@ export function buildCeacPages(packet: Ds160Packet): Record<CeacPageId, CeacFiel
           .join(", "),
       ),
       field("employerTel", "Employer Phone", form.companyTel ?? ""),
-      field("startDate", "Start Date", ceacDate(form.admissionDate)),
-      field("retireeDate", "Retirement Date", ceacDate(form.retireeDate)),
+      field("startDate", "Start Date", displayDate(form.admissionDate), undefined, ceacDate(form.admissionDate)),
+      field("retireeDate", "Retirement Date", displayDate(form.retireeDate), undefined, ceacDate(form.retireeDate)),
       field("salary", "Monthly Income", form.monthlySalary ?? ""),
       field("duties", "Briefly describe your duties", form.jobDetails ?? ""),
       field("prevQ", "Were you previously employed?", yesNo(form.previousJobConfirmation)),
       field(
         "prevJobs",
         "Previous employers",
-        previousJobs
-          .map(
-            (job) =>
-              `${upper(job.companyName)} / ${job.office} / ${ceacDate(job.admissionDate)}-${ceacDate(job.resignationDate)} / ${job.supervisorName}`,
-          )
-          .join(" | "),
+        previousJobs.map((job) => formatPreviousJob(job, displayDate)).join(" | "),
+        undefined,
+        previousJobs.map((job) => formatPreviousJob(job, ceacDate)).join(" | "),
       ),
       field(
         "education",
         "Education",
-        courses
-          .map(
-            (course) =>
-              `${upper(course.institutionName)} / ${course.courseName} / ${ceacDate(course.initialDate)}-${ceacDate(course.finishDate)}`,
-          )
-          .join(" | "),
+        courses.map((course) => formatCourse(course, displayDate)).join(" | "),
+        undefined,
+        courses.map((course) => formatCourse(course, ceacDate)).join(" | "),
       ),
     ],
     additional: [
@@ -379,8 +503,8 @@ export function buildCeacPages(packet: Ds160Packet): Record<CeacPageId, CeacFiel
       field("militaryLocal", "Military location", form.militaryServiceLocal ?? ""),
       field("militaryRank", "Rank", form.militaryServicePatent ?? ""),
       field("militarySpec", "Specialty", form.militaryServiceSpecialty ?? ""),
-      field("militaryStart", "Military start", ceacDate(form.militaryServiceStartDate)),
-      field("militaryEnd", "Military end", ceacDate(form.militaryServiceEndDate)),
+      field("militaryStart", "Military start", displayDate(form.militaryServiceStartDate), undefined, ceacDate(form.militaryServiceStartDate)),
+      field("militaryEnd", "Military end", displayDate(form.militaryServiceEndDate), undefined, ceacDate(form.militaryServiceEndDate)),
       field("insurgentQ", "Served in insurgent / rebel group?", yesNo(form.insurgencyOrganizationConfirmation)),
       field("insurgent", "Insurgent explanation", form.insurgencyOrganizationDetails ?? ""),
     ],

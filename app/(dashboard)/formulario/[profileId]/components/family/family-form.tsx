@@ -23,14 +23,17 @@ import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc-client";
 import useFormStore from "@/constants/stores/useFormStore";
 import { FamilyFormType } from "@/types";
+import { joinPersonName, splitPersonName } from "@/lib/person-name";
 
 const formSchema = z
   .object({
-    fatherCompleteName: z.string(),
+    fatherFirstName: z.string(),
+    fatherLastName: z.string(),
     fatherBirthdate: z.date({ message: "Campo obrigatório" }).optional(),
     fatherLiveInTheUSAConfirmation: z.enum(["Sim", "Não"]),
     fatherUSASituation: z.string(),
-    motherCompleteName: z.string().min(1, { message: "Campo obrigatório" }),
+    motherFirstName: z.string().min(1, { message: "Campo obrigatório" }),
+    motherLastName: z.string().min(1, { message: "Campo obrigatório" }),
     motherBirthdate: z.date({ message: "Campo obrigatório" }).optional(),
     motherLiveInTheUSAConfirmation: z.enum(["Sim", "Não"]),
     motherUSASituation: z.string(),
@@ -134,14 +137,19 @@ export function FamilyForm({ familyForm, profileId, isEditing, isMinor }: Props)
   const currentYear = getYear(new Date());
   const { redirectStep, setRedirectStep } = useFormStore();
 
+  const fatherNameSplit = splitPersonName(familyForm.fatherCompleteName);
+  const motherNameSplit = splitPersonName(familyForm.motherCompleteName);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      fatherCompleteName: familyForm.fatherCompleteName ? familyForm.fatherCompleteName : "",
+      fatherFirstName: familyForm.fatherFirstName || fatherNameSplit.firstName || "",
+      fatherLastName: familyForm.fatherLastName || fatherNameSplit.lastName || "",
       fatherBirthdate: familyForm.fatherBirthdate ? familyForm.fatherBirthdate : undefined,
       fatherLiveInTheUSAConfirmation: familyForm.fatherLiveInTheUSAConfirmation ? "Sim" : "Não",
       fatherUSASituation: familyForm.fatherUSASituation ? familyForm.fatherUSASituation : "",
-      motherCompleteName: familyForm.motherCompleteName ? familyForm.motherCompleteName : "",
+      motherFirstName: familyForm.motherFirstName || motherNameSplit.firstName || "",
+      motherLastName: familyForm.motherLastName || motherNameSplit.lastName || "",
       motherBirthdate: familyForm.motherBirthdate ? familyForm.motherBirthdate : undefined,
       motherLiveInTheUSAConfirmation: familyForm.motherLiveInTheUSAConfirmation ? "Sim" : "Não",
       motherUSASituation: familyForm.motherUSASituation ? familyForm.motherUSASituation : "",
@@ -249,16 +257,29 @@ export function FamilyForm({ familyForm, profileId, isEditing, isMinor }: Props)
   useEffect(() => {
     if (redirectStep !== null) {
       const values = form.getValues();
+      const fatherFirstName =
+        values.fatherFirstName !== ""
+          ? values.fatherFirstName
+          : familyForm.fatherFirstName || fatherNameSplit.firstName || "";
+      const fatherLastName =
+        values.fatherLastName !== ""
+          ? values.fatherLastName
+          : familyForm.fatherLastName || fatherNameSplit.lastName || "";
+      const motherFirstName =
+        values.motherFirstName !== ""
+          ? values.motherFirstName
+          : familyForm.motherFirstName || motherNameSplit.firstName || "";
+      const motherLastName =
+        values.motherLastName !== ""
+          ? values.motherLastName
+          : familyForm.motherLastName || motherNameSplit.lastName || "";
 
       saveFamily({
         profileId,
         redirectStep,
-        fatherCompleteName:
-          values.fatherCompleteName !== ""
-            ? values.fatherCompleteName
-            : !familyForm.fatherCompleteName
-            ? ""
-            : familyForm.fatherCompleteName,
+        fatherFirstName,
+        fatherLastName,
+        fatherCompleteName: joinPersonName(fatherFirstName, fatherLastName),
         fatherBirthdate: values.fatherBirthdate ?? familyForm.fatherBirthdate,
         fatherLiveInTheUSAConfirmation:
           values.fatherLiveInTheUSAConfirmation ?? (familyForm.fatherLiveInTheUSAConfirmation ? "Sim" : "Não"),
@@ -268,12 +289,9 @@ export function FamilyForm({ familyForm, profileId, isEditing, isMinor }: Props)
             : !familyForm.fatherUSASituation
             ? ""
             : familyForm.fatherUSASituation,
-        motherCompleteName:
-          values.motherCompleteName !== ""
-            ? values.motherCompleteName
-            : !familyForm.motherCompleteName
-            ? ""
-            : familyForm.motherCompleteName,
+        motherFirstName,
+        motherLastName,
+        motherCompleteName: joinPersonName(motherFirstName, motherLastName),
         motherBirthdate: values.motherBirthdate ?? familyForm.motherBirthdate,
         motherLiveInTheUSAConfirmation:
           values.motherLiveInTheUSAConfirmation ?? (familyForm.motherLiveInTheUSAConfirmation ? "Sim" : "Não"),
@@ -404,6 +422,8 @@ export function FamilyForm({ familyForm, profileId, isEditing, isMinor }: Props)
     if (isMinor) {
       submitFamily({
         ...values,
+        fatherCompleteName: joinPersonName(values.fatherFirstName, values.fatherLastName),
+        motherCompleteName: joinPersonName(values.motherFirstName, values.motherLastName),
         familyLivingInTheUSA: familyLivingInTheUSAItems,
         profileId,
         step: 9,
@@ -412,6 +432,8 @@ export function FamilyForm({ familyForm, profileId, isEditing, isMinor }: Props)
     } else {
       submitFamily({
         ...values,
+        fatherCompleteName: joinPersonName(values.fatherFirstName, values.fatherLastName),
+        motherCompleteName: joinPersonName(values.motherFirstName, values.motherLastName),
         familyLivingInTheUSA: familyLivingInTheUSAItems,
         profileId,
         step: 8,
@@ -422,15 +444,28 @@ export function FamilyForm({ familyForm, profileId, isEditing, isMinor }: Props)
 
   function onSave() {
     const values = form.getValues();
+    const fatherFirstName =
+      values.fatherFirstName !== ""
+        ? values.fatherFirstName
+        : familyForm.fatherFirstName || fatherNameSplit.firstName || "";
+    const fatherLastName =
+      values.fatherLastName !== ""
+        ? values.fatherLastName
+        : familyForm.fatherLastName || fatherNameSplit.lastName || "";
+    const motherFirstName =
+      values.motherFirstName !== ""
+        ? values.motherFirstName
+        : familyForm.motherFirstName || motherNameSplit.firstName || "";
+    const motherLastName =
+      values.motherLastName !== ""
+        ? values.motherLastName
+        : familyForm.motherLastName || motherNameSplit.lastName || "";
 
     saveFamily({
       profileId,
-      fatherCompleteName:
-        values.fatherCompleteName !== ""
-          ? values.fatherCompleteName
-          : !familyForm.fatherCompleteName
-          ? ""
-          : familyForm.fatherCompleteName,
+      fatherFirstName,
+      fatherLastName,
+      fatherCompleteName: joinPersonName(fatherFirstName, fatherLastName),
       fatherBirthdate: values.fatherBirthdate ?? familyForm.fatherBirthdate,
       fatherLiveInTheUSAConfirmation:
         values.fatherLiveInTheUSAConfirmation ?? (familyForm.fatherLiveInTheUSAConfirmation ? "Sim" : "Não"),
@@ -440,12 +475,9 @@ export function FamilyForm({ familyForm, profileId, isEditing, isMinor }: Props)
           : !familyForm.fatherUSASituation
           ? ""
           : familyForm.fatherUSASituation,
-      motherCompleteName:
-        values.motherCompleteName !== ""
-          ? values.motherCompleteName
-          : !familyForm.motherCompleteName
-          ? ""
-          : familyForm.motherCompleteName,
+      motherFirstName,
+      motherLastName,
+      motherCompleteName: joinPersonName(motherFirstName, motherLastName),
       motherBirthdate: values.motherBirthdate ?? familyForm.motherBirthdate,
       motherLiveInTheUSAConfirmation:
         values.motherLiveInTheUSAConfirmation ?? (familyForm.motherLiveInTheUSAConfirmation ? "Sim" : "Não"),
@@ -546,10 +578,10 @@ export function FamilyForm({ familyForm, profileId, isEditing, isMinor }: Props)
             <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-6 mb-6">
               <FormField
                 control={form.control}
-                name="fatherCompleteName"
+                name="fatherFirstName"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">Nome completo do pai</FormLabel>
+                    <FormLabel className="text-foreground">Nome do pai</FormLabel>
 
                     <FormControl>
                       <Input className="!mt-auto" disabled={isPending || isSavePending} {...field} />
@@ -560,6 +592,24 @@ export function FamilyForm({ familyForm, profileId, isEditing, isMinor }: Props)
                 )}
               />
 
+              <FormField
+                control={form.control}
+                name="fatherLastName"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col gap-2">
+                    <FormLabel className="text-foreground">Sobrenome do pai</FormLabel>
+
+                    <FormControl>
+                      <Input className="!mt-auto" disabled={isPending || isSavePending} {...field} />
+                    </FormControl>
+
+                    <FormMessage className="text-sm text-destructive" />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-6 mb-6">
               <FormField
                 control={form.control}
                 name="fatherBirthdate"
@@ -699,10 +749,10 @@ export function FamilyForm({ familyForm, profileId, isEditing, isMinor }: Props)
             <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-6 mb-6">
               <FormField
                 control={form.control}
-                name="motherCompleteName"
+                name="motherFirstName"
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
-                    <FormLabel className="text-foreground">Nome completo da mãe*</FormLabel>
+                    <FormLabel className="text-foreground">Nome da mãe*</FormLabel>
 
                     <FormControl>
                       <Input className="!mt-auto" disabled={isPending || isSavePending} {...field} />
@@ -713,6 +763,24 @@ export function FamilyForm({ familyForm, profileId, isEditing, isMinor }: Props)
                 )}
               />
 
+              <FormField
+                control={form.control}
+                name="motherLastName"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col gap-2">
+                    <FormLabel className="text-foreground">Sobrenome da mãe*</FormLabel>
+
+                    <FormControl>
+                      <Input className="!mt-auto" disabled={isPending || isSavePending} {...field} />
+                    </FormControl>
+
+                    <FormMessage className="text-sm text-destructive" />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-6 mb-6">
               <FormField
                 control={form.control}
                 name="motherBirthdate"

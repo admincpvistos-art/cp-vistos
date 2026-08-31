@@ -53,29 +53,57 @@ if (!files.includes("manifest.json")) {
   throw new Error("manifest.json ausente no pacote");
 }
 
-fs.mkdirSync(outDir, { recursive: true });
-for (const target of [storeZip, publicZip]) {
-  if (fs.existsSync(target)) fs.unlinkSync(target);
+/** Chrome Web Store rejeita padrões com porta curinga (`:*`). */
+function sanitizeStoreMatchPatterns(patterns) {
+  return [...new Set(patterns.filter((p) => !p.includes(":*")))];
 }
 
-// Prefer PowerShell Compress-Archive on Windows (no extra deps).
-const staging = path.join(root, "extensions", ".ceac-pack-staging");
-fs.rmSync(staging, { recursive: true, force: true });
-fs.mkdirSync(staging, { recursive: true });
-for (const rel of files) {
-  const from = path.join(extDir, rel);
-  const to = path.join(staging, rel);
-  fs.mkdirSync(path.dirname(to), { recursive: true });
-  fs.copyFileSync(from, to);
+function storeManifest(source) {
+  const next = structuredClone(source);
+  next.host_permissions = sanitizeStoreMatchPatterns(source.host_permissions ?? []);
+  next.content_scripts = (source.content_scripts ?? []).map((entry) => ({
+    ...entry,
+    matches: sanitizeStoreMatchPatterns(entry.matches ?? []),
+  }));
+  return next;
 }
 
-const ps = `
+function stageExtension(targetDir, manifestJson) {
+  fs.rmSync(targetDir, { recursive: true, force: true });
+  fs.mkdirSync(targetDir, { recursive: true });
+  for (const rel of files) {
+    if (rel === "manifest.json") continue;
+    const from = path.join(extDir, rel);
+    const to = path.join(targetDir, rel);
+    fs.mkdirSync(path.dirname(to), { recursive: true });
+    fs.copyFileSync(from, to);
+  }
+  fs.writeFileSync(
+    path.join(targetDir, "manifest.json"),
+    `${JSON.stringify(manifestJson, null, 2)}\n`,
+    "utf8",
+  );
+}
+
+function zipDir(sourceDir, zipPath) {
+  if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
+  const ps = `
 $ErrorActionPreference = 'Stop'
-Compress-Archive -Path '${staging.replace(/'/g, "''")}\\*' -DestinationPath '${storeZip.replace(/'/g, "''")}' -Force
-Copy-Item -Force '${storeZip.replace(/'/g, "''")}' '${publicZip.replace(/'/g, "''")}'
+Compress-Archive -Path '${sourceDir.replace(/'/g, "''")}\\*' -DestinationPath '${zipPath.replace(/'/g, "''")}' -Force
 `;
-execFileSync("powershell.exe", ["-NoProfile", "-Command", ps], { stdio: "inherit" });
-fs.rmSync(staging, { recursive: true, force: true });
+  execFileSync("powershell.exe", ["-NoProfile", "-Command", ps], { stdio: "inherit" });
+}
+
+fs.mkdirSync(outDir, { recursive: true });
+
+const stagingStore = path.join(root, "extensions", ".ceac-pack-staging-store");
+const stagingPublic = path.join(root, "extensions", ".ceac-pack-staging-public");
+stageExtension(stagingStore, storeManifest(manifest));
+stageExtension(stagingPublic, manifest);
+zipDir(stagingStore, storeZip);
+zipDir(stagingPublic, publicZip);
+fs.rmSync(stagingStore, { recursive: true, force: true });
+fs.rmSync(stagingPublic, { recursive: true, force: true });
 
 console.log(`OK CEAC v${version}`);
 console.log(`Store zip: ${storeZip}`);

@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Form as FormType } from "@prisma/client";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight, Loader2, Plus, Save, X } from "lucide-react";
 
@@ -18,15 +17,17 @@ import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc-client";
 import useFormStore from "@/constants/stores/useFormStore";
 import { TravelCompanyFormType } from "@/types";
+import { joinPersonName, normalizeTravelCompanion } from "@/lib/person-name";
 
 const formSchema = z
   .object({
     otherPeopleTravelingConfirmation: z.enum(["Sim", "Não"]),
     otherPeopleTraveling: z.array(
       z.object({
-        name: z.string(),
+        firstName: z.string(),
+        lastName: z.string(),
         relation: z.string(),
-      })
+      }),
     ),
     groupMemberConfirmation: z.enum(["Sim", "Não"]),
     groupName: z.string(),
@@ -44,12 +45,24 @@ const formSchema = z
       if (
         otherPeopleTravelingConfirmation === "Sim" &&
         otherPeopleTraveling.length === 1 &&
-        otherPeopleTraveling.filter((item) => item.name === "").length === 1
+        otherPeopleTraveling.filter((item) => item.firstName === "").length === 1
       ) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: "Campo vazio, preencha para prosseguir",
-          path: [`otherPeopleTraveling.${otherPeopleTraveling.length - 1}.name`],
+          path: [`otherPeopleTraveling.${otherPeopleTraveling.length - 1}.firstName`],
+        });
+      }
+
+      if (
+        otherPeopleTravelingConfirmation === "Sim" &&
+        otherPeopleTraveling.length === 1 &&
+        otherPeopleTraveling.filter((item) => item.lastName === "").length === 1
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Campo vazio, preencha para prosseguir",
+          path: [`otherPeopleTraveling.${otherPeopleTraveling.length - 1}.lastName`],
         });
       }
 
@@ -64,7 +77,7 @@ const formSchema = z
           path: [`otherPeopleTraveling.${otherPeopleTraveling.length - 1}.relation`],
         });
       }
-    }
+    },
   );
 
 interface Props {
@@ -73,11 +86,14 @@ interface Props {
   isEditing: boolean;
 }
 
+type CompanionItem = { firstName: string; lastName: string; relation: string; name: string };
+
 export function TravelCompanyForm({ travelCompanyForm, profileId, isEditing }: Props) {
+  const normalizedExisting = travelCompanyForm.otherPeopleTraveling.map(normalizeTravelCompanion);
   const [currentOtherPeopleTravelingIndex, setCurrentOtherPeopleTravelingIndex] = useState<number>(
-    travelCompanyForm.otherPeopleTraveling.length ?? 0
+    normalizedExisting.length ?? 0,
   );
-  const [otherPeopleTravelingItems, setOtherPeopleTravelingItems] = useState<{ name: string; relation: string }[]>([]);
+  const [otherPeopleTravelingItems, setOtherPeopleTravelingItems] = useState<CompanionItem[]>([]);
   const [resetOtherPeopleTravelingFields, setResetOtherPeopleTravelingFields] = useState<boolean>(false);
 
   const { redirectStep, setRedirectStep } = useFormStore();
@@ -87,9 +103,16 @@ export function TravelCompanyForm({ travelCompanyForm, profileId, isEditing }: P
     defaultValues: {
       otherPeopleTravelingConfirmation: travelCompanyForm.otherPeopleTravelingConfirmation ? "Sim" : "Não",
       otherPeopleTraveling:
-        travelCompanyForm.otherPeopleTraveling.length > 0
-          ? [...travelCompanyForm.otherPeopleTraveling, { name: "", relation: "" }]
-          : [{ name: "", relation: "" }],
+        normalizedExisting.length > 0
+          ? [
+              ...normalizedExisting.map((item) => ({
+                firstName: item.firstName,
+                lastName: item.lastName,
+                relation: item.relation,
+              })),
+              { firstName: "", lastName: "", relation: "" },
+            ]
+          : [{ firstName: "", lastName: "", relation: "" }],
       groupMemberConfirmation: travelCompanyForm.groupMemberConfirmation ? "Sim" : "Não",
       groupName: travelCompanyForm.groupName ? travelCompanyForm.groupName : "",
     },
@@ -145,20 +168,18 @@ export function TravelCompanyForm({ travelCompanyForm, profileId, isEditing }: P
   });
 
   useEffect(() => {
-    if (travelCompanyForm.otherPeopleTraveling.length > 0) {
-      setCurrentOtherPeopleTravelingIndex(travelCompanyForm.otherPeopleTraveling.length);
-
-      const otherPeopleTravelingFiltered = travelCompanyForm.otherPeopleTraveling.filter(
-        (item) => item.name !== "" && item.relation !== ""
+    if (normalizedExisting.length > 0) {
+      setCurrentOtherPeopleTravelingIndex(normalizedExisting.length);
+      setOtherPeopleTravelingItems(
+        normalizedExisting.filter((item) => item.firstName !== "" || item.lastName !== "" || item.name !== ""),
       );
-
-      setOtherPeopleTravelingItems(otherPeopleTravelingFiltered);
     }
   }, [travelCompanyForm]);
 
   useEffect(() => {
     if (resetOtherPeopleTravelingFields) {
-      form.setValue(`otherPeopleTraveling.${currentOtherPeopleTravelingIndex}.name`, "");
+      form.setValue(`otherPeopleTraveling.${currentOtherPeopleTravelingIndex}.firstName`, "");
+      form.setValue(`otherPeopleTraveling.${currentOtherPeopleTravelingIndex}.lastName`, "");
       form.setValue(`otherPeopleTraveling.${currentOtherPeopleTravelingIndex}.relation`, "");
 
       setResetOtherPeopleTravelingFields(false);
@@ -209,50 +230,44 @@ export function TravelCompanyForm({ travelCompanyForm, profileId, isEditing }: P
 
   function addOtherPeopleTraveling() {
     form
-      .trigger(
-        [
-          `otherPeopleTraveling.${currentOtherPeopleTravelingIndex}.name`,
-          `otherPeopleTraveling.${currentOtherPeopleTravelingIndex}.relation`,
-        ],
-        { shouldFocus: true }
-      )
-      .then(() => {
-        if (Object.keys(form.formState.errors).length === 0) {
+      .trigger([
+        `otherPeopleTraveling.${currentOtherPeopleTravelingIndex}.firstName`,
+        `otherPeopleTraveling.${currentOtherPeopleTravelingIndex}.lastName`,
+        `otherPeopleTraveling.${currentOtherPeopleTravelingIndex}.relation`,
+      ])
+      .then((isValid) => {
+        if (isValid) {
+          const current = otherPeopleTraveling[currentOtherPeopleTravelingIndex];
+          if (!current) return;
+
+          const item = normalizeTravelCompanion({
+            firstName: current.firstName,
+            lastName: current.lastName,
+            relation: current.relation,
+          });
+
+          if (!item.firstName || !item.lastName || !item.relation) return;
+
+          setOtherPeopleTravelingItems((prev) => [...prev, item]);
           form.setValue("otherPeopleTraveling", [
             ...otherPeopleTraveling,
-            {
-              name: "",
-              relation: "",
-            },
+            { firstName: "", lastName: "", relation: "" },
           ]);
-
-          const otherPeopleTravelingFiltered = otherPeopleTraveling.filter(
-            (item) => item.name !== "" && item.relation !== ""
-          );
-
           setCurrentOtherPeopleTravelingIndex((prev) => prev + 1);
-          setOtherPeopleTravelingItems(otherPeopleTravelingFiltered);
           setResetOtherPeopleTravelingFields(true);
         }
       });
   }
 
   function removeOtherPeopleTraveling(index: number) {
-    const newArr = otherPeopleTraveling.filter((_, i) => i !== index);
-
-    form.setValue("otherPeopleTraveling", newArr);
-
-    const otherPeopleTravelingFiltered = newArr.filter((item) => item.name !== "" && item.relation !== "");
-
-    setCurrentOtherPeopleTravelingIndex((prev) => prev - 1);
-    setOtherPeopleTravelingItems(otherPeopleTravelingFiltered);
+    setOtherPeopleTravelingItems((prev) => prev.filter((_, i) => i !== index));
   }
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="w-full flex flex-col flex-grow gap-6">
         <h2 className="w-full text-center text-2xl sm:text-3xl text-foreground font-semibold mb-6">
-          Companhia de Viagem
+          Acompanhante da Viagem
         </h2>
 
         <div className="w-full flex flex-col gap-12 justify-between flex-grow">
@@ -298,17 +313,17 @@ export function TravelCompanyForm({ travelCompanyForm, profileId, isEditing }: P
               <div
                 className={cn(
                   "flex flex-col gap-2 bg-secondary rounded-xl p-4",
-                  otherPeopleTravelingConfirmation === "Não" && "hidden"
+                  otherPeopleTravelingConfirmation === "Não" && "hidden",
                 )}
               >
                 <span className="text-sm font-medium text-foreground">
                   Adicione as pessoas que estão viajando com você
                 </span>
 
-                <div className="!mt-auto w-full grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="!mt-auto w-full grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <FormField
                     control={form.control}
-                    name={`otherPeopleTraveling.${currentOtherPeopleTravelingIndex}.name`}
+                    name={`otherPeopleTraveling.${currentOtherPeopleTravelingIndex}.firstName`}
                     render={({ field }) => (
                       <FormItem className="flex flex-col gap-2">
                         <FormControl>
@@ -316,7 +331,26 @@ export function TravelCompanyForm({ travelCompanyForm, profileId, isEditing }: P
                             className="!mt-auto"
                             disabled={isPending || isSavePending}
                             {...field}
-                            placeholder="Nome completo"
+                            placeholder="Nome"
+                          />
+                        </FormControl>
+
+                        <FormMessage className="text-sm text-destructive" />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name={`otherPeopleTraveling.${currentOtherPeopleTravelingIndex}.lastName`}
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col gap-2">
+                        <FormControl>
+                          <Input
+                            className="!mt-auto"
+                            disabled={isPending || isSavePending}
+                            {...field}
+                            placeholder="Sobrenome"
                           />
                         </FormControl>
 
@@ -364,7 +398,9 @@ export function TravelCompanyForm({ travelCompanyForm, profileId, isEditing }: P
                         key={`otherName-${index}`}
                         className="py-2 px-4 bg-primary/50 rounded-full flex items-center gap-2 group"
                       >
-                        <span className="text-sm font-medium text-white">{item.name}</span>
+                        <span className="text-sm font-medium text-white">
+                          {joinPersonName(item.firstName, item.lastName) || item.name}
+                        </span>
 
                         <Button
                           type="button"

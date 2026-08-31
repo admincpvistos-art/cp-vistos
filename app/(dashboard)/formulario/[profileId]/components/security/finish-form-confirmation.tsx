@@ -146,7 +146,7 @@ export function FinishFormConfirmation({ profileId, isPending, submit }: FinishF
                       className="bg-white p-6 flex flex-col gap-9 border-0 rounded-lg"
                     >
                       <AccordionTrigger className="text-lg text-left text-foreground font-semibold hover:no-underline">
-                        Companhia de Viagem
+                        Acompanhante da Viagem
                       </AccordionTrigger>
 
                       <AccordionContent className="w-full flex flex-col gap-9">
