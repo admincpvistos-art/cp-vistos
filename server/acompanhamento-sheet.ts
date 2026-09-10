@@ -38,9 +38,11 @@ export const OPERATIONS_SYNC_PAUSED = true;
 /**
  * Clientes ativos no Acompanhamento usam source "imported".
  * Arquivados passam a source "archived" (evita filtro MongoDB em archivedAt).
+ * Removidos só da planilha usam source "removed" (não vão para Arquivados).
  */
 export const ACOMPANHAMENTO_ACTIVE_SOURCE = "imported";
 export const ACOMPANHAMENTO_ARCHIVED_SOURCE = "archived";
+export const ACOMPANHAMENTO_REMOVED_SOURCE = "removed";
 
 export function whereActiveAcompanhamento() {
   // Somente source — archivedAt: null no Mongo exclui docs sem o campo e esvazia a planilha.
@@ -321,7 +323,14 @@ export async function seedImportedAcompanhamentoRows() {
   const knownCount = await prisma.acompanhamentoClient.count({
     where: {
       source: {
-        in: [ACOMPANHAMENTO_ACTIVE_SOURCE, ACOMPANHAMENTO_ARCHIVED_SOURCE, "imported", "archived"],
+        in: [
+          ACOMPANHAMENTO_ACTIVE_SOURCE,
+          ACOMPANHAMENTO_ARCHIVED_SOURCE,
+          ACOMPANHAMENTO_REMOVED_SOURCE,
+          "imported",
+          "archived",
+          "removed",
+        ],
       },
     },
   });
@@ -352,11 +361,18 @@ export async function seedImportedAcompanhamentoRows() {
     return;
   }
 
-  // Partial seed: fingerprints incluem arquivados (evita duplicar após Arquivar).
+  // Partial seed: fingerprints incluem arquivados/removidos (evita duplicar após Arquivar/Excluir).
   const existing = await prisma.acompanhamentoClient.findMany({
     where: {
       source: {
-        in: [ACOMPANHAMENTO_ACTIVE_SOURCE, ACOMPANHAMENTO_ARCHIVED_SOURCE, "imported", "archived"],
+        in: [
+          ACOMPANHAMENTO_ACTIVE_SOURCE,
+          ACOMPANHAMENTO_ARCHIVED_SOURCE,
+          ACOMPANHAMENTO_REMOVED_SOURCE,
+          "imported",
+          "archived",
+          "removed",
+        ],
       },
     },
     select: {
@@ -1739,8 +1755,12 @@ export async function updateAcompanhamentoRecord(input: AcompanhamentoUpdateInpu
     return null;
   }
 
-  if (current.source === ACOMPANHAMENTO_ARCHIVED_SOURCE || current.archivedAt) {
-    throw new Error("Cliente arquivado — edição indisponível no Acompanhamento");
+  if (
+    current.source === ACOMPANHAMENTO_ARCHIVED_SOURCE ||
+    current.source === ACOMPANHAMENTO_REMOVED_SOURCE ||
+    current.archivedAt
+  ) {
+    throw new Error("Cliente removido do Acompanhamento — edição indisponível");
   }
 
   await ensureImportedClientsRegistered(1);
@@ -1959,6 +1979,63 @@ export async function collectAcompanhamentoIdsToArchive(
   }
 
   return Array.from(idsToRemove);
+}
+
+/**
+ * Remove o cliente só do Acompanhamento.
+ * Não envia para Arquivados nem Prospects; User / Financeiro / Serviços e Custos permanecem.
+ */
+export async function removeAcompanhamentoClient(id: string) {
+  const existing = await prisma.acompanhamentoClient.findUnique({
+    where: { id },
+    include: {
+      user: {
+        include: { profiles: true },
+      },
+    },
+  });
+
+  if (!existing) {
+    return null;
+  }
+
+  if (
+    existing.source === ACOMPANHAMENTO_ARCHIVED_SOURCE ||
+    existing.source === ACOMPANHAMENTO_REMOVED_SOURCE
+  ) {
+    throw new Error("Cliente já foi removido do Acompanhamento");
+  }
+
+  const row = await getAcompanhamentoRecord(id);
+  if (!row) {
+    return null;
+  }
+
+  const removeIds = await collectAcompanhamentoIdsToArchive(id, row, existing.userId);
+
+  await prisma.acompanhamentoClient.updateMany({
+    where: { id: { in: removeIds } },
+    data: {
+      source: ACOMPANHAMENTO_REMOVED_SOURCE,
+      archivedAt: new Date(),
+    },
+  });
+
+  const stillActive = await prisma.acompanhamentoClient.count({
+    where: {
+      id: { in: removeIds },
+      source: ACOMPANHAMENTO_ACTIVE_SOURCE,
+    },
+  });
+  if (stillActive) {
+    throw new Error(
+      "Cliente ainda aparece no Acompanhamento após excluir. Tente novamente.",
+    );
+  }
+
+  return {
+    removedIds: removeIds,
+  };
 }
 
 /**

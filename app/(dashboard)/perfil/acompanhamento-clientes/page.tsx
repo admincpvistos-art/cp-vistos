@@ -86,12 +86,7 @@ export default function AcompanhamentoClientesPage() {
 
   async function handleDeleteRow(row: SheetClientRow) {
     const result = await deleteRow({ id: row.id });
-    const tabs = result.labels.join(", ");
-    toast.success(
-      result.labels.length > 1
-        ? `Cliente excluído — transferido para: ${tabs}`
-        : `Cliente excluído — transferido para Arquivados (${tabs})`,
-    );
+    toast.success("Cliente excluído do Acompanhamento");
 
     utils.acompanhamentoRouter.getClientesSheet.setData(undefined, (current) => {
       if (!current?.rows) {
@@ -118,10 +113,7 @@ export default function AcompanhamentoClientesPage() {
       };
     });
 
-    await Promise.all([
-      utils.acompanhamentoRouter.getClientesSheet.invalidate(),
-      utils.arquivadosRouter.getSheet.invalidate(),
-    ]);
+    await utils.acompanhamentoRouter.getClientesSheet.invalidate();
 
     if (editingId === row.id) {
       setEditingId(null);

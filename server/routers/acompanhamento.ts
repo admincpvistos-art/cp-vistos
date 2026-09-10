@@ -8,6 +8,7 @@ import {
   createAcompanhamentoRecord,
   getAcompanhamentoRecord,
   listAcompanhamentoSheet,
+  removeAcompanhamentoClient,
   updateAcompanhamentoRecord,
   updateAcompanhamentoSheetComment,
 } from "@/server/acompanhamento-sheet";
@@ -207,7 +208,7 @@ export const acompanhamentoRouter = router({
       }
     }),
 
-  /** Exclui da planilha (mesmo fluxo de arquivar; resolve serviços no servidor se a linha tiver). */
+  /** Exclui só do Acompanhamento — sem Arquivados/Prospects; Financeiro permanece. */
   deleteRow: acompanhamentoStaffProcedure
     .input(z.object({ id: z.string().min(1) }))
     .mutation(async ({ input, ctx }) => {
@@ -219,17 +220,11 @@ export const acompanhamentoRouter = router({
       }
 
       try {
-        const result = await archiveAcompanhamentoClient(input.id);
+        const result = await removeAcompanhamentoClient(input.id);
         if (!result) {
           throw new TRPCError({
             code: "NOT_FOUND",
             message: "Cliente não encontrado no cadastro",
-          });
-        }
-        if (!result.categories.length) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "Marque ao menos um serviço antes de excluir este cliente",
           });
         }
         return result;
