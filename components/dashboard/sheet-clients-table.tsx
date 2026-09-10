@@ -12,10 +12,20 @@ import {
   FileText,
   Loader2,
   Search,
+  Trash2,
 } from "lucide-react";
 import { isValid, parse } from "date-fns";
 import { toast } from "sonner";
 
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -77,7 +87,8 @@ function estaFormButtonLabel(
 
 type VisibleColumn =
   | { key: keyof SheetClientRow; label: string }
-  | { key: "services"; label: string };
+  | { key: "services"; label: string }
+  | { key: "delete"; label: string };
 
 export const SHEET_VISIBLE_COLUMNS: VisibleColumn[] = [
   { key: "name", label: "NOME" },
@@ -95,6 +106,20 @@ export const SHEET_VISIBLE_COLUMNS: VisibleColumn[] = [
   { key: "group", label: "GRUPO" },
   { key: "status", label: "STATUS" },
 ];
+
+function sheetColumnsWithDelete(showDelete: boolean): VisibleColumn[] {
+  if (!showDelete) {
+    return SHEET_VISIBLE_COLUMNS;
+  }
+
+  const columns = [...SHEET_VISIBLE_COLUMNS];
+  const statusIndex = columns.findIndex((column) => column.key === "status");
+  columns.splice(statusIndex >= 0 ? statusIndex : columns.length, 0, {
+    key: "delete",
+    label: "",
+  });
+  return columns;
+}
 
 function BarcodeDateCell({ issued, done }: { issued: string; done: boolean }) {
   if (!issued) {
@@ -270,6 +295,94 @@ function rowRecency(row: SheetClientRow) {
   return entryTime(row.entryDate);
 }
 
+function DeleteCell({
+  row,
+  isPending,
+  onDelete,
+}: {
+  row: SheetClientRow;
+  isPending?: boolean;
+  onDelete: (row: SheetClientRow) => Promise<void> | void;
+}) {
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  return (
+    <>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+        title="Excluir cliente do Acompanhamento"
+        disabled={isPending}
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          setConfirmOpen(true);
+        }}
+      >
+        {isPending ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Trash2 className="h-4 w-4" />
+        )}
+      </Button>
+
+      <AlertDialog
+        open={confirmOpen}
+        onOpenChange={(open) => {
+          if (!isPending) {
+            setConfirmOpen(open);
+          }
+        }}
+      >
+        <AlertDialogContent
+          onClick={(event) => event.stopPropagation()}
+          onKeyDown={(event) => event.stopPropagation()}
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir cliente?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {row.name.trim() ? (
+                <>
+                  <span className="font-medium text-foreground">{row.name.trim()}</span> sai do
+                  Acompanhamento e vai para Arquivados. Financeiro e Serviços e Custos permanecem.
+                </>
+              ) : (
+                "O cliente sai do Acompanhamento e vai para Arquivados. Financeiro e Serviços e Custos permanecem."
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPending} type="button">
+              Cancelar
+            </AlertDialogCancel>
+            <Button
+              type="button"
+              disabled={isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                void (async () => {
+                  try {
+                    await onDelete(row);
+                    setConfirmOpen(false);
+                  } catch {
+                    // Erro tratado pelo caller (toast).
+                  }
+                })();
+              }}
+            >
+              {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Excluir"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
 export function SheetClientsTable({
   rows,
   emptyMessage = "Sem resultados",
@@ -285,6 +398,9 @@ export function SheetClientsTable({
   canUnarchive,
   onUnarchive,
   unarchivePendingId,
+  canDelete,
+  onDelete,
+  deletePendingId,
 }: {
   rows: SheetClientRow[];
   emptyMessage?: string;
@@ -300,16 +416,26 @@ export function SheetClientsTable({
   canUnarchive?: boolean;
   onUnarchive?: (row: SheetClientRow) => void;
   unarchivePendingId?: string | null;
+  canDelete?: boolean;
+  onDelete?: (row: SheetClientRow) => Promise<void> | void;
+  deletePendingId?: string | null;
 }) {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<"desc" | "asc">("desc");
-  const statusIndex = SHEET_VISIBLE_COLUMNS.findIndex((column) => column.key === "status");
+  const visibleColumns = useMemo(
+    () => sheetColumnsWithDelete(Boolean(canDelete && onDelete)),
+    [canDelete, onDelete],
+  );
+  const statusIndex = visibleColumns.findIndex((column) => column.key === "status");
 
   const filteredRows = useMemo(() => {
     const term = search.trim().toLowerCase();
     const matched = term
       ? rows.filter((row) =>
-          SHEET_VISIBLE_COLUMNS.some(({ key }) => {
+          visibleColumns.some(({ key }) => {
+            if (key === "delete") {
+              return false;
+            }
             if (key === "services") {
               return (row.services ?? []).some((service) =>
                 ACOMPANHAMENTO_SERVICE_LABEL[service].toLowerCase().includes(term),
@@ -340,11 +466,11 @@ export function SheetClientsTable({
         const timeB = newestByGroup.get(groupB) ?? 0;
         return sort === "desc" ? timeB - timeA : timeA - timeB;
       }
-
-      const diff = rowRecency(b) - rowRecency(a);
-      return sort === "desc" ? diff : -diff;
+      const timeA = rowRecency(a);
+      const timeB = rowRecency(b);
+      return sort === "desc" ? timeB - timeA : timeA - timeB;
     });
-  }, [rows, search, sort]);
+  }, [rows, search, sort, visibleColumns]);
 
   return (
     <div>
@@ -393,7 +519,7 @@ export function SheetClientsTable({
           <Table containerClassName="max-h-[min(75vh,800px)]">
             <TableHeader className="sticky top-0 z-20 bg-white shadow-[0_1px_0_0_hsl(var(--border))]">
               <TableRow className="hover:bg-white border-b-0">
-                {SHEET_VISIBLE_COLUMNS.map((column, index) => (
+                {visibleColumns.map((column, index) => (
                   <TableHead
                     key={column.key}
                     className={cn(
@@ -401,6 +527,7 @@ export function SheetClientsTable({
                       index === 0 && "left-0 z-30 min-w-64 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.12)]",
                       index === statusIndex &&
                         "right-0 z-30 min-w-36 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.12)]",
+                      column.key === "delete" && "w-12 min-w-12 px-1",
                     )}
                   >
                     {column.label}
@@ -416,13 +543,14 @@ export function SheetClientsTable({
                     className={cn("group", onRowClick && "cursor-pointer")}
                     onClick={() => onRowClick?.(row)}
                   >
-                    {SHEET_VISIBLE_COLUMNS.map((column, index) => (
+                    {visibleColumns.map((column, index) => (
                       <TableCell
                         key={`${row.id}-${column.key}`}
                         className={cn(
                           "text-center text-foreground whitespace-nowrap",
                           column.key === "barcodeIssued" && "min-w-[10.5rem]",
                           column.key === "services" && "min-w-[5.5rem]",
+                          column.key === "delete" && "w-12 min-w-12 px-1",
                           index === 0 &&
                             "sticky left-0 z-10 min-w-64 text-left font-medium bg-white group-hover:bg-muted/50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.12)]",
                           index === statusIndex &&
@@ -442,7 +570,13 @@ export function SheetClientsTable({
                           <ServicesCell services={row.services ?? []} />
                         ) : column.key === "barcodeIssued" ? (
                           <BarcodeDateCell issued={row.barcodeIssued} done={row.barcodeDone} />
-                        ) : (
+                        ) : column.key === "delete" && onDelete ? (
+                          <DeleteCell
+                            row={row}
+                            isPending={deletePendingId === row.id}
+                            onDelete={onDelete}
+                          />
+                        ) : column.key === "delete" ? null : (
                           String(row[column.key] || "—")
                         )}
                       </TableCell>
@@ -451,7 +585,7 @@ export function SheetClientsTable({
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={SHEET_VISIBLE_COLUMNS.length} className="h-24 text-center">
+                  <TableCell colSpan={visibleColumns.length} className="h-24 text-center">
                     {emptyMessage}
                   </TableCell>
                 </TableRow>

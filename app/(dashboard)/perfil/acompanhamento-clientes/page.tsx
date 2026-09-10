@@ -39,6 +39,10 @@ export default function AcompanhamentoClientesPage() {
       },
     });
 
+  const utils = trpc.useUtils();
+  const { mutateAsync: deleteRow, isPending: deletePending, variables: deleteVariables } =
+    trpc.acompanhamentoRouter.deleteRow.useMutation();
+
   useEffect(() => {
     if (!me || isMeLoading) {
       return;
@@ -80,6 +84,50 @@ export default function AcompanhamentoClientesPage() {
     }));
   }, [data?.rows]);
 
+  async function handleDeleteRow(row: SheetClientRow) {
+    const result = await deleteRow({ id: row.id });
+    const tabs = result.labels.join(", ");
+    toast.success(
+      result.labels.length > 1
+        ? `Cliente excluído — transferido para: ${tabs}`
+        : `Cliente excluído — transferido para Arquivados (${tabs})`,
+    );
+
+    utils.acompanhamentoRouter.getClientesSheet.setData(undefined, (current) => {
+      if (!current?.rows) {
+        return current;
+      }
+      const name = row.name.trim();
+      const group = row.group.trim();
+      return {
+        ...current,
+        rows: current.rows.filter((item) => {
+          if (result.removedIds?.includes(item.id) || item.id === row.id) {
+            return false;
+          }
+          if (
+            name &&
+            group &&
+            item.name.trim().toLowerCase() === name.toLowerCase() &&
+            item.group.trim().toLowerCase() === group.toLowerCase()
+          ) {
+            return false;
+          }
+          return true;
+        }),
+      };
+    });
+
+    await Promise.all([
+      utils.acompanhamentoRouter.getClientesSheet.invalidate(),
+      utils.arquivadosRouter.getSheet.invalidate(),
+    ]);
+
+    if (editingId === row.id) {
+      setEditingId(null);
+    }
+  }
+
   if (!me || isMeLoading || !canAccess) {
     return (
       <div className="w-full min-h-[50vh] flex items-center justify-center">
@@ -108,6 +156,20 @@ export default function AcompanhamentoClientesPage() {
           onRowClick={(row) => {
             setCreating(false);
             setEditingId(row.id);
+          }}
+          canDelete={canArchive}
+          deletePendingId={deletePending ? deleteVariables?.id ?? null : null}
+          onDelete={async (row) => {
+            try {
+              await handleDeleteRow(row);
+            } catch (error) {
+              const message =
+                error && typeof error === "object" && "message" in error
+                  ? String((error as { message?: unknown }).message || "")
+                  : "";
+              toast.error(message || "Não foi possível excluir o cliente");
+              throw error;
+            }
           }}
           toolbarActions={
             <Button

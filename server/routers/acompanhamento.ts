@@ -207,6 +207,44 @@ export const acompanhamentoRouter = router({
       }
     }),
 
+  /** Exclui da planilha (mesmo fluxo de arquivar; resolve serviços no servidor se a linha tiver). */
+  deleteRow: acompanhamentoStaffProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .mutation(async ({ input, ctx }) => {
+      if (!canArchiveAcompanhamento(ctx.staff.role, ctx.staff.email)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Sua conta não pode excluir clientes",
+        });
+      }
+
+      try {
+        const result = await archiveAcompanhamentoClient(input.id);
+        if (!result) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Cliente não encontrado no cadastro",
+          });
+        }
+        if (!result.categories.length) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Marque ao menos um serviço antes de excluir este cliente",
+          });
+        }
+        return result;
+      } catch (error) {
+        if (error instanceof TRPCError) {
+          throw error;
+        }
+        console.error("[acompanhamento] deleteRow failed", error);
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: error instanceof Error ? error.message : "Não foi possível excluir o cliente",
+        });
+      }
+    }),
+
   listInterviewDocs: acompanhamentoStaffProcedure
     .input(z.object({ userId: z.string().min(1) }))
     .query(async ({ input }) => {
