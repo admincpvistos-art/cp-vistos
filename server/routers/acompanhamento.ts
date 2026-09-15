@@ -21,8 +21,8 @@ import {
   canArchiveAcompanhamento,
   canAssignAcompanhamentoResponsible,
   canOnlySeeAssignedAcompanhamento,
+  isFinanceAdminEmail,
   isFullAdmin,
-  isOfficeCollaboratorEmail,
   normalizeEmail,
 } from "@/lib/staff-access";
 
@@ -110,9 +110,13 @@ function collaboratorCanSeeRow(row: AcompanhamentoRecord, staffEmail: string) {
   return !responsible || responsible === staffEmail;
 }
 
-/** Pool compartilhado dos admins: tudo menos o que está designado a colaborador. */
+/** Pool estatístico dos admins: sem responsável ou designado a admin@ / cpassessoriavistos@. */
 function isInSharedAdminStatsPool(row: AcompanhamentoRecord) {
-  return !isOfficeCollaboratorEmail(row.responsibleEmail);
+  const responsible = normalizeEmail(row.responsibleEmail);
+  if (!responsible) {
+    return true;
+  }
+  return isFinanceAdminEmail(responsible);
 }
 
 function buildSheetStats(rows: AcompanhamentoRecord[]) {

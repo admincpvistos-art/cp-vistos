@@ -66,6 +66,9 @@ export type SheetClientRow = {
   estaProfileId?: string | null;
   estaFormStep?: number;
   estaStatusForm?: "" | "awaiting" | "filling" | "filled";
+  /** E-mail do responsável (filtro admin). */
+  responsibleEmail?: string | null;
+  budgetPaid?: "" | "Pago" | "Pendente";
 };
 
 const ESTA_FORM_STEPS = 6;
@@ -405,6 +408,7 @@ export function SheetClientsTable({
   onSaveComment,
   commentPending,
   toolbarActions,
+  toolbarExtra,
   banner,
   isLoading,
   errorMessage,
@@ -423,6 +427,8 @@ export function SheetClientsTable({
   onSaveComment?: (rowId: string, comment: string) => Promise<void>;
   commentPending?: boolean;
   toolbarActions?: ReactNode;
+  /** Linha extra abaixo da busca/ordenação (ex.: filtros do admin). */
+  toolbarExtra?: ReactNode;
   banner?: ReactNode;
   isLoading?: boolean;
   errorMessage?: string | null;
@@ -523,6 +529,8 @@ export function SheetClientsTable({
         </div>
         {toolbarActions ? <div className="sm:ml-auto shrink-0">{toolbarActions}</div> : null}
       </div>
+
+      {toolbarExtra ? <div className="mb-4">{toolbarExtra}</div> : null}
 
       {banner}
 
