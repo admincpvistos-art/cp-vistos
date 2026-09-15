@@ -21,6 +21,8 @@ import {
   canArchiveAcompanhamento,
   canAssignAcompanhamentoResponsible,
   canOnlySeeAssignedAcompanhamento,
+  isFullAdmin,
+  isOfficeCollaboratorEmail,
   normalizeEmail,
 } from "@/lib/staff-access";
 
@@ -108,7 +110,12 @@ function collaboratorCanSeeRow(row: AcompanhamentoRecord, staffEmail: string) {
   return !responsible || responsible === staffEmail;
 }
 
-function buildCollaboratorStats(rows: AcompanhamentoRecord[]) {
+/** Pool compartilhado dos admins: tudo menos o que está designado a colaborador. */
+function isInSharedAdminStatsPool(row: AcompanhamentoRecord) {
+  return !isOfficeCollaboratorEmail(row.responsibleEmail);
+}
+
+function buildSheetStats(rows: AcompanhamentoRecord[]) {
   let primeiroVisto = 0;
   let passaporte = 0;
   let esta = 0;
@@ -151,15 +158,28 @@ export const acompanhamentoRouter = router({
     }
 
     const restrict = canOnlySeeAssignedAcompanhamento(ctx.staff.role, ctx.staff.email);
+    const isAdmin = isFullAdmin(ctx.staff.role, ctx.staff.email);
     const staffEmail = normalizeEmail(ctx.staff.email);
     const rows = restrict
       ? sheet.rows.filter((row) => collaboratorCanSeeRow(row, staffEmail))
       : sheet.rows;
 
+    const statsRows = restrict
+      ? rows
+      : isAdmin
+        ? sheet.rows.filter((row) => isInSharedAdminStatsPool(row))
+        : [];
+
     return {
       ...sheet,
       rows,
-      stats: restrict ? buildCollaboratorStats(rows) : null,
+      stats:
+        restrict || isAdmin
+          ? {
+              ...buildSheetStats(statsRows),
+              scope: restrict ? ("collaborator" as const) : ("admin_shared" as const),
+            }
+          : null,
     };
   }),
   getRow: acompanhamentoStaffProcedure

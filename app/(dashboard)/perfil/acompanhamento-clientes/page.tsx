@@ -12,7 +12,6 @@ import {
   canAccessAcompanhamento,
   canArchiveAcompanhamento,
   canAssignAcompanhamentoResponsible,
-  canOnlySeeAssignedAcompanhamento,
 } from "@/lib/staff-access";
 import { cn } from "@/lib/utils";
 import { AcompanhamentoEditSheet } from "./acompanhamento-edit-sheet";
@@ -26,13 +25,19 @@ function CollaboratorStatsCards({
     passaporte: number;
     esta: number;
     totalPago: number;
+    scope?: "collaborator" | "admin_shared";
   };
 }) {
+  const clientsHint =
+    stats.scope === "admin_shared"
+      ? "admins juntos (sem colaboradores)"
+      : "sob sua responsabilidade";
+
   const cards = [
     {
       label: "Clientes",
       value: String(stats.totalClientes),
-      hint: "sob sua responsabilidade",
+      hint: clientsHint,
     },
     {
       label: "1º vistos",
@@ -90,14 +95,13 @@ export default function AcompanhamentoClientesPage() {
   const canAccess = canAccessAcompanhamento(me?.user.role, me?.user.email);
   const canArchive = canArchiveAcompanhamento(me?.user.role, me?.user.email);
   const canAssignResponsible = canAssignAcompanhamentoResponsible(me?.user.role, me?.user.email);
-  const showCollaboratorStats = canOnlySeeAssignedAcompanhamento(me?.user.role, me?.user.email);
 
   const { data, isLoading, isError, error, refetch } =
     trpc.acompanhamentoRouter.getClientesSheet.useQuery(undefined, {
       enabled: canAccess,
       retry: false,
     });
-
+  const showStats = Boolean(data?.stats);
   const { mutateAsync: updateComment, isPending: commentPending } =
     trpc.acompanhamentoRouter.updateComment.useMutation({
       onSuccess: () => {
@@ -205,7 +209,7 @@ export default function AcompanhamentoClientesPage() {
           Acompanhamento Clientes
         </h1>
 
-        {showCollaboratorStats && data?.stats ? (
+        {showStats && data?.stats ? (
           <CollaboratorStatsCards stats={data.stats} />
         ) : null}
 
