@@ -490,36 +490,38 @@ export function SheetClientsTable({
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row gap-3 sm:items-center mb-4">
-        <div className="h-12 flex items-center gap-2 border border-muted/70 rounded-xl transition duration-300 bg-background px-3 py-2 text-sm group focus-within:border-primary hover:border-border w-full sm:max-w-xs">
-          <Search className="w-5 h-5 text-border flex-shrink-0" strokeWidth={1.5} />
-          <div className="w-[2px] flex-shrink-0 h-full bg-muted rounded-full" />
-          <Input
-            placeholder="Pesquise na planilha..."
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            className="flex h-full w-full transition border-0 duration-300 bg-background text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
-          />
+      <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between mb-4">
+        <div className="flex flex-col sm:flex-row gap-3 sm:items-center min-w-0">
+          <div className="h-12 flex items-center gap-2 border border-muted/70 rounded-xl transition duration-300 bg-background px-3 py-2 text-sm group focus-within:border-primary hover:border-border w-full sm:max-w-xs">
+            <Search className="w-5 h-5 text-border flex-shrink-0" strokeWidth={1.5} />
+            <div className="w-[2px] flex-shrink-0 h-full bg-muted rounded-full" />
+            <Input
+              placeholder="Pesquise na planilha..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              className="flex h-full w-full transition border-0 duration-300 bg-background text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+            />
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-12"
+            onClick={() => setSort((prev) => (prev === "desc" ? "asc" : "desc"))}
+          >
+            {sort === "desc" ? (
+              <>
+                <ArrowDownAZ className="mr-2 h-4 w-4" />
+                Mais recentes
+              </>
+            ) : (
+              <>
+                <ArrowUpAZ className="mr-2 h-4 w-4" />
+                Mais antigos
+              </>
+            )}
+          </Button>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          className="h-12"
-          onClick={() => setSort((prev) => (prev === "desc" ? "asc" : "desc"))}
-        >
-          {sort === "desc" ? (
-            <>
-              <ArrowDownAZ className="mr-2 h-4 w-4" />
-              Mais recentes
-            </>
-          ) : (
-            <>
-              <ArrowUpAZ className="mr-2 h-4 w-4" />
-              Mais antigos
-            </>
-          )}
-        </Button>
-        {toolbarActions}
+        {toolbarActions ? <div className="sm:ml-auto shrink-0">{toolbarActions}</div> : null}
       </div>
 
       {banner}

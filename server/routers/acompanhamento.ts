@@ -13,10 +13,15 @@ import {
   updateAcompanhamentoRecord,
   updateAcompanhamentoSheetComment,
 } from "@/server/acompanhamento-sheet";
-import { ACOMPANHAMENTO_SERVICE_OPTIONS } from "@/lib/acompanhamento-types";
+import {
+  ACOMPANHAMENTO_SERVICE_OPTIONS,
+  type AcompanhamentoRecord,
+} from "@/lib/acompanhamento-types";
 import {
   canArchiveAcompanhamento,
   canAssignAcompanhamentoResponsible,
+  canOnlySeeAssignedAcompanhamento,
+  normalizeEmail,
 } from "@/lib/staff-access";
 
 const serviceValues = ACOMPANHAMENTO_SERVICE_OPTIONS.map((option) => option.value) as [
@@ -73,8 +78,59 @@ const updateSchema = rowFieldsSchema.extend({
   id: z.string().min(1),
 });
 
+function assertCanAccessRow(
+  row: AcompanhamentoRecord | null | undefined,
+  staff: { role?: string | null; email?: string | null },
+) {
+  if (!row) {
+    return;
+  }
+  if (!canOnlySeeAssignedAcompanhamento(staff.role, staff.email)) {
+    return;
+  }
+  if (normalizeEmail(row.responsibleEmail) !== normalizeEmail(staff.email)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Cliente fora da sua responsabilidade",
+    });
+  }
+}
+
+function buildCollaboratorStats(rows: AcompanhamentoRecord[]) {
+  let primeiroVisto = 0;
+  let passaporte = 0;
+  let esta = 0;
+  let totalPago = 0;
+
+  for (const row of rows) {
+    if (row.services.includes("primeiro_visto")) {
+      primeiroVisto += 1;
+    }
+    if (row.services.includes("passaporte")) {
+      passaporte += 1;
+    }
+    if (row.services.includes("esta")) {
+      esta += 1;
+    }
+
+    const budgetRaw = row.accountFields?.budget?.trim() ?? "";
+    const budget = budgetRaw ? Number(budgetRaw.replace(",", ".")) : NaN;
+    if (row.accountFields?.budgetPaid === "Pago" && Number.isFinite(budget) && budget > 0) {
+      totalPago += budget;
+    }
+  }
+
+  return {
+    totalClientes: rows.length,
+    primeiroVisto,
+    passaporte,
+    esta,
+    totalPago,
+  };
+}
+
 export const acompanhamentoRouter = router({
-  getClientesSheet: acompanhamentoStaffProcedure.query(async () => {
+  getClientesSheet: acompanhamentoStaffProcedure.query(async ({ ctx }) => {
     const sheet = await listAcompanhamentoSheet();
 
     if (!sheet.headers.length) {
@@ -84,11 +140,21 @@ export const acompanhamentoRouter = router({
       });
     }
 
-    return sheet;
+    const restrict = canOnlySeeAssignedAcompanhamento(ctx.staff.role, ctx.staff.email);
+    const staffEmail = normalizeEmail(ctx.staff.email);
+    const rows = restrict
+      ? sheet.rows.filter((row) => normalizeEmail(row.responsibleEmail) === staffEmail)
+      : sheet.rows;
+
+    return {
+      ...sheet,
+      rows,
+      stats: restrict ? buildCollaboratorStats(rows) : null,
+    };
   }),
   getRow: acompanhamentoStaffProcedure
     .input(z.object({ id: z.string().min(1) }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const row = await getAcompanhamentoRecord(input.id);
 
       if (!row) {
@@ -97,6 +163,8 @@ export const acompanhamentoRouter = router({
           message: "Cliente não encontrado no cadastro",
         });
       }
+
+      assertCanAccessRow(row, ctx.staff);
 
       return { row };
     }),
@@ -127,9 +195,10 @@ export const acompanhamentoRouter = router({
     }
 
     const canAssign = canAssignAcompanhamentoResponsible(ctx.staff.role, ctx.staff.email);
+    const staffEmail = normalizeEmail(ctx.staff.email);
     const responsibleEmail = canAssign
       ? input.responsibleEmail?.trim().toLowerCase() || null
-      : null;
+      : staffEmail || null;
 
     try {
       const row = await createAcompanhamentoRecord({
@@ -154,6 +223,8 @@ export const acompanhamentoRouter = router({
           message: "Cliente não encontrado no cadastro",
         });
       }
+
+      assertCanAccessRow(existing, ctx.staff);
 
       const canAssign = canAssignAcompanhamentoResponsible(ctx.staff.role, ctx.staff.email);
       const nextResponsible = input.responsibleEmail?.trim().toLowerCase() || null;
@@ -197,8 +268,17 @@ export const acompanhamentoRouter = router({
         sheetComment: z.string().max(500),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       try {
+        const existing = await getAcompanhamentoRecord(input.id);
+        if (!existing) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Cliente não encontrado no cadastro",
+          });
+        }
+        assertCanAccessRow(existing, ctx.staff);
+
         const row = await updateAcompanhamentoSheetComment(input.id, input.sheetComment);
         if (!row) {
           throw new TRPCError({

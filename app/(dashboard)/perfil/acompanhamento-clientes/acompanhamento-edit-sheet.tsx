@@ -472,7 +472,6 @@ export function AcompanhamentoEditSheet({
             />
             <Field label="ENVIO" value={form.shipping} onChange={(value) => setSheet("shipping", value)} />
             <Field label="TIPO" value={form.tipo} onChange={(value) => setSheet("tipo", value)} />
-            <Field label="RESP." value={form.resp} onChange={(value) => setSheet("resp", value)} />
             <div className="space-y-1.5">
               <Label>Responsável</Label>
               <Select

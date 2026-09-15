@@ -8,8 +8,76 @@ import { Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SheetClientsTable, type SheetClientRow } from "@/components/dashboard/sheet-clients-table";
 import { trpc } from "@/lib/trpc-client";
-import { canAccessAcompanhamento, canArchiveAcompanhamento, canAssignAcompanhamentoResponsible } from "@/lib/staff-access";
+import {
+  canAccessAcompanhamento,
+  canArchiveAcompanhamento,
+  canAssignAcompanhamentoResponsible,
+  canOnlySeeAssignedAcompanhamento,
+} from "@/lib/staff-access";
+import { cn, formatPrice } from "@/lib/utils";
 import { AcompanhamentoEditSheet } from "./acompanhamento-edit-sheet";
+
+function CollaboratorStatsCards({
+  stats,
+}: {
+  stats: {
+    totalClientes: number;
+    primeiroVisto: number;
+    passaporte: number;
+    esta: number;
+    totalPago: number;
+  };
+}) {
+  const cards = [
+    {
+      label: "Clientes",
+      value: String(stats.totalClientes),
+      hint: "sob sua responsabilidade",
+    },
+    {
+      label: "1º vistos",
+      value: String(stats.primeiroVisto),
+      hint: "serviços marcados",
+    },
+    {
+      label: "Passaportes",
+      value: String(stats.passaporte),
+      hint: "serviços marcados",
+    },
+    {
+      label: "ESTA / E-TA",
+      value: String(stats.esta),
+      hint: "serviços marcados",
+    },
+    {
+      label: "Total pago",
+      value: formatPrice(stats.totalPago),
+      hint: "orçamentos pagos dos clientes",
+    },
+  ];
+
+  return (
+    <div className="mb-6 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
+      {cards.map((card) => (
+        <div
+          key={card.label}
+          className="rounded-xl border border-border/70 bg-white px-4 py-3 shadow-sm"
+        >
+          <div className="flex items-center gap-2">
+            <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {card.label}
+            </p>
+          </div>
+          <p className={cn("mt-2 text-2xl font-semibold text-foreground tabular-nums")}>
+            {card.value}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">{card.hint}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function AcompanhamentoClientesPage() {
   const router = useRouter();
@@ -22,6 +90,7 @@ export default function AcompanhamentoClientesPage() {
   const canAccess = canAccessAcompanhamento(me?.user.role, me?.user.email);
   const canArchive = canArchiveAcompanhamento(me?.user.role, me?.user.email);
   const canAssignResponsible = canAssignAcompanhamentoResponsible(me?.user.role, me?.user.email);
+  const showCollaboratorStats = canOnlySeeAssignedAcompanhamento(me?.user.role, me?.user.email);
 
   const { data, isLoading, isError, error, refetch } =
     trpc.acompanhamentoRouter.getClientesSheet.useQuery(undefined, {
@@ -135,6 +204,10 @@ export default function AcompanhamentoClientesPage() {
         <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold mb-6 mt-6 lg:mt-12">
           Acompanhamento Clientes
         </h1>
+
+        {showCollaboratorStats && data?.stats ? (
+          <CollaboratorStatsCards stats={data.stats} />
+        ) : null}
 
         <SheetClientsTable
           rows={rows}
