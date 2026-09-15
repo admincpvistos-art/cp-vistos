@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { Loader2, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -32,11 +31,8 @@ import {
 import { cn } from "@/lib/utils";
 import { AcompanhamentoEditSheet } from "./acompanhamento-edit-sheet";
 
-type ResponsibleFilter = "all" | "unassigned" | "admins" | "collaborators" | string;
-type StatusFilter = "all" | "ATIVO" | "FINALIZADO";
+type ResponsibleFilter = "all" | "unassigned" | "admins" | "collaborators" | "mine" | string;
 type ServiceFilter = "all" | AcompanhamentoService;
-type PaymentFilter = "all" | "pago" | "pendente" | "sem";
-type PresenceFilter = "all" | "with" | "without" | "done";
 
 function CollaboratorStatsCards({
   stats,
@@ -104,27 +100,26 @@ function CollaboratorStatsCards({
   );
 }
 
-function FilterSelect({
-  label,
+function CompactFilter({
   value,
   onValueChange,
+  placeholder,
   children,
+  className,
 }: {
-  label: string;
   value: string;
   onValueChange: (value: string) => void;
+  placeholder: string;
   children: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="space-y-1 min-w-[10rem] flex-1 sm:flex-none sm:min-w-[11.5rem]">
-      <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</Label>
-      <Select value={value} onValueChange={onValueChange}>
-        <SelectTrigger className="h-10 bg-white">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>{children}</SelectContent>
-      </Select>
-    </div>
+    <Select value={value} onValueChange={onValueChange}>
+      <SelectTrigger className={cn("h-12 w-[10.5rem] bg-white", className)}>
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent>{children}</SelectContent>
+    </Select>
   );
 }
 
@@ -133,11 +128,7 @@ export default function AcompanhamentoClientesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [responsibleFilter, setResponsibleFilter] = useState<ResponsibleFilter>("all");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [serviceFilter, setServiceFilter] = useState<ServiceFilter>("all");
-  const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>("all");
-  const [barcodeFilter, setBarcodeFilter] = useState<PresenceFilter>("all");
-  const [interviewFilter, setInterviewFilter] = useState<"all" | "with" | "without">("all");
 
   const { data: me, isLoading: isMeLoading } = trpc.userRouter.getMe.useQuery(undefined, {
     retry: false,
@@ -146,6 +137,8 @@ export default function AcompanhamentoClientesPage() {
   const canArchive = canArchiveAcompanhamento(me?.user.role, me?.user.email);
   const canAssignResponsible = canAssignAcompanhamentoResponsible(me?.user.role, me?.user.email);
   const isAdmin = isFullAdmin(me?.user.role, me?.user.email);
+  const myEmail = normalizeEmail(me?.user.email);
+  const myName = me?.user.name?.trim() || myEmail;
 
   const { data, isLoading, isError, error, refetch } =
     trpc.acompanhamentoRouter.getClientesSheet.useQuery(undefined, {
@@ -219,10 +212,6 @@ export default function AcompanhamentoClientesPage() {
   }, [data?.rows]);
 
   const filteredRows = useMemo(() => {
-    if (!isAdmin) {
-      return rows;
-    }
-
     return rows.filter((row) => {
       const responsible = normalizeEmail(row.responsibleEmail);
 
@@ -233,10 +222,14 @@ export default function AcompanhamentoClientesPage() {
         if (responsible && !isFinanceAdminEmail(responsible)) {
           return false;
         }
-        // inclui sem responsável + designados aos e-mails admin
       }
       if (responsibleFilter === "collaborators") {
         if (!isOfficeCollaboratorEmail(responsible)) {
+          return false;
+        }
+      }
+      if (responsibleFilter === "mine") {
+        if (responsible !== myEmail) {
           return false;
         }
       }
@@ -245,78 +238,19 @@ export default function AcompanhamentoClientesPage() {
         responsibleFilter !== "unassigned" &&
         responsibleFilter !== "admins" &&
         responsibleFilter !== "collaborators" &&
+        responsibleFilter !== "mine" &&
         responsible !== normalizeEmail(responsibleFilter)
       ) {
         return false;
-      }
-
-      if (statusFilter !== "all") {
-        const status = (row.status || "").toUpperCase();
-        if (statusFilter === "FINALIZADO" && status !== "FINALIZADO") {
-          return false;
-        }
-        if (statusFilter === "ATIVO" && status === "FINALIZADO") {
-          return false;
-        }
       }
 
       if (serviceFilter !== "all" && !(row.services ?? []).includes(serviceFilter)) {
         return false;
       }
 
-      if (paymentFilter !== "all") {
-        const paid = row.budgetPaid === "Pago";
-        const pending = row.budgetPaid === "Pendente";
-        if (paymentFilter === "pago" && !paid) {
-          return false;
-        }
-        if (paymentFilter === "pendente" && !pending) {
-          return false;
-        }
-        if (paymentFilter === "sem" && (paid || pending)) {
-          return false;
-        }
-      }
-
-      const hasBarcode = Boolean(row.barcode?.trim());
-      if (barcodeFilter === "with" && !hasBarcode) {
-        return false;
-      }
-      if (barcodeFilter === "without" && hasBarcode) {
-        return false;
-      }
-      if (barcodeFilter === "done" && !row.barcodeDone) {
-        return false;
-      }
-
-      const hasInterview = Boolean(row.interview?.trim());
-      if (interviewFilter === "with" && !hasInterview) {
-        return false;
-      }
-      if (interviewFilter === "without" && hasInterview) {
-        return false;
-      }
-
       return true;
     });
-  }, [
-    barcodeFilter,
-    interviewFilter,
-    isAdmin,
-    paymentFilter,
-    responsibleFilter,
-    rows,
-    serviceFilter,
-    statusFilter,
-  ]);
-
-  const hasActiveFilters =
-    responsibleFilter !== "all" ||
-    statusFilter !== "all" ||
-    serviceFilter !== "all" ||
-    paymentFilter !== "all" ||
-    barcodeFilter !== "all" ||
-    interviewFilter !== "all";
+  }, [myEmail, responsibleFilter, rows, serviceFilter]);
 
   async function handleDeleteRow(row: SheetClientRow) {
     const result = await deleteRow({ id: row.id });
@@ -401,6 +335,45 @@ export default function AcompanhamentoClientesPage() {
               throw error;
             }
           }}
+          toolbarMiddle={
+            <>
+              <CompactFilter
+                value={responsibleFilter}
+                onValueChange={setResponsibleFilter}
+                placeholder="Responsável"
+                className="w-[12rem]"
+              >
+                <SelectItem value="all">Responsável: todos</SelectItem>
+                <SelectItem value="unassigned">Sem responsável</SelectItem>
+                {isAdmin ? (
+                  <>
+                    <SelectItem value="admins">Admins (pool)</SelectItem>
+                    <SelectItem value="collaborators">Colaboradores</SelectItem>
+                    {assignees.map((assignee) => (
+                      <SelectItem key={assignee.id} value={assignee.email}>
+                        {assignee.name}
+                      </SelectItem>
+                    ))}
+                  </>
+                ) : (
+                  <SelectItem value="mine">{myName}</SelectItem>
+                )}
+              </CompactFilter>
+
+              <CompactFilter
+                value={serviceFilter}
+                onValueChange={(value) => setServiceFilter(value as ServiceFilter)}
+                placeholder="Serviço"
+              >
+                <SelectItem value="all">Serviço: todos</SelectItem>
+                {ACOMPANHAMENTO_SERVICE_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </CompactFilter>
+            </>
+          }
           toolbarActions={
             <Button
               type="button"
@@ -413,104 +386,6 @@ export default function AcompanhamentoClientesPage() {
               <Plus className="mr-2 h-4 w-4" />
               Adicionar cliente
             </Button>
-          }
-          toolbarExtra={
-            isAdmin ? (
-              <div className="rounded-xl border border-border/70 bg-muted/20 p-3">
-                <div className="flex flex-wrap items-end gap-3">
-                  <FilterSelect
-                    label="Responsável"
-                    value={responsibleFilter}
-                    onValueChange={setResponsibleFilter}
-                  >
-                    <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="unassigned">Sem responsável</SelectItem>
-                    <SelectItem value="admins">Admins (pool)</SelectItem>
-                    <SelectItem value="collaborators">Todos colaboradores</SelectItem>
-                    {assignees.map((assignee) => (
-                      <SelectItem key={assignee.id} value={assignee.email}>
-                        {assignee.name}
-                      </SelectItem>
-                    ))}
-                  </FilterSelect>
-
-                  <FilterSelect
-                    label="Status"
-                    value={statusFilter}
-                    onValueChange={(value) => setStatusFilter(value as StatusFilter)}
-                  >
-                    <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="ATIVO">Ativo</SelectItem>
-                    <SelectItem value="FINALIZADO">Finalizado</SelectItem>
-                  </FilterSelect>
-
-                  <FilterSelect
-                    label="Serviço"
-                    value={serviceFilter}
-                    onValueChange={(value) => setServiceFilter(value as ServiceFilter)}
-                  >
-                    <SelectItem value="all">Todos</SelectItem>
-                    {ACOMPANHAMENTO_SERVICE_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </FilterSelect>
-
-                  <FilterSelect
-                    label="Pagamento"
-                    value={paymentFilter}
-                    onValueChange={(value) => setPaymentFilter(value as PaymentFilter)}
-                  >
-                    <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="pago">Pagos</SelectItem>
-                    <SelectItem value="pendente">Pendentes</SelectItem>
-                    <SelectItem value="sem">Sem info</SelectItem>
-                  </FilterSelect>
-
-                  <FilterSelect
-                    label="Barcode"
-                    value={barcodeFilter}
-                    onValueChange={(value) => setBarcodeFilter(value as PresenceFilter)}
-                  >
-                    <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="with">Com barcode</SelectItem>
-                    <SelectItem value="without">Sem barcode</SelectItem>
-                    <SelectItem value="done">Barcode feito</SelectItem>
-                  </FilterSelect>
-
-                  <FilterSelect
-                    label="Entrevista"
-                    value={interviewFilter}
-                    onValueChange={(value) =>
-                      setInterviewFilter(value as "all" | "with" | "without")
-                    }
-                  >
-                    <SelectItem value="all">Todas</SelectItem>
-                    <SelectItem value="with">Com data</SelectItem>
-                    <SelectItem value="without">Sem data</SelectItem>
-                  </FilterSelect>
-
-                  {hasActiveFilters ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="h-10"
-                      onClick={() => {
-                        setResponsibleFilter("all");
-                        setStatusFilter("all");
-                        setServiceFilter("all");
-                        setPaymentFilter("all");
-                        setBarcodeFilter("all");
-                        setInterviewFilter("all");
-                      }}
-                    >
-                      Limpar filtros
-                    </Button>
-                  ) : null}
-                </div>
-              </div>
-            ) : null
           }
         />
       </div>

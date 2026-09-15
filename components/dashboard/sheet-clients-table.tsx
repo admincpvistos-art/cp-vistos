@@ -408,7 +408,7 @@ export function SheetClientsTable({
   onSaveComment,
   commentPending,
   toolbarActions,
-  toolbarExtra,
+  toolbarMiddle,
   banner,
   isLoading,
   errorMessage,
@@ -427,8 +427,8 @@ export function SheetClientsTable({
   onSaveComment?: (rowId: string, comment: string) => Promise<void>;
   commentPending?: boolean;
   toolbarActions?: ReactNode;
-  /** Linha extra abaixo da busca/ordenação (ex.: filtros do admin). */
-  toolbarExtra?: ReactNode;
+  /** Conteúdo entre ordenação e ações (ex.: filtros compactos). */
+  toolbarMiddle?: ReactNode;
   banner?: ReactNode;
   isLoading?: boolean;
   errorMessage?: string | null;
@@ -497,7 +497,7 @@ export function SheetClientsTable({
   return (
     <div>
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between mb-4">
-        <div className="flex flex-col sm:flex-row gap-3 sm:items-center min-w-0">
+        <div className="flex flex-col sm:flex-row gap-3 sm:items-center min-w-0 flex-wrap">
           <div className="h-12 flex items-center gap-2 border border-muted/70 rounded-xl transition duration-300 bg-background px-3 py-2 text-sm group focus-within:border-primary hover:border-border w-full sm:max-w-xs">
             <Search className="w-5 h-5 text-border flex-shrink-0" strokeWidth={1.5} />
             <div className="w-[2px] flex-shrink-0 h-full bg-muted rounded-full" />
@@ -526,11 +526,10 @@ export function SheetClientsTable({
               </>
             )}
           </Button>
+          {toolbarMiddle}
         </div>
         {toolbarActions ? <div className="sm:ml-auto shrink-0">{toolbarActions}</div> : null}
       </div>
-
-      {toolbarExtra ? <div className="mb-4">{toolbarExtra}</div> : null}
 
       {banner}
 
