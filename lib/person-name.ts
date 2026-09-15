@@ -11,6 +11,32 @@ export function namesMatch(left: string, right: string) {
   return normalizePersonName(left) === normalizePersonName(right);
 }
 
+/**
+ * Conta vs formulário DS-160: o nome legal no formulário pode ter mais (ou
+ * menos) partes que o nome cadastrado. Aceita se um conjunto de tokens
+ * contém o outro após normalização.
+ */
+export function namesCompatible(formFullName: string, accountName: string) {
+  if (namesMatch(formFullName, accountName)) {
+    return true;
+  }
+
+  const formTokens = normalizePersonName(formFullName).split(" ").filter(Boolean);
+  const accountTokens = normalizePersonName(accountName).split(" ").filter(Boolean);
+
+  if (formTokens.length === 0 || accountTokens.length === 0) {
+    return true;
+  }
+
+  const formSet = new Set(formTokens);
+  const accountSet = new Set(accountTokens);
+
+  const accountInForm = accountTokens.every((token) => formSet.has(token));
+  const formInAccount = formTokens.every((token) => accountSet.has(token));
+
+  return accountInForm || formInAccount;
+}
+
 export function cpfDigits(value: string | null | undefined) {
   return (value ?? "").replace(/\D/g, "");
 }

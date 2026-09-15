@@ -144,7 +144,9 @@ export function PersonalDataForm({ personalDataForm, profileId, isEditing }: Pro
       warName: personalDataForm.warName ? personalDataForm.warName : "",
       fullNameNative: personalDataForm.fullNameNative ? personalDataForm.fullNameNative : "",
       otherNamesConfirmation: personalDataForm.otherNamesConfirmation ? "Sim" : "Não",
-      otherNames: personalDataForm.otherNames.length > 0 ? personalDataForm.otherNames : [],
+      otherNames: personalDataForm.otherNames?.length
+        ? personalDataForm.otherNames
+        : [],
       sex: personalDataForm.sex ? personalDataForm.sex : undefined,
       maritalStatus: personalDataForm.maritalStatus ? personalDataForm.maritalStatus : undefined,
       birthDate: personalDataForm.birthDate ? personalDataForm.birthDate : undefined,
@@ -189,7 +191,7 @@ export function PersonalDataForm({ personalDataForm, profileId, isEditing }: Pro
     onError: (error) => {
       console.error(error.data);
 
-      if (error.data && error.data.code === "NOT_FOUND") {
+      if (error.message) {
         toast.error(error.message);
       } else {
         toast.error("Erro ao enviar as informações do formulário, tente novamente mais tarde");
@@ -210,7 +212,7 @@ export function PersonalDataForm({ personalDataForm, profileId, isEditing }: Pro
     onError: (error) => {
       console.error(error.data);
 
-      if (error.data && error.data.code === "NOT_FOUND") {
+      if (error.message) {
         toast.error(error.message);
       } else {
         toast.error("Ocorreu um erro ao salvar os dados");

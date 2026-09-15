@@ -16,7 +16,7 @@ import {
 
 import { isUserAuthedProcedure, router } from "../trpc";
 import prisma from "@/lib/prisma";
-import { cpfsMatch, namesMatch } from "@/lib/person-name";
+import { cpfsMatch, namesCompatible } from "@/lib/person-name";
 import {
   ACOMPANHAMENTO_HEADERS,
   servicesFromSignupFlags,
@@ -49,11 +49,11 @@ async function assertTitularPassportIdentity(
     return;
   }
 
-  if (!namesMatch(fullName, profile.user.name)) {
+  if (!namesCompatible(fullName, profile.user.name)) {
     throw new TRPCError({
       code: "BAD_REQUEST",
       message:
-        "Nome completo do titular deve coincidir com o cadastro da conta.",
+        "Nome completo do titular deve coincidir com o cadastro da conta (o formulário pode incluir nomes do meio).",
     });
   }
 

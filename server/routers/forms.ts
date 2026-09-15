@@ -7,7 +7,11 @@ import { NotificationStatusForm, Role, Status, StatusForm } from "@prisma/client
 import isEmail from "validator/lib/isEmail";
 import { differenceInYears, parse } from "date-fns";
 import { fromZonedTime } from "date-fns-tz";
-import { cpfsMatch, namesMatch, normalizeTravelCompanion } from "@/lib/person-name";
+import {
+  cpfsMatch,
+  namesCompatible,
+  normalizeTravelCompanion,
+} from "@/lib/person-name";
 import { buildLegacyPostalAddress } from "@/lib/form-postal-address";
 
 function isFormLocked(statusForm: StatusForm, formLocked: boolean | null) {
@@ -77,11 +81,11 @@ async function assertTitularIdentity(
     return;
   }
 
-  if (!namesMatch(`${firstName} ${lastName}`, profile.user.name)) {
+  if (!namesCompatible(`${firstName} ${lastName}`, profile.user.name)) {
     throw new TRPCError({
       code: "BAD_REQUEST",
       message:
-        "Nome e sobrenome do titular devem coincidir com o cadastro da conta.",
+        "Nome e sobrenome do titular devem coincidir com o cadastro da conta (o formulário pode incluir nomes do meio).",
     });
   }
 
@@ -366,7 +370,7 @@ export const formsRouter = router({
           warName: z.string().optional(),
           fullNameNative: z.string().optional(),
           otherNamesConfirmation: z.enum(["Sim", "Não"]),
-          otherNames: z.array(z.string().min(1)).optional(),
+          otherNames: z.array(z.string().min(1)).nullish(),
           sex: z.string().min(1),
           maritalStatus: z.string().min(1),
           birthDate: z.date(),
@@ -461,7 +465,7 @@ export const formsRouter = router({
         warName,
         fullNameNative,
         otherNamesConfirmation,
-        otherNames,
+        otherNames: otherNamesRaw,
         sex,
         maritalStatus,
         birthDate,
@@ -478,6 +482,7 @@ export const formsRouter = router({
         USSocialSecurityNumber,
         USTaxpayerIDNumber,
       } = opts.input;
+      const otherNames = otherNamesRaw ?? undefined;
 
       await assertTitularIdentity(profileId, firstName, lastName, cpf);
 
@@ -604,7 +609,7 @@ export const formsRouter = router({
         warName: z.string().nullable().optional(),
         fullNameNative: z.string().nullable().optional(),
         otherNamesConfirmation: z.enum(["Sim", "Não"]).nullable(),
-        otherNames: z.array(z.string().min(1)).optional(),
+        otherNames: z.array(z.string().min(1)).nullish(),
         sex: z.string().optional(),
         maritalStatus: z.string().optional(),
         birthDate: z.date().nullable(),
@@ -633,7 +638,7 @@ export const formsRouter = router({
         warName,
         fullNameNative,
         otherNamesConfirmation,
-        otherNames,
+        otherNames: otherNamesRaw,
         sex,
         maritalStatus,
         birthDate,
@@ -650,6 +655,7 @@ export const formsRouter = router({
         USSocialSecurityNumber,
         USTaxpayerIDNumber,
       } = opts.input;
+      const otherNames = otherNamesRaw ?? undefined;
 
       const profile = await prisma.profile.findUnique({
         where: {
@@ -674,7 +680,6 @@ export const formsRouter = router({
         });
       }
 
-      await assertTitularIdentity(profileId, firstName, lastName, cpf);
       await syncFormPersonName(profileId, firstName, lastName);
 
       await prisma.form.update({
