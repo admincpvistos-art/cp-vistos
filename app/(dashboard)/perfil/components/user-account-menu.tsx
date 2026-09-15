@@ -5,6 +5,7 @@ import { useState, type ReactNode } from "react";
 import { useSession, signOut } from "next-auth/react";
 import {
   Archive,
+  BarChart3,
   ChevronDown,
   Code2,
   Database,
@@ -60,6 +61,11 @@ const officeCollaboratorTools = [
     href: "/perfil/acompanhamento-clientes",
     label: "Acompanhamento Clientes",
     icon: Table2,
+  },
+  {
+    href: "/perfil/gestao-estatistica",
+    label: "Gestão Estatística",
+    icon: BarChart3,
   },
   { href: "/perfil/prospects", label: "Prospects", icon: Contact },
   { href: "/perfil/arquivados", label: "Arquivados", icon: Archive },
@@ -320,6 +326,11 @@ export function UserAccountMenu({ onBrand = false }: { onBrand?: boolean }) {
                     href="/perfil/acompanhamento-clientes"
                     label="Acompanhamento Clientes"
                     icon={Table2}
+                  />
+                  <ToolItem
+                    href="/perfil/gestao-estatistica"
+                    label="Gestão Estatística"
+                    icon={BarChart3}
                   />
                   <ToolItem
                     href="/perfil/conferir-formularios"

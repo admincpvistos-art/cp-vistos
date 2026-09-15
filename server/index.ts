@@ -12,6 +12,7 @@ import { acompanhamentoRouter } from "./routers/acompanhamento";
 import { arquivadosRouter } from "./routers/arquivados";
 import { prospectsRouter } from "./routers/prospects";
 import { estaRouter } from "./routers/esta";
+import { gestaoEstatisticaRouter } from "./routers/gestao-estatistica";
 
 export const appRouter = router({
   userRouter,
@@ -27,6 +28,7 @@ export const appRouter = router({
   arquivadosRouter,
   prospectsRouter,
   estaRouter,
+  gestaoEstatisticaRouter,
 });
 
 export type AppRouter = typeof appRouter;
