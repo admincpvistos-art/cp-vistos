@@ -176,6 +176,8 @@ model AcompanhamentoClient {
   archivedAt   DateTime?
   /// Quem criou a linha: e-mail da equipe, "self" (cliente) ou "system" (importação).
   createdByEmail String?
+  /// Colaborador/admin responsável pelo cliente (e-mail). Só admin altera.
+  responsibleEmail String?
 
   userId String? @unique @db.ObjectId
   user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -280,6 +282,7 @@ model Profile {
   responsibleCpf   String?
   address          String?
   CASVDate         DateTime?
+  casvTime         String?
   interviewDate    DateTime?
   interviewTime    String?
   visaType         VisaType
@@ -291,6 +294,7 @@ model Profile {
   passport         String?
   taxDate          DateTime?
   meetingDate      DateTime?
+  meetingTime      String?
   issuanceDate     DateTime?
   expireDate       DateTime?
   statusForm       StatusForm    @default(awaiting)

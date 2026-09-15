@@ -110,7 +110,11 @@ export type AreaMember = {
   statusDS: StatusDS | null;
   visaStatus: VisaStatus | null;
   CASVDate: Date | null;
+  casvTime: string | null;
   interviewDate: Date | null;
+  interviewTime: string | null;
+  meetingDate: Date | null;
+  meetingTime: string | null;
   DSNumber: string | null;
   protocol: string | null;
   expireDate: Date | null;
@@ -398,7 +402,11 @@ async function getGroupServiceMembers(
         statusDS: profile?.statusDS ?? null,
         visaStatus: profile?.visaStatus ?? null,
         CASVDate: profile?.CASVDate ?? null,
+        casvTime: profile?.casvTime ?? null,
         interviewDate: profile?.interviewDate ?? null,
+        interviewTime: profile?.interviewTime ?? null,
+        meetingDate: profile?.meetingDate ?? null,
+        meetingTime: profile?.meetingTime ?? null,
         DSNumber: profile?.DSNumber ?? null,
         protocol: profile?.protocol ?? null,
         expireDate: profile?.expireDate ?? null,

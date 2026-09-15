@@ -2372,6 +2372,7 @@ export const userRouter = router({
           profileAddress: z.string(),
           birthDate: z.string().optional(),
           CASVDate: z.string().optional(),
+          casvTime: z.string().optional(),
           taxDate: z.string().optional(),
           shipping: z
             .enum(["A Verificar", "Retirada", "SEDEX", "C-Retirada", "C-SEDEX", ""], {
@@ -2479,6 +2480,7 @@ export const userRouter = router({
         expireDate,
         DSNumber,
         CASVDate,
+        casvTime,
         interviewDate,
         interviewTime,
         taxDate,
@@ -2649,6 +2651,7 @@ export const userRouter = router({
           expireDate: profileExpireDate,
           DSValid: profileExpireDate ?? (profileIssuanceDate ? expireDateFromIssued(profileIssuanceDate) : undefined),
           CASVDate: profileCASVDate,
+          casvTime,
           taxDate: profileTaxDate,
           shipping,
           interviewDate: profileInterviewDate,

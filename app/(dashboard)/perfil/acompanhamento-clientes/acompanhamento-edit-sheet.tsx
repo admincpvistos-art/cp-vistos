@@ -32,6 +32,7 @@ import {
   type AcompanhamentoRecord,
   type AcompanhamentoService,
 } from "@/lib/acompanhamento-types";
+import { combineSheetDateTime, splitSheetDateTime } from "@/lib/sheet-datetime";
 import { formatRegistrationSignature } from "@/lib/staff-access";
 import { InterviewDocsPanel } from "./interview-docs-panel";
 import { AcompanhamentoArchiveAction } from "./acompanhamento-archive-action";
@@ -51,6 +52,7 @@ type SheetForm = Omit<
   | "estaStatusForm"
 > & {
   accountFields: AcompanhamentoAccountFields;
+  responsibleEmail: string;
 };
 
 const EMPTY: SheetForm = {
@@ -80,6 +82,7 @@ const EMPTY: SheetForm = {
   barcodeDone: false,
   sheetComment: "",
   services: [],
+  responsibleEmail: "",
   accountFields: emptyAccountFields(),
 };
 
@@ -102,6 +105,36 @@ function Field({
   );
 }
 
+function DateTimeField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const { date, time } = splitSheetDateTime(value);
+
+  return (
+    <div className="space-y-1.5">
+      <Label>{label}</Label>
+      <div className="grid grid-cols-[1fr_7.5rem] gap-2">
+        <Input
+          value={date}
+          placeholder="dd/MM/yyyy"
+          onChange={(event) => onChange(combineSheetDateTime(event.target.value, time))}
+        />
+        <Input
+          type="time"
+          value={time}
+          onChange={(event) => onChange(combineSheetDateTime(date, event.target.value))}
+        />
+      </div>
+    </div>
+  );
+}
+
 function formatCpf(event: ChangeEvent<HTMLInputElement>) {
   let value = event.target.value.replace(/[^\d]/g, "");
   value = value.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
@@ -116,11 +149,13 @@ export function AcompanhamentoEditSheet({
   rowId,
   creating = false,
   canArchive = true,
+  canAssignResponsible = false,
   onClose,
 }: {
   rowId: string | null;
   creating?: boolean;
   canArchive?: boolean;
+  canAssignResponsible?: boolean;
   onClose: () => void;
 }) {
   const utils = trpc.useUtils();
@@ -131,6 +166,12 @@ export function AcompanhamentoEditSheet({
     { id: rowId ?? "" },
     { enabled: Boolean(rowId) && !creating, retry: false },
   );
+
+  const { data: assigneesData } = trpc.acompanhamentoRouter.listAssignees.useQuery(undefined, {
+    enabled: open,
+    retry: false,
+  });
+  const assignees = assigneesData?.assignees ?? [];
 
   const { mutate: createRow, isPending: isCreating } =
     trpc.acompanhamentoRouter.createRow.useMutation({
@@ -199,13 +240,18 @@ export function AcompanhamentoEditSheet({
       formStep: _formStep,
       registeredAt: _registeredAt,
       createdByEmail: _createdByEmail,
+      estaProfileId: _estaProfileId,
+      estaFormStep: _estaFormStep,
+      estaStatusForm: _estaStatusForm,
       accountFields,
+      responsibleEmail,
       ...rest
     } = data.row;
 
     setForm({
       ...rest,
       services: Array.isArray(rest.services) ? rest.services : [],
+      responsibleEmail: responsibleEmail ?? "",
       accountFields: accountFields ?? emptyAccountFields({
         email: rest.email,
         cel: rest.phone,
@@ -287,6 +333,7 @@ export function AcompanhamentoEditSheet({
   const isPending = isCreating || isUpdating;
   const payload = {
     ...form,
+    responsibleEmail: form.responsibleEmail.trim() || null,
     accountFields: form.accountFields,
   };
 
@@ -412,12 +459,47 @@ export function AcompanhamentoEditSheet({
                 </p>
               </div>
             </div>
-            <Field label="CASV" value={form.casv} onChange={(value) => setSheet("casv", value)} />
-            <Field label="DT. ENTREV." value={form.interview} onChange={(value) => setSheet("interview", value)} />
-            <Field label="REUNIÃO" value={form.meeting} onChange={(value) => setSheet("meeting", value)} />
+            <DateTimeField label="CASV" value={form.casv} onChange={(value) => setSheet("casv", value)} />
+            <DateTimeField
+              label="DT. ENTREV."
+              value={form.interview}
+              onChange={(value) => setSheet("interview", value)}
+            />
+            <DateTimeField
+              label="REUNIÃO"
+              value={form.meeting}
+              onChange={(value) => setSheet("meeting", value)}
+            />
             <Field label="ENVIO" value={form.shipping} onChange={(value) => setSheet("shipping", value)} />
             <Field label="TIPO" value={form.tipo} onChange={(value) => setSheet("tipo", value)} />
             <Field label="RESP." value={form.resp} onChange={(value) => setSheet("resp", value)} />
+            <div className="space-y-1.5">
+              <Label>Responsável</Label>
+              <Select
+                value={form.responsibleEmail || "__none__"}
+                disabled={!canAssignResponsible}
+                onValueChange={(value) =>
+                  setSheet("responsibleEmail", value === "__none__" ? "" : value)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sem responsável" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Sem responsável</SelectItem>
+                  {assignees.map((assignee) => (
+                    <SelectItem key={assignee.id} value={assignee.email}>
+                      {assignee.name} ({assignee.email})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {!canAssignResponsible ? (
+                <p className="text-xs text-muted-foreground">
+                  Visível para a equipe; somente administrador pode alterar.
+                </p>
+              ) : null}
+            </div>
             <Field label="PGTO TAXA" value={form.tax} onChange={(value) => setSheet("tax", value)} />
             <Field label="DS-160" value={form.ds160} onChange={(value) => setSheet("ds160", value)} />
             <Field label="ALIMTO" value={form.alimto} onChange={(value) => setSheet("alimto", value)} />

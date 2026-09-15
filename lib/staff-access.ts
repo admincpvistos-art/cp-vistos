@@ -70,6 +70,14 @@ export function canArchiveAcompanhamento(
   return isFullAdmin(role, email);
 }
 
+/** Designar responsável no Acompanhamento — mesma regra do arquivar. */
+export function canAssignAcompanhamentoResponsible(
+  role?: string | null,
+  email?: string | null,
+) {
+  return isFullAdmin(role, email);
+}
+
 export function canAccessFinance(role?: string | null, email?: string | null) {
   return isFullAdmin(role, email) && isFinanceAdminEmail(email);
 }

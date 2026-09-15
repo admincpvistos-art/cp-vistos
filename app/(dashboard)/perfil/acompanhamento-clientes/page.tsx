@@ -8,7 +8,7 @@ import { Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SheetClientsTable, type SheetClientRow } from "@/components/dashboard/sheet-clients-table";
 import { trpc } from "@/lib/trpc-client";
-import { canAccessAcompanhamento, canArchiveAcompanhamento } from "@/lib/staff-access";
+import { canAccessAcompanhamento, canArchiveAcompanhamento, canAssignAcompanhamentoResponsible } from "@/lib/staff-access";
 import { AcompanhamentoEditSheet } from "./acompanhamento-edit-sheet";
 
 export default function AcompanhamentoClientesPage() {
@@ -21,6 +21,7 @@ export default function AcompanhamentoClientesPage() {
   });
   const canAccess = canAccessAcompanhamento(me?.user.role, me?.user.email);
   const canArchive = canArchiveAcompanhamento(me?.user.role, me?.user.email);
+  const canAssignResponsible = canAssignAcompanhamentoResponsible(me?.user.role, me?.user.email);
 
   const { data, isLoading, isError, error, refetch } =
     trpc.acompanhamentoRouter.getClientesSheet.useQuery(undefined, {
@@ -182,6 +183,7 @@ export default function AcompanhamentoClientesPage() {
         rowId={editingId}
         creating={creating}
         canArchive={canArchive}
+        canAssignResponsible={canAssignResponsible}
         onClose={() => {
           setEditingId(null);
           setCreating(false);

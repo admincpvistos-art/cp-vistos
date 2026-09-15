@@ -26,6 +26,11 @@ import type {
 } from "@/lib/acompanhamento-types";
 import { emptyAccountFields, isAcompanhamentoService } from "@/lib/acompanhamento-types";
 import {
+  formatSheetDateTime,
+  parseSheetDateOnly,
+  timeFromSheetValue,
+} from "@/lib/sheet-datetime";
+import {
   ARQUIVADOS_CATEGORY_LABEL,
   SERVICE_TO_ARQUIVADOS_CATEGORY,
 } from "@/lib/arquivados-categories";
@@ -130,16 +135,7 @@ function formatDate(value: Date | null | undefined) {
 }
 
 function parseSheetDate(value: string) {
-  if (!value || value.length < 8) {
-    return null;
-  }
-
-  const parsed = parse(value, "dd/MM/yyyy", new Date());
-  if (!isValid(parsed)) {
-    return null;
-  }
-
-  return fromZonedTime(parsed, "America/Sao_Paulo");
+  return parseSheetDateOnly(value);
 }
 
 function shippingLabel(value: Shipping | null | undefined, fallback = "") {
@@ -1156,6 +1152,7 @@ function buildRecord(
     sheetComment?: string | null;
     services?: string[] | null;
     createdByEmail?: string | null;
+    responsibleEmail?: string | null;
     createdAt?: Date | null;
     userId: string | null;
     user: (User & {
@@ -1191,9 +1188,14 @@ function buildRecord(
     barcodeIssued: formatDate(issued) || cell(cells, COL.barcodeDate),
     barcodeExpire: formatDate(expire),
     barcodeDone: record.extraDate === "done",
-    casv: formatDate(profile?.CASVDate) || cell(cells, COL.casv),
-    interview: formatDate(profile?.interviewDate) || cell(cells, COL.interview),
-    meeting: formatDate(profile?.meetingDate) || cell(cells, COL.meeting),
+    casv:
+      formatSheetDateTime(profile?.CASVDate, profile?.casvTime) || cell(cells, COL.casv),
+    interview:
+      formatSheetDateTime(profile?.interviewDate, profile?.interviewTime) ||
+      cell(cells, COL.interview),
+    meeting:
+      formatSheetDateTime(profile?.meetingDate, profile?.meetingTime) ||
+      cell(cells, COL.meeting),
     shipping: cell(cells, COL.shipping) || shippingLabel(profile?.shipping),
     tipo: cell(cells, COL.tipo) || visaTypeLabel(profile?.visaType),
     resp: record.resp || cell(cells, COL.resp),
@@ -1212,13 +1214,16 @@ function buildRecord(
     status: deriveAcompanhamentoSheetStatus({
       barcode: profile?.DSNumber || cell(cells, COL.barcode),
       barcodeDone: record.extraDate === "done",
-      interview: formatDate(profile?.interviewDate) || cell(cells, COL.interview),
+      interview:
+        formatSheetDateTime(profile?.interviewDate, profile?.interviewTime) ||
+        cell(cells, COL.interview),
       statusHint: record.statusLabel || cell(cells, COL.status),
     }),
     sheetComment: record.sheetComment ?? "",
     services: resolveServices(record.services, user),
     registeredAt,
     createdByEmail: record.createdByEmail || user?.createdByEmail || null,
+    responsibleEmail: record.responsibleEmail?.trim().toLowerCase() || null,
     accountFields: buildAccountFields(user),
     estaProfileId: estaProfile?.id ?? null,
     estaFormStep: estaProfile?.formStep ?? 0,
@@ -1568,6 +1573,7 @@ export type AcompanhamentoUpdateInput = {
   sheetComment: string;
   services: AcompanhamentoService[];
   accountFields?: AcompanhamentoAccountFields | null;
+  responsibleEmail?: string | null;
 };
 
 export type AcompanhamentoCreateInput = Omit<AcompanhamentoUpdateInput, "id"> & {
@@ -1686,6 +1692,7 @@ export async function createAcompanhamentoRecord(input: AcompanhamentoCreateInpu
     tax: toUpperDisplayOrEmpty(input.tax),
     ds160: toUpperDisplayOrEmpty(input.ds160),
     sheetComment: toUpperDisplayOrEmpty(input.sheetComment),
+    responsibleEmail: input.responsibleEmail?.trim().toLowerCase() || null,
     accountFields: input.accountFields
       ? {
           ...input.accountFields,
@@ -1716,6 +1723,7 @@ export async function createAcompanhamentoRecord(input: AcompanhamentoCreateInpu
       sheetComment: normalizedInput.sheetComment.trim() || null,
       services,
       createdByEmail: normalizedInput.createdByEmail?.trim().toLowerCase() || null,
+      responsibleEmail: normalizedInput.responsibleEmail || null,
     },
   });
 
@@ -1851,8 +1859,11 @@ export async function updateAcompanhamentoRecord(input: AcompanhamentoUpdateInpu
     expireDate: expire,
     DSValid: expire ?? expireDateFromIssued(new Date()),
     CASVDate: parseSheetDate(input.casv),
+    casvTime: timeFromSheetValue(input.casv) || null,
     interviewDate: parseSheetDate(input.interview),
+    interviewTime: timeFromSheetValue(input.interview) || null,
     meetingDate: parseSheetDate(input.meeting),
+    meetingTime: timeFromSheetValue(input.meeting) || null,
     shipping: parseShipping(shipping),
     visaType: parseVisaType(tipo),
     statusDS: parseStatusDs(ds160),
@@ -1909,6 +1920,7 @@ export async function updateAcompanhamentoRecord(input: AcompanhamentoUpdateInpu
       extraDate: input.barcodeDone ? "done" : null,
       sheetComment: sheetComment || null,
       services,
+      responsibleEmail: input.responsibleEmail?.trim().toLowerCase() || null,
     },
   });
 

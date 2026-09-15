@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
+import { Role } from "@prisma/client";
 
 import { acompanhamentoStaffProcedure, router } from "../trpc";
 import prisma from "@/lib/prisma";
@@ -13,7 +14,10 @@ import {
   updateAcompanhamentoSheetComment,
 } from "@/server/acompanhamento-sheet";
 import { ACOMPANHAMENTO_SERVICE_OPTIONS } from "@/lib/acompanhamento-types";
-import { canArchiveAcompanhamento } from "@/lib/staff-access";
+import {
+  canArchiveAcompanhamento,
+  canAssignAcompanhamentoResponsible,
+} from "@/lib/staff-access";
 
 const serviceValues = ACOMPANHAMENTO_SERVICE_OPTIONS.map((option) => option.value) as [
   (typeof ACOMPANHAMENTO_SERVICE_OPTIONS)[number]["value"],
@@ -62,6 +66,7 @@ const rowFieldsSchema = z.object({
   sheetComment: z.string(),
   services: z.array(z.enum(serviceValues)),
   accountFields: accountFieldsSchema.nullable().optional(),
+  responsibleEmail: z.string().nullable().optional(),
 });
 
 const updateSchema = rowFieldsSchema.extend({
@@ -95,6 +100,24 @@ export const acompanhamentoRouter = router({
 
       return { row };
     }),
+
+  listAssignees: acompanhamentoStaffProcedure.query(async () => {
+    const users = await prisma.user.findMany({
+      where: { role: { in: [Role.ADMIN, Role.COLLABORATOR] } },
+      select: { id: true, name: true, email: true, role: true },
+      orderBy: { name: "asc" },
+    });
+
+    return {
+      assignees: users.map((user) => ({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      })),
+    };
+  }),
+
   createRow: acompanhamentoStaffProcedure.input(rowFieldsSchema).mutation(async ({ input, ctx }) => {
     if (!input.name.trim()) {
       throw new TRPCError({
@@ -103,9 +126,15 @@ export const acompanhamentoRouter = router({
       });
     }
 
+    const canAssign = canAssignAcompanhamentoResponsible(ctx.staff.role, ctx.staff.email);
+    const responsibleEmail = canAssign
+      ? input.responsibleEmail?.trim().toLowerCase() || null
+      : null;
+
     try {
       const row = await createAcompanhamentoRecord({
         ...input,
+        responsibleEmail,
         createdByEmail: ctx.staff.email,
       });
       return { row };
@@ -116,9 +145,31 @@ export const acompanhamentoRouter = router({
       });
     }
   }),
-  updateRow: acompanhamentoStaffProcedure.input(updateSchema).mutation(async ({ input }) => {
+  updateRow: acompanhamentoStaffProcedure.input(updateSchema).mutation(async ({ input, ctx }) => {
     try {
-      const row = await updateAcompanhamentoRecord(input);
+      const existing = await getAcompanhamentoRecord(input.id);
+      if (!existing) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Cliente não encontrado no cadastro",
+        });
+      }
+
+      const canAssign = canAssignAcompanhamentoResponsible(ctx.staff.role, ctx.staff.email);
+      const nextResponsible = input.responsibleEmail?.trim().toLowerCase() || null;
+      const prevResponsible = existing.responsibleEmail?.trim().toLowerCase() || null;
+
+      if (!canAssign && nextResponsible !== prevResponsible) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Somente administrador pode alterar o responsável",
+        });
+      }
+
+      const row = await updateAcompanhamentoRecord({
+        ...input,
+        responsibleEmail: canAssign ? nextResponsible : prevResponsible,
+      });
 
       if (!row) {
         throw new TRPCError({

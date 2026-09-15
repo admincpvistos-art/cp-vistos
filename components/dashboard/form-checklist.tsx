@@ -30,7 +30,11 @@ export type FormChecklistItem = {
   statusForm: StatusForm;
   statusDS: StatusDS | null;
   CASVDate: Date | null;
+  casvTime?: string | null;
   interviewDate: Date | null;
+  interviewTime?: string | null;
+  meetingDate?: Date | null;
+  meetingTime?: string | null;
   DSNumber: string | null;
   protocol?: string | null;
   expireDate?: Date | null;
@@ -45,6 +49,15 @@ export type FormChecklistItem = {
     fileUrl: string;
   }[];
 };
+
+function formatScheduleDateTime(date: Date | null | undefined, time?: string | null) {
+  if (!date) {
+    return "--/--/----";
+  }
+  const datePart = format(new Date(date), "dd/MM/yyyy");
+  const timePart = (time ?? "").trim().slice(0, 5);
+  return timePart ? `${datePart} ${timePart}` : datePart;
+}
 
 interface Props {
   variant: "visa" | "passport";
@@ -243,10 +256,10 @@ export function FormChecklist({ variant, items }: Props) {
                 {variant === "visa" ? (
                   <>
                     <td className="px-4 py-4 text-sm font-medium text-foreground">
-                      {item.CASVDate ? format(new Date(item.CASVDate), "dd/MM/yyyy") : "--/--/----"}
+                      {formatScheduleDateTime(item.CASVDate, item.casvTime)}
                     </td>
                     <td className="px-4 py-4 text-sm font-medium text-foreground">
-                      {item.interviewDate ? format(new Date(item.interviewDate), "dd/MM/yyyy") : "--/--/----"}
+                      {formatScheduleDateTime(item.interviewDate, item.interviewTime)}
                     </td>
                     <td className="px-4 py-4 text-sm font-medium text-foreground">{item.DSNumber || "---"}</td>
                     <td className="px-4 py-4">

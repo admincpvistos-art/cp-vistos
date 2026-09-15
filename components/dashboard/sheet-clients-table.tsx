@@ -565,6 +565,10 @@ export function SheetClientsTable({
                         className={cn(
                           "text-center text-foreground whitespace-nowrap",
                           column.key === "barcodeIssued" && "min-w-[10.5rem]",
+                          (column.key === "casv" ||
+                            column.key === "interview" ||
+                            column.key === "meeting") &&
+                            "min-w-[9.5rem]",
                           column.key === "services" && "min-w-[5.5rem]",
                           column.key === "delete" && "w-12 min-w-12 px-1",
                           index === 0 &&

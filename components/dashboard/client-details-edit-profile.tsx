@@ -52,6 +52,11 @@ const formSchema = z
     }),
     birthDate: z.string({ required_error: "Data de nascimento é obrigatório" }).length(10, "Data inválida").optional(),
     CASVDate: z.string({ required_error: "Data do CASV é obrigatória" }).optional(),
+    casvTime: z
+      .string({
+        invalid_type_error: "Horário do CASV inválido",
+      })
+      .optional(),
     taxDate: z.string({ required_error: "Data da taxa é obrigatória" }).optional(),
     shipping: z
       .enum(["A Verificar", "Retirada", "SEDEX", "C-Retirada", "C-SEDEX", ""], {
@@ -215,6 +220,7 @@ export function ClientDetailsEditProfile({ handleClose }: Props) {
       profileName: client?.name ?? "",
       birthDate: client?.birthDate ? format(client.birthDate, "dd/MM/yyyy") : "",
       CASVDate: client?.CASVDate ? format(client.CASVDate, "dd/MM/yyyy") : "",
+      casvTime: client?.casvTime ?? "",
       taxDate: client?.taxDate ? format(client.taxDate, "dd/MM/yyyy") : "",
       shipping:
         client?.shipping === "pickup"
@@ -1028,6 +1034,36 @@ export function ClientDetailsEditProfile({ handleClose }: Props) {
                           </PopoverContent>
                         </Popover>
                       </div>
+                    </FormControl>
+
+                    <FormMessage className="font-normal text-destructive" />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name={`casvTime`}
+                render={({ field }) => (
+                  <FormItem className="flex flex-col gap-2 sm:order-2 xl:order-3">
+                    <FormLabel>Horário do CASV</FormLabel>
+
+                    <FormControl>
+                      <Input
+                        className="!mt-auto"
+                        placeholder="Insira o horário do CASV"
+                        maxLength={5}
+                        ref={field.ref}
+                        name={field.name}
+                        value={field.value}
+                        onBlur={field.onBlur}
+                        disabled={isPending}
+                        onChange={(event) => {
+                          const newValue = handleTime(event);
+
+                          form.setValue("casvTime", newValue);
+                        }}
+                      />
                     </FormControl>
 
                     <FormMessage className="font-normal text-destructive" />

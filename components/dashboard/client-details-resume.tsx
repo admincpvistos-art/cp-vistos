@@ -499,7 +499,11 @@ export function ClientDetailsResume({ handleClose }: Props) {
                 <span className="text-xs font-medium text-foreground/50">Data CASV</span>
 
                 <span className="text-base font-medium text-foreground line-clamp-2">
-                  {client.CASVDate ? format(client.CASVDate, "dd/MM/yyyy") : "--/--/----"}
+                  {client.CASVDate
+                    ? client.casvTime
+                      ? `${format(client.CASVDate, "dd/MM/yyyy")} ${client.casvTime}`
+                      : format(client.CASVDate, "dd/MM/yyyy")
+                    : "--/--/----"}
                 </span>
               </div>
 
