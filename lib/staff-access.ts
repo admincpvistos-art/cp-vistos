@@ -78,7 +78,7 @@ export function canAssignAcompanhamentoResponsible(
   return isFullAdmin(role, email);
 }
 
-/** Colaborador do escritório: vê só clientes com responsibleEmail = o dele. */
+/** Colaborador do escritório: vê não designados + os designados a ele. */
 export function canOnlySeeAssignedAcompanhamento(
   role?: string | null,
   email?: string | null,

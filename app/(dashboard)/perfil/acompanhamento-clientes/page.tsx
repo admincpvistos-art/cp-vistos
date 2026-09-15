@@ -14,7 +14,7 @@ import {
   canAssignAcompanhamentoResponsible,
   canOnlySeeAssignedAcompanhamento,
 } from "@/lib/staff-access";
-import { cn, formatPrice } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { AcompanhamentoEditSheet } from "./acompanhamento-edit-sheet";
 
 function CollaboratorStatsCards({
@@ -51,8 +51,8 @@ function CollaboratorStatsCards({
     },
     {
       label: "Total pago",
-      value: formatPrice(stats.totalPago),
-      hint: "orçamentos pagos dos clientes",
+      value: String(stats.totalPago),
+      hint: "clientes que já pagaram",
     },
   ];
 

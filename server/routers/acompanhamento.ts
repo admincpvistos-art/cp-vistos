@@ -88,12 +88,24 @@ function assertCanAccessRow(
   if (!canOnlySeeAssignedAcompanhamento(staff.role, staff.email)) {
     return;
   }
-  if (normalizeEmail(row.responsibleEmail) !== normalizeEmail(staff.email)) {
+
+  const responsible = normalizeEmail(row.responsibleEmail);
+  // Sem responsável: disponível para qualquer colaborador com acesso.
+  if (!responsible) {
+    return;
+  }
+
+  if (responsible !== normalizeEmail(staff.email)) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "Cliente fora da sua responsabilidade",
     });
   }
+}
+
+function collaboratorCanSeeRow(row: AcompanhamentoRecord, staffEmail: string) {
+  const responsible = normalizeEmail(row.responsibleEmail);
+  return !responsible || responsible === staffEmail;
 }
 
 function buildCollaboratorStats(rows: AcompanhamentoRecord[]) {
@@ -113,10 +125,8 @@ function buildCollaboratorStats(rows: AcompanhamentoRecord[]) {
       esta += 1;
     }
 
-    const budgetRaw = row.accountFields?.budget?.trim() ?? "";
-    const budget = budgetRaw ? Number(budgetRaw.replace(",", ".")) : NaN;
-    if (row.accountFields?.budgetPaid === "Pago" && Number.isFinite(budget) && budget > 0) {
-      totalPago += budget;
+    if (row.accountFields?.budgetPaid === "Pago") {
+      totalPago += 1;
     }
   }
 
@@ -143,7 +153,7 @@ export const acompanhamentoRouter = router({
     const restrict = canOnlySeeAssignedAcompanhamento(ctx.staff.role, ctx.staff.email);
     const staffEmail = normalizeEmail(ctx.staff.email);
     const rows = restrict
-      ? sheet.rows.filter((row) => normalizeEmail(row.responsibleEmail) === staffEmail)
+      ? sheet.rows.filter((row) => collaboratorCanSeeRow(row, staffEmail))
       : sheet.rows;
 
     return {
