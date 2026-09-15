@@ -1016,6 +1016,10 @@ function pickEstaProfile(profiles: Profile[]) {
   return profiles.find((profile) => profile.category === Category.e_ta) ?? null;
 }
 
+function pickPassportProfile(profiles: Profile[]) {
+  return profiles.find((profile) => profile.category === Category.passport) ?? null;
+}
+
 function buildAccountFields(user: User | null | undefined): AcompanhamentoAccountFields | null {
   if (!user) {
     return null;
@@ -1166,6 +1170,7 @@ function buildRecord(
   const user = record.user;
   const profile = user ? pickProfile(user.profiles) : null;
   const estaProfile = user ? pickEstaProfile(user.profiles) : null;
+  const passportProfile = user ? pickPassportProfile(user.profiles) : null;
   const email = user
     ? isPlaceholderEmail(user.email)
       ? user.payerEmail || cell(cells, COL.email)
@@ -1228,6 +1233,8 @@ function buildRecord(
     estaProfileId: estaProfile?.id ?? null,
     estaFormStep: estaProfile?.formStep ?? 0,
     estaStatusForm: estaProfile?.statusForm ?? "",
+    passportProfileId: passportProfile?.id ?? null,
+    statusForm: profile?.statusForm ?? "",
   };
 }
 
@@ -1614,17 +1621,6 @@ async function applyAccountFields(userId: string, input: AcompanhamentoAccountFi
     if (taken && taken.id !== userId) {
       throw new Error("E-mail já está sendo utilizado em outra conta");
     }
-  }
-
-  if (input.password && input.password !== input.passwordConfirm) {
-    throw new Error("As senhas da conta não coincidem");
-  }
-
-  if (
-    input.passwordScheduleAccount &&
-    input.passwordScheduleAccount !== input.passwordConfirmScheduleAccount
-  ) {
-    throw new Error("As senhas da conta de agendamento não coincidem");
   }
 
   if (input.password && input.password.length < 6) {

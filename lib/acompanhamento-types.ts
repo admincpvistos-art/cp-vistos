@@ -71,6 +71,10 @@ export type AcompanhamentoRecord = {
   estaProfileId: string | null;
   estaFormStep: number;
   estaStatusForm: "" | "awaiting" | "filling" | "filled";
+  /** Perfil Passaporte (`Category.passport`). */
+  passportProfileId: string | null;
+  /** Status do formulário principal (visto). */
+  statusForm: "" | "awaiting" | "filling" | "filled";
 };
 
 export function emptyAccountFields(

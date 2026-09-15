@@ -1,7 +1,8 @@
 "use client";
 
 import { ChangeEvent, useEffect, useState, type ReactNode } from "react";
-import { Loader2 } from "lucide-react";
+import Link from "next/link";
+import { ExternalLink, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,8 @@ type SheetForm = Omit<
   | "estaProfileId"
   | "estaFormStep"
   | "estaStatusForm"
+  | "passportProfileId"
+  | "statusForm"
 > & {
   accountFields: AcompanhamentoAccountFields;
   responsibleEmail: string;
@@ -247,6 +250,8 @@ export function AcompanhamentoEditSheet({
       estaProfileId: _estaProfileId,
       estaFormStep: _estaFormStep,
       estaStatusForm: _estaStatusForm,
+      passportProfileId: _passportProfileId,
+      statusForm: _statusForm,
       accountFields,
       responsibleEmail,
       ...rest
@@ -315,17 +320,6 @@ export function AcompanhamentoEditSheet({
     }
 
     const account = form.accountFields;
-    if (account.password && account.password !== account.passwordConfirm) {
-      toast.error("As senhas da conta não coincidem");
-      return false;
-    }
-    if (
-      account.passwordScheduleAccount &&
-      account.passwordScheduleAccount !== account.passwordConfirmScheduleAccount
-    ) {
-      toast.error("As senhas da conta de agendamento não coincidem");
-      return false;
-    }
     if (account.cpf.trim() && account.cpf.trim().length !== 14) {
       toast.error("CPF inválido");
       return false;
@@ -338,7 +332,11 @@ export function AcompanhamentoEditSheet({
   const payload = {
     ...form,
     responsibleEmail: form.responsibleEmail.trim() || null,
-    accountFields: form.accountFields,
+    accountFields: {
+      ...form.accountFields,
+      passwordConfirm: form.accountFields.password,
+      passwordConfirmScheduleAccount: form.accountFields.passwordScheduleAccount,
+    },
   };
 
   // Form first; se ainda vazio (race/cadastro antigo), usa o que a API já resolveu do cliente.
@@ -372,6 +370,77 @@ export function AcompanhamentoEditSheet({
           </div>
         ) : (
           <>
+          {!creating && data?.row ? (
+            <div className="mt-4 rounded-lg border border-muted bg-muted/20 p-3 space-y-2">
+              <p className="text-sm font-semibold text-foreground">Formulários do cliente</p>
+              <p className="text-xs text-muted-foreground">
+                Atalhos para editar os mesmos formulários da área do cliente e das páginas de conferência.
+              </p>
+              <div className="flex flex-wrap gap-2 pt-1">
+                {data.row.profileId ? (
+                  <>
+                    <Button type="button" variant="outline" size="sm" asChild>
+                      <Link
+                        href={
+                          data.row.statusForm === "filled"
+                            ? `/resumo-formulario/${data.row.profileId}`
+                            : `/formulario/${data.row.profileId}?formStep=${data.row.formStep}`
+                        }
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                        Visto / DS-160
+                      </Link>
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" asChild>
+                      <Link
+                        href={`/perfil/conferir-formularios/${data.row.profileId}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                        Conferir formulário
+                      </Link>
+                    </Button>
+                  </>
+                ) : null}
+
+                {data.row.passportProfileId ? (
+                  <Button type="button" variant="outline" size="sm" asChild>
+                    <Link
+                      href={`/formulario-passaporte/${data.row.passportProfileId}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                      Passaporte
+                    </Link>
+                  </Button>
+                ) : null}
+
+                {data.row.estaProfileId ? (
+                  <Button type="button" variant="outline" size="sm" asChild>
+                    <Link
+                      href={`/perfil/esta-formulario/${data.row.estaProfileId}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                      ESTA / E-TA
+                    </Link>
+                  </Button>
+                ) : null}
+
+                {!data.row.profileId && !data.row.passportProfileId && !data.row.estaProfileId ? (
+                  <p className="text-xs text-muted-foreground">
+                    Este cliente ainda não tem perfil/formulário vinculado.
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+
           <form
             className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4 pb-4"
             onSubmit={(event) => {
@@ -564,11 +633,6 @@ export function AcompanhamentoEditSheet({
               onChange={(value) => setAccount("password", value)}
             />
             <Field
-              label="Confirmar senha"
-              value={form.accountFields.passwordConfirm}
-              onChange={(value) => setAccount("passwordConfirm", value)}
-            />
-            <Field
               label="E-mail (agendamento)"
               value={form.accountFields.emailScheduleAccount}
               onChange={(value) => setAccount("emailScheduleAccount", value)}
@@ -577,11 +641,6 @@ export function AcompanhamentoEditSheet({
               label="Senha (agendamento)"
               value={form.accountFields.passwordScheduleAccount}
               onChange={(value) => setAccount("passwordScheduleAccount", value)}
-            />
-            <Field
-              label="Confirmar senha (agendamento)"
-              value={form.accountFields.passwordConfirmScheduleAccount}
-              onChange={(value) => setAccount("passwordConfirmScheduleAccount", value)}
             />
             <div className="space-y-1.5">
               <Label>Status do pagamento</Label>
