@@ -225,7 +225,7 @@ export default function GestaoEstatisticaPage() {
           </h1>
           <p className="mt-1 text-sm text-slate-500">
             {isAdmin
-              ? "Visão completa da operação — substitui a dashboard do Excel."
+              ? "Visão completa da operação."
               : "Sua carteira: clientes sob sua responsabilidade e sem responsável."}
             {generatedLabel ? ` · Atualizado em ${generatedLabel}` : ""}
           </p>
