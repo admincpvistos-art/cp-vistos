@@ -92,17 +92,6 @@ function countInWindow(rows: AcompanhamentoRecord[], field: "casv" | "interview"
   return count;
 }
 
-function buildDs160Breakdown(rows: AcompanhamentoRecord[]) {
-  const map = new Map<string, number>();
-  for (const row of rows) {
-    const key = row.ds160.trim().toUpperCase() || "SEM STATUS";
-    map.set(key, (map.get(key) ?? 0) + 1);
-  }
-  return Array.from(map.entries())
-    .map(([label, count]) => ({ label, count }))
-    .sort((a, b) => b.count - a.count);
-}
-
 function buildByResponsible(
   rows: AcompanhamentoRecord[],
   nameByEmail: Map<string, string>,
@@ -170,17 +159,6 @@ export const gestaoEstatisticaRouter = router({
       : buildByResponsible(activeRows, nameByEmail).filter(
           (item) => item.key === "__unassigned__" || item.key === staffEmail,
         );
-
-    const passportProfiles = await prisma.profile.findMany({
-      where: { category: Category.passport },
-      select: { status: true, paymentStatus: true, ETAStatus: true },
-    });
-
-    const passportByStatus = new Map<string, number>();
-    for (const profile of passportProfiles) {
-      const label = profile.status?.toUpperCase?.() || String(profile.status || "OUTROS");
-      passportByStatus.set(label, (passportByStatus.get(label) ?? 0) + 1);
-    }
 
     const arquivados = await prisma.arquivadoClient.findMany({
       where: {
@@ -258,10 +236,6 @@ export const gestaoEstatisticaRouter = router({
         casv14Renovacao: countInWindow(renovacaoRows, "casv", 13),
       },
       byResponsible,
-      ds160: buildDs160Breakdown(activeRows),
-      passaportes: Array.from(passportByStatus.entries())
-        .map(([label, count]) => ({ label, count }))
-        .sort((a, b) => b.count - a.count),
       historico: {
         aprovados,
         negados,

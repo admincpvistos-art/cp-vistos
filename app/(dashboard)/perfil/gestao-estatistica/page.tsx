@@ -229,8 +229,7 @@ export default function GestaoEstatisticaPage() {
             </div>
           </Section>
 
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <Section title="Por responsável (ativos)">
+          <Section title="Por responsável (ativos)">
               <BarList
                 colorClass="bg-indigo-500"
                 items={data.byResponsible.map((item) => ({
@@ -241,18 +240,8 @@ export default function GestaoEstatisticaPage() {
               />
             </Section>
 
-            <Section title="Status DS-160 (ativos)">
-              <BarList colorClass="bg-violet-500" items={data.ds160} />
-            </Section>
-          </div>
-
           {isAdmin ? (
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-              <Section title="Passaportes (perfis)">
-                <BarList colorClass="bg-teal-500" items={data.passaportes} />
-              </Section>
-
-              <Section title="Histórico de aprovação">
+            <Section title="Histórico de aprovação">
                 <div className="grid grid-cols-2 gap-3">
                   <KpiCard label="Aprovados" value={data.historico.aprovados} tone="ok" />
                   <KpiCard label="Negados" value={data.historico.negados} tone="danger" />
@@ -267,7 +256,6 @@ export default function GestaoEstatisticaPage() {
                   />
                 </div>
               </Section>
-            </div>
           ) : null}
         </div>
       ) : null}

@@ -336,7 +336,7 @@ export default function AcompanhamentoClientesPage() {
             }
           }}
           toolbarMiddle={
-            <>
+            <div className="flex items-center gap-3 shrink-0">
               <CompactFilter
                 value={responsibleFilter}
                 onValueChange={setResponsibleFilter}
@@ -372,7 +372,7 @@ export default function AcompanhamentoClientesPage() {
                   </SelectItem>
                 ))}
               </CompactFilter>
-            </>
+            </div>
           }
           toolbarActions={
             <Button
