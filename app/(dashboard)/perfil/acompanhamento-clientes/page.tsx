@@ -261,6 +261,10 @@ export default function AcompanhamentoClientesPage() {
         creating={creating}
         canArchive={canArchive}
         canAssignResponsible={canAssignResponsible}
+        onCreated={(id) => {
+          setCreating(false);
+          setEditingId(id);
+        }}
         onClose={() => {
           setEditingId(null);
           setCreating(false);

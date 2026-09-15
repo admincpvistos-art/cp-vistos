@@ -151,12 +151,15 @@ export function AcompanhamentoEditSheet({
   canArchive = true,
   canAssignResponsible = false,
   onClose,
+  onCreated,
 }: {
   rowId: string | null;
   creating?: boolean;
   canArchive?: boolean;
   canAssignResponsible?: boolean;
   onClose: () => void;
+  /** Após criar com sucesso, mantém a aba aberta no modo edição. */
+  onCreated?: (rowId: string) => void;
 }) {
   const utils = trpc.useUtils();
   const [form, setForm] = useState<SheetForm>(EMPTY);
@@ -175,13 +178,16 @@ export function AcompanhamentoEditSheet({
 
   const { mutate: createRow, isPending: isCreating } =
     trpc.acompanhamentoRouter.createRow.useMutation({
-      onSuccess: () => {
+      onSuccess: (result) => {
         utils.acompanhamentoRouter.getClientesSheet.invalidate();
         toast.success("Cliente adicionado ao acompanhamento");
+        if (result.row?.id && onCreated) {
+          onCreated(result.row.id);
+          return;
+        }
         onClose();
         window.requestAnimationFrame(() => {
-          document.body.style.pointerEvents = "";
-          document.body.style.overflow = "";
+          releaseBodyLock();
         });
       },
       onError: (error) => {
@@ -193,13 +199,10 @@ export function AcompanhamentoEditSheet({
     trpc.acompanhamentoRouter.updateRow.useMutation({
       onSuccess: () => {
         utils.acompanhamentoRouter.getClientesSheet.invalidate();
-        utils.acompanhamentoRouter.getRow.invalidate({ id: rowId ?? "" });
+        if (rowId) {
+          utils.acompanhamentoRouter.getRow.invalidate({ id: rowId });
+        }
         toast.success("Acompanhamento atualizado");
-        onClose();
-        window.requestAnimationFrame(() => {
-          document.body.style.pointerEvents = "";
-          document.body.style.overflow = "";
-        });
       },
       onError: (error) => {
         toast.error(error.message || "Não foi possível salvar");
@@ -215,6 +218,7 @@ export function AcompanhamentoEditSheet({
   }
 
   function handleSheetOpenChange(nextOpen: boolean) {
+    // Fecha sem salvar — só Salvar/Adicionar persiste.
     if (!nextOpen) {
       onClose();
       window.requestAnimationFrame(() => {
