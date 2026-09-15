@@ -115,7 +115,7 @@ function CompactFilter({
 }) {
   return (
     <Select value={value} onValueChange={onValueChange}>
-      <SelectTrigger className={cn("h-12 w-[10.5rem] bg-white", className)}>
+      <SelectTrigger className={cn("h-12 w-[9.5rem] sm:w-[10.5rem] bg-white shrink-0", className)}>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>{children}</SelectContent>
@@ -336,12 +336,12 @@ export default function AcompanhamentoClientesPage() {
             }
           }}
           toolbarMiddle={
-            <div className="flex items-center gap-3 shrink-0">
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
               <CompactFilter
                 value={responsibleFilter}
                 onValueChange={setResponsibleFilter}
                 placeholder="Responsável"
-                className="w-[12rem]"
+                className="w-[10.5rem] sm:w-[11.5rem]"
               >
                 <SelectItem value="all">Responsável: todos</SelectItem>
                 <SelectItem value="unassigned">Sem responsável</SelectItem>

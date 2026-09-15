@@ -496,39 +496,37 @@ export function SheetClientsTable({
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between mb-4">
-        <div className="flex flex-col sm:flex-row gap-3 sm:items-center min-w-0 flex-wrap">
-          <div className="h-12 flex items-center gap-2 border border-muted/70 rounded-xl transition duration-300 bg-background px-3 py-2 text-sm group focus-within:border-primary hover:border-border w-full sm:max-w-xs">
-            <Search className="w-5 h-5 text-border flex-shrink-0" strokeWidth={1.5} />
-            <div className="w-[2px] flex-shrink-0 h-full bg-muted rounded-full" />
-            <Input
-              placeholder="Pesquise na planilha..."
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              className="flex h-full w-full transition border-0 duration-300 bg-background text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
-            />
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            className="h-12"
-            onClick={() => setSort((prev) => (prev === "desc" ? "asc" : "desc"))}
-          >
-            {sort === "desc" ? (
-              <>
-                <ArrowDownAZ className="mr-2 h-4 w-4" />
-                Mais recentes
-              </>
-            ) : (
-              <>
-                <ArrowUpAZ className="mr-2 h-4 w-4" />
-                Mais antigos
-              </>
-            )}
-          </Button>
-          {toolbarMiddle}
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-4">
+        <div className="h-12 flex items-center gap-2 border border-muted/70 rounded-xl transition duration-300 bg-background px-3 py-2 text-sm group focus-within:border-primary hover:border-border w-full sm:w-auto sm:min-w-[14rem] sm:max-w-[16rem] sm:flex-1 lg:flex-none lg:w-[15rem]">
+          <Search className="w-5 h-5 text-border flex-shrink-0" strokeWidth={1.5} />
+          <div className="w-[2px] flex-shrink-0 h-full bg-muted rounded-full" />
+          <Input
+            placeholder="Pesquise na planilha..."
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            className="flex h-full w-full transition border-0 duration-300 bg-background text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+          />
         </div>
-        {toolbarActions ? <div className="sm:ml-auto shrink-0">{toolbarActions}</div> : null}
+        <Button
+          type="button"
+          variant="outline"
+          className="h-12 shrink-0"
+          onClick={() => setSort((prev) => (prev === "desc" ? "asc" : "desc"))}
+        >
+          {sort === "desc" ? (
+            <>
+              <ArrowDownAZ className="mr-2 h-4 w-4" />
+              Mais recentes
+            </>
+          ) : (
+            <>
+              <ArrowUpAZ className="mr-2 h-4 w-4" />
+              Mais antigos
+            </>
+          )}
+        </Button>
+        {toolbarMiddle}
+        {toolbarActions ? <div className="ml-auto shrink-0">{toolbarActions}</div> : null}
       </div>
 
       {banner}
