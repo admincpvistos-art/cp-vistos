@@ -582,7 +582,6 @@ export function AcompanhamentoEditSheet({
             <Field label="TEL." value={form.phone} onChange={(value) => setSheet("phone", value)} />
             <Field label="DT. ENTRADA" value={form.entryDate} onChange={(value) => setSheet("entryDate", value)} />
             <Field label="GRUPO" value={form.group} onChange={(value) => setSheet("group", value)} />
-            <Field label="PAGTO" value={form.pagto} onChange={(value) => setSheet("pagto", value)} />
             <Field
               label="STATUS"
               value={form.status === "FINALIZADO" ? "FINALIZADO" : "ATIVO"}
