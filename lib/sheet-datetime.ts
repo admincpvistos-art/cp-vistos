@@ -63,3 +63,30 @@ export function parseSheetDateOnly(value: string): Date | null {
 export function timeFromSheetValue(value: string): string {
   return splitSheetDateTime(value).time;
 }
+
+/** Compara só o dia (ignora hora) entre valor da planilha e uma data. */
+export function sheetValueMatchesDate(value: string, day: Date): boolean {
+  const { date } = splitSheetDateTime(value);
+  if (!date) {
+    return false;
+  }
+
+  const parsed = parse(date, "dd/MM/yyyy", new Date());
+  if (!isValid(parsed)) {
+    return false;
+  }
+
+  return format(parsed, "dd/MM/yyyy") === format(day, "dd/MM/yyyy");
+}
+
+/** Linha tem CASV, entrevista ou reunião no dia informado. */
+export function rowHasScheduleOnDate(
+  row: { casv?: string; interview?: string; meeting?: string },
+  day: Date,
+): boolean {
+  return (
+    sheetValueMatchesDate(row.casv ?? "", day) ||
+    sheetValueMatchesDate(row.interview ?? "", day) ||
+    sheetValueMatchesDate(row.meeting ?? "", day)
+  );
+}

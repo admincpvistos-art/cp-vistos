@@ -3,9 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, Plus } from "lucide-react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { CalendarIcon, Loader2, Plus, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -19,6 +23,7 @@ import {
   ACOMPANHAMENTO_SERVICE_OPTIONS,
   type AcompanhamentoService,
 } from "@/lib/acompanhamento-types";
+import { rowHasScheduleOnDate } from "@/lib/sheet-datetime";
 import {
   canAccessAcompanhamento,
   canArchiveAcompanhamento,
@@ -123,12 +128,78 @@ function CompactFilter({
   );
 }
 
+/** Filtra CASV / entrevista / reunião pelo dia (qualquer um dos três). */
+function ScheduleDateFilter({
+  value,
+  onChange,
+}: {
+  value: Date | undefined;
+  onChange: (value: Date | undefined) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          className={cn(
+            "h-12 shrink-0 justify-start gap-2 bg-white px-3 font-normal",
+            value ? "w-auto min-w-[11.5rem]" : "w-[10.5rem] sm:w-[11.5rem]",
+          )}
+        >
+          <CalendarIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="truncate">
+            {value ? format(value, "dd/MM/yyyy") : "Agenda: todas"}
+          </span>
+          {value ? (
+            <span
+              role="button"
+              tabIndex={0}
+              aria-label="Limpar filtro de agenda"
+              className="ml-auto inline-flex rounded-sm p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onChange(undefined);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onChange(undefined);
+                }
+              }}
+            >
+              <X className="h-3.5 w-3.5" />
+            </span>
+          ) : null}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          locale={ptBR}
+          selected={value}
+          onSelect={(day) => {
+            onChange(day);
+            setOpen(false);
+          }}
+          initialFocus
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export default function AcompanhamentoClientesPage() {
   const router = useRouter();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [responsibleFilter, setResponsibleFilter] = useState<ResponsibleFilter>("all");
   const [serviceFilter, setServiceFilter] = useState<ServiceFilter>("all");
+  const [scheduleDate, setScheduleDate] = useState<Date | undefined>(undefined);
 
   const { data: me, isLoading: isMeLoading } = trpc.userRouter.getMe.useQuery(undefined, {
     retry: false,
@@ -248,9 +319,13 @@ export default function AcompanhamentoClientesPage() {
         return false;
       }
 
+      if (scheduleDate && !rowHasScheduleOnDate(row, scheduleDate)) {
+        return false;
+      }
+
       return true;
     });
-  }, [myEmail, responsibleFilter, rows, serviceFilter]);
+  }, [myEmail, responsibleFilter, rows, scheduleDate, serviceFilter]);
 
   async function handleDeleteRow(row: SheetClientRow) {
     const result = await deleteRow({ id: row.id });
@@ -311,6 +386,11 @@ export default function AcompanhamentoClientesPage() {
           rows={filteredRows}
           footerLabel="cliente"
           footerSuffix="da planilha"
+          emptyMessage={
+            scheduleDate
+              ? `Nenhum CASV, entrevista ou reunião em ${format(scheduleDate, "dd/MM/yyyy")}`
+              : "Sem resultados"
+          }
           isLoading={isLoading}
           errorMessage={isError ? error.message || "Não foi possível carregar a planilha" : null}
           commentPending={commentPending}
@@ -372,6 +452,8 @@ export default function AcompanhamentoClientesPage() {
                   </SelectItem>
                 ))}
               </CompactFilter>
+
+              <ScheduleDateFilter value={scheduleDate} onChange={setScheduleDate} />
             </div>
           }
           toolbarActions={
