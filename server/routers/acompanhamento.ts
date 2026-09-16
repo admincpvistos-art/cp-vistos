@@ -25,6 +25,12 @@ import {
   isFullAdmin,
   normalizeEmail,
 } from "@/lib/staff-access";
+import {
+  barcodeValidityStatus,
+  expireDateFromIssued,
+  parseIssuedDate,
+} from "@/lib/barcode-validity";
+import { parseSheetDateOnly } from "@/lib/sheet-datetime";
 
 const serviceValues = ACOMPANHAMENTO_SERVICE_OPTIONS.map((option) => option.value) as [
   (typeof ACOMPANHAMENTO_SERVICE_OPTIONS)[number]["value"],
@@ -119,34 +125,70 @@ function isInSharedAdminStatsPool(row: AcompanhamentoRecord) {
   return isFinanceAdminEmail(responsible);
 }
 
+function isBlankField(value: string) {
+  return !value.trim();
+}
+
+/** Sem data válida de entrevista/reunião (campo vazio ou sem data parseável). */
+function isScheduleUnfilled(value: string) {
+  if (isBlankField(value)) {
+    return true;
+  }
+  return parseSheetDateOnly(value) == null;
+}
+
+/** Taxa pendente com base na coluna PGTO TAXA da planilha. */
+function isTaxColumnPending(tax: string) {
+  const value = tax.trim().toUpperCase();
+  if (!value) {
+    return true;
+  }
+  return !value.includes("PAGO");
+}
+
+function isBarcodeExpiringSoon(row: AcompanhamentoRecord) {
+  if (row.barcodeDone || isBlankField(row.barcodeIssued)) {
+    return false;
+  }
+  const issued = parseIssuedDate(row.barcodeIssued);
+  if (!issued) {
+    return false;
+  }
+  return barcodeValidityStatus(expireDateFromIssued(issued)) === "warning";
+}
+
 function buildSheetStats(rows: AcompanhamentoRecord[]) {
-  let primeiroVisto = 0;
-  let passaporte = 0;
-  let esta = 0;
-  let totalPago = 0;
+  let semBarcode = 0;
+  let semEntrevista = 0;
+  let semReuniao = 0;
+  let barcodeAVencer = 0;
+  let taxasPendentes = 0;
 
   for (const row of rows) {
-    if (row.services.includes("primeiro_visto")) {
-      primeiroVisto += 1;
+    if (isBlankField(row.barcode)) {
+      semBarcode += 1;
     }
-    if (row.services.includes("passaporte")) {
-      passaporte += 1;
+    if (isScheduleUnfilled(row.interview)) {
+      semEntrevista += 1;
     }
-    if (row.services.includes("esta")) {
-      esta += 1;
+    if (isScheduleUnfilled(row.meeting)) {
+      semReuniao += 1;
     }
-
-    if (row.accountFields?.budgetPaid === "Pago") {
-      totalPago += 1;
+    if (isBarcodeExpiringSoon(row)) {
+      barcodeAVencer += 1;
+    }
+    if (isTaxColumnPending(row.tax)) {
+      taxasPendentes += 1;
     }
   }
 
   return {
     totalClientes: rows.length,
-    primeiroVisto,
-    passaporte,
-    esta,
-    totalPago,
+    semBarcode,
+    semEntrevista,
+    semReuniao,
+    barcodeAVencer,
+    taxasPendentes,
   };
 }
 

@@ -44,10 +44,11 @@ function CollaboratorStatsCards({
 }: {
   stats: {
     totalClientes: number;
-    primeiroVisto: number;
-    passaporte: number;
-    esta: number;
-    totalPago: number;
+    semBarcode: number;
+    semEntrevista: number;
+    semReuniao: number;
+    barcodeAVencer: number;
+    taxasPendentes: number;
     scope?: "collaborator" | "admin_shared";
   };
 }) {
@@ -61,29 +62,34 @@ function CollaboratorStatsCards({
           : "sob sua responsabilidade",
     },
     {
-      label: "1º vistos",
-      value: String(stats.primeiroVisto),
-      hint: "serviços marcados",
+      label: "Sem barcode",
+      value: String(stats.semBarcode),
+      hint: "campo barcode vazio",
     },
     {
-      label: "Passaportes",
-      value: String(stats.passaporte),
-      hint: "serviços marcados",
+      label: "Sem entrevista agendada",
+      value: String(stats.semEntrevista),
+      hint: "sem data de entrevista",
     },
     {
-      label: "ESTA / E-TA",
-      value: String(stats.esta),
-      hint: "serviços marcados",
+      label: "Sem reunião agendada",
+      value: String(stats.semReuniao),
+      hint: "sem data de reunião",
     },
     {
-      label: "Total pago",
-      value: String(stats.totalPago),
-      hint: "clientes que já pagaram",
+      label: "Barcode à vencer",
+      value: String(stats.barcodeAVencer),
+      hint: "vence em 15 dias ou menos",
+    },
+    {
+      label: "Taxas pendentes",
+      value: String(stats.taxasPendentes),
+      hint: "coluna PGTO TAXA",
     },
   ];
 
   return (
-    <div className="mb-6 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
+    <div className="mb-6 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
       {cards.map((card) => (
         <div
           key={card.label}
